@@ -10,6 +10,10 @@
 		80D76038243BD4C10059CD39 /* SwiftSatTrack.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80D7602E243BD4C00059CD39 /* SwiftSatTrack.framework */; };
 		80D7603D243BD4C10059CD39 /* SwiftSatTrackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D7603C243BD4C10059CD39 /* SwiftSatTrackTests.swift */; };
 		80D7603F243BD4C10059CD39 /* SwiftSatTrack.h in Headers */ = {isa = PBXBuildFile; fileRef = 80D76031243BD4C00059CD39 /* SwiftSatTrack.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		80D76049243BDE3A0059CD39 /* TwoLineElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D76048243BDE3A0059CD39 /* TwoLineElement.swift */; };
+		80D7604D243BF11D0059CD39 /* StringProtocol+subscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D7604C243BF11D0059CD39 /* StringProtocol+subscript.swift */; };
+		80D7604F243BF61F0059CD39 /* TwoLineElementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D7604E243BF61F0059CD39 /* TwoLineElementTests.swift */; };
+		80D76051243BFCBC0059CD39 /* TypeAlias.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D76050243BFCBC0059CD39 /* TypeAlias.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,6 +33,10 @@
 		80D76037243BD4C10059CD39 /* SwiftSatTrackTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftSatTrackTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		80D7603C243BD4C10059CD39 /* SwiftSatTrackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftSatTrackTests.swift; sourceTree = "<group>"; };
 		80D7603E243BD4C10059CD39 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		80D76048243BDE3A0059CD39 /* TwoLineElement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoLineElement.swift; sourceTree = "<group>"; };
+		80D7604C243BF11D0059CD39 /* StringProtocol+subscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StringProtocol+subscript.swift"; sourceTree = "<group>"; };
+		80D7604E243BF61F0059CD39 /* TwoLineElementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoLineElementTests.swift; sourceTree = "<group>"; };
+		80D76050243BFCBC0059CD39 /* TypeAlias.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypeAlias.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,8 +79,10 @@
 		80D76030243BD4C00059CD39 /* SwiftSatTrack */ = {
 			isa = PBXGroup;
 			children = (
+				80D7604B243BF0EE0059CD39 /* Utilities */,
 				80D76031243BD4C00059CD39 /* SwiftSatTrack.h */,
 				80D76032243BD4C00059CD39 /* Info.plist */,
+				80D76048243BDE3A0059CD39 /* TwoLineElement.swift */,
 			);
 			path = SwiftSatTrack;
 			sourceTree = "<group>";
@@ -82,8 +92,18 @@
 			children = (
 				80D7603C243BD4C10059CD39 /* SwiftSatTrackTests.swift */,
 				80D7603E243BD4C10059CD39 /* Info.plist */,
+				80D7604E243BF61F0059CD39 /* TwoLineElementTests.swift */,
 			);
 			path = SwiftSatTrackTests;
+			sourceTree = "<group>";
+		};
+		80D7604B243BF0EE0059CD39 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				80D7604C243BF11D0059CD39 /* StringProtocol+subscript.swift */,
+				80D76050243BFCBC0059CD39 /* TypeAlias.swift */,
+			);
+			path = Utilities;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -148,6 +168,7 @@
 				TargetAttributes = {
 					80D7602D243BD4C00059CD39 = {
 						CreatedOnToolsVersion = 11.4;
+						LastSwiftMigration = 1140;
 					};
 					80D76036243BD4C10059CD39 = {
 						CreatedOnToolsVersion = 11.4;
@@ -195,6 +216,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				80D76051243BFCBC0059CD39 /* TypeAlias.swift in Sources */,
+				80D7604D243BF11D0059CD39 /* StringProtocol+subscript.swift in Sources */,
+				80D76049243BDE3A0059CD39 /* TwoLineElement.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -203,6 +227,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				80D7603D243BD4C10059CD39 /* SwiftSatTrackTests.swift in Sources */,
+				80D7604F243BF61F0059CD39 /* TwoLineElementTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -340,6 +365,7 @@
 		80D76043243BD4C10059CD39 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 98DKHCW8R8;
@@ -356,6 +382,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.codethebeard.SwiftSatTrack;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -364,6 +391,7 @@
 		80D76044243BD4C10059CD39 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = 98DKHCW8R8;
@@ -388,6 +416,7 @@
 		80D76046243BD4C10059CD39 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 98DKHCW8R8;
 				INFOPLIST_FILE = SwiftSatTrackTests/Info.plist;
@@ -406,6 +435,7 @@
 		80D76047243BD4C10059CD39 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 98DKHCW8R8;
 				INFOPLIST_FILE = SwiftSatTrackTests/Info.plist;
