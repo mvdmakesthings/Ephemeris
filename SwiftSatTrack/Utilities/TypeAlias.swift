@@ -8,5 +8,13 @@
 
 import Foundation
 
-/// To help with understanding the units used
-typealias Degrees = Double
+/// Type in Degrees
+/// - Note: To help with understanding the units used in the implementation sites
+typealias Degree = Double
+
+/// Type in Radians
+/// - Note: To help with understanding the units used in the implementaiton sites
+typealias Radian = Double
+
+/// Julian Date
+typealias JulianDay = Double

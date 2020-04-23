@@ -8,12 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		80D76038243BD4C10059CD39 /* SwiftSatTrack.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80D7602E243BD4C00059CD39 /* SwiftSatTrack.framework */; };
-		80D7603D243BD4C10059CD39 /* SwiftSatTrackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D7603C243BD4C10059CD39 /* SwiftSatTrackTests.swift */; };
 		80D7603F243BD4C10059CD39 /* SwiftSatTrack.h in Headers */ = {isa = PBXBuildFile; fileRef = 80D76031243BD4C00059CD39 /* SwiftSatTrack.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		80D76049243BDE3A0059CD39 /* TwoLineElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D76048243BDE3A0059CD39 /* TwoLineElement.swift */; };
 		80D7604D243BF11D0059CD39 /* StringProtocol+subscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D7604C243BF11D0059CD39 /* StringProtocol+subscript.swift */; };
 		80D7604F243BF61F0059CD39 /* TwoLineElementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D7604E243BF61F0059CD39 /* TwoLineElementTests.swift */; };
 		80D76051243BFCBC0059CD39 /* TypeAlias.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D76050243BFCBC0059CD39 /* TypeAlias.swift */; };
+		80F590FA2450D1DD00BDD710 /* Double.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F590F92450D1DD00BDD710 /* Double.swift */; };
+		80F590FD2450FE0C00BDD710 /* Date.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F590FC2450FE0C00BDD710 /* Date.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,12 +32,13 @@
 		80D76031243BD4C00059CD39 /* SwiftSatTrack.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SwiftSatTrack.h; sourceTree = "<group>"; };
 		80D76032243BD4C00059CD39 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		80D76037243BD4C10059CD39 /* SwiftSatTrackTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftSatTrackTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		80D7603C243BD4C10059CD39 /* SwiftSatTrackTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftSatTrackTests.swift; sourceTree = "<group>"; };
 		80D7603E243BD4C10059CD39 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		80D76048243BDE3A0059CD39 /* TwoLineElement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoLineElement.swift; sourceTree = "<group>"; };
 		80D7604C243BF11D0059CD39 /* StringProtocol+subscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StringProtocol+subscript.swift"; sourceTree = "<group>"; };
 		80D7604E243BF61F0059CD39 /* TwoLineElementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoLineElementTests.swift; sourceTree = "<group>"; };
 		80D76050243BFCBC0059CD39 /* TypeAlias.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypeAlias.swift; sourceTree = "<group>"; };
+		80F590F92450D1DD00BDD710 /* Double.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Double.swift; sourceTree = "<group>"; };
+		80F590FC2450FE0C00BDD710 /* Date.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Date.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,7 +92,6 @@
 		80D7603B243BD4C10059CD39 /* SwiftSatTrackTests */ = {
 			isa = PBXGroup;
 			children = (
-				80D7603C243BD4C10059CD39 /* SwiftSatTrackTests.swift */,
 				80D7603E243BD4C10059CD39 /* Info.plist */,
 				80D7604E243BF61F0059CD39 /* TwoLineElementTests.swift */,
 			);
@@ -102,6 +103,8 @@
 			children = (
 				80D7604C243BF11D0059CD39 /* StringProtocol+subscript.swift */,
 				80D76050243BFCBC0059CD39 /* TypeAlias.swift */,
+				80F590F92450D1DD00BDD710 /* Double.swift */,
+				80F590FC2450FE0C00BDD710 /* Date.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -217,7 +220,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				80D76051243BFCBC0059CD39 /* TypeAlias.swift in Sources */,
+				80F590FD2450FE0C00BDD710 /* Date.swift in Sources */,
 				80D7604D243BF11D0059CD39 /* StringProtocol+subscript.swift in Sources */,
+				80F590FA2450D1DD00BDD710 /* Double.swift in Sources */,
 				80D76049243BDE3A0059CD39 /* TwoLineElement.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -226,7 +231,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				80D7603D243BD4C10059CD39 /* SwiftSatTrackTests.swift in Sources */,
 				80D7604F243BF61F0059CD39 /* TwoLineElementTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
