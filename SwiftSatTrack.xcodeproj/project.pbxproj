@@ -13,6 +13,8 @@
 		80D7604D243BF11D0059CD39 /* StringProtocol+subscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D7604C243BF11D0059CD39 /* StringProtocol+subscript.swift */; };
 		80D7604F243BF61F0059CD39 /* TwoLineElementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D7604E243BF61F0059CD39 /* TwoLineElementTests.swift */; };
 		80D76051243BFCBC0059CD39 /* TypeAlias.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D76050243BFCBC0059CD39 /* TypeAlias.swift */; };
+		80F590F62450CDBE00BDD710 /* Orbit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F590F52450CDBE00BDD710 /* Orbit.swift */; };
+		80F590F82450CF2400BDD710 /* OrbitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F590F72450CF2400BDD710 /* OrbitTests.swift */; };
 		80F590FA2450D1DD00BDD710 /* Double.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F590F92450D1DD00BDD710 /* Double.swift */; };
 		80F590FD2450FE0C00BDD710 /* Date.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F590FC2450FE0C00BDD710 /* Date.swift */; };
 /* End PBXBuildFile section */
@@ -37,6 +39,8 @@
 		80D7604C243BF11D0059CD39 /* StringProtocol+subscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StringProtocol+subscript.swift"; sourceTree = "<group>"; };
 		80D7604E243BF61F0059CD39 /* TwoLineElementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoLineElementTests.swift; sourceTree = "<group>"; };
 		80D76050243BFCBC0059CD39 /* TypeAlias.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypeAlias.swift; sourceTree = "<group>"; };
+		80F590F52450CDBE00BDD710 /* Orbit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Orbit.swift; sourceTree = "<group>"; };
+		80F590F72450CF2400BDD710 /* OrbitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitTests.swift; sourceTree = "<group>"; };
 		80F590F92450D1DD00BDD710 /* Double.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Double.swift; sourceTree = "<group>"; };
 		80F590FC2450FE0C00BDD710 /* Date.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Date.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -85,6 +89,7 @@
 				80D76031243BD4C00059CD39 /* SwiftSatTrack.h */,
 				80D76032243BD4C00059CD39 /* Info.plist */,
 				80D76048243BDE3A0059CD39 /* TwoLineElement.swift */,
+				80F590F52450CDBE00BDD710 /* Orbit.swift */,
 			);
 			path = SwiftSatTrack;
 			sourceTree = "<group>";
@@ -94,6 +99,7 @@
 			children = (
 				80D7603E243BD4C10059CD39 /* Info.plist */,
 				80D7604E243BF61F0059CD39 /* TwoLineElementTests.swift */,
+				80F590F72450CF2400BDD710 /* OrbitTests.swift */,
 			);
 			path = SwiftSatTrackTests;
 			sourceTree = "<group>";
@@ -222,6 +228,7 @@
 				80D76051243BFCBC0059CD39 /* TypeAlias.swift in Sources */,
 				80F590FD2450FE0C00BDD710 /* Date.swift in Sources */,
 				80D7604D243BF11D0059CD39 /* StringProtocol+subscript.swift in Sources */,
+				80F590F62450CDBE00BDD710 /* Orbit.swift in Sources */,
 				80F590FA2450D1DD00BDD710 /* Double.swift in Sources */,
 				80D76049243BDE3A0059CD39 /* TwoLineElement.swift in Sources */,
 			);
@@ -231,6 +238,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				80F590F82450CF2400BDD710 /* OrbitTests.swift in Sources */,
 				80D7604F243BF61F0059CD39 /* TwoLineElementTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
