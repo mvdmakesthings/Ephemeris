@@ -28,19 +28,28 @@ class TwoLineElement {
     /// - Note: Spaces are acceptable in columns 21 & 22
     var elementSetEpochUTC: String = ""
     
+    /// Epoch Year (YYYY)
+    var epochYear: Int = 0
+    
+    /// Epoch Day as fraction
+    var epochDay: Double = 0.00
+    
+    /// Epoch Date
+    var epochDate: Date = Date()
+    
     // MARK: - Line 2
     /// Orbit Inclination ( i )
-    var inclination: Degrees = 0.0
+    var inclination: Degree = 0.0
     /// Right Ascension of Ascending Node ( Ω )
-    var rightAscension: Degrees = 0.0
+    var rightAscension: Degree = 0.0
     /// Eccentricity ( e )
     var eccentricity: Double = 0.0
     /// Argument of Perigee (degrees)
-    var argumentOfPerigee: Degrees = 0.0
+    var argumentOfPerigee: Degree = 0.0
     /// Mean Anomaly (degrees)
-    var meanAnomaly: Degrees = 0.0
+    var meanAnomaly: Degree = 0.0
     /// Mean Motion (revolutions/day), the number of orbits the object completes in a total day.
-    var meanMotionRevsPerDay: Double = 0.0
+    var meanMotion: Double = 0.0
     /// Revolution Number at Epoch
     var revolutionsAtEpoch: Int = 0
     
@@ -60,29 +69,54 @@ class TwoLineElement {
         // Line 1
         let catalogNumberString = line1[2...6].string.trimmingCharacters(in: .whitespacesAndNewlines)
         self.catalogNumber = Int(catalogNumberString)!
+        
         self.internationalDesignator = line1[9...16].string.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.elementSetEpochUTC = line1[18...31].string.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+//        let epochUTCString = line1[18...31].string.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        let epochYearInt = Int(line1[18...19].string.trimmingCharacters(in: .whitespacesAndNewlines))!
+        self.epochYear = (epochYearInt < 70) ? 2000 + epochYearInt : 1900 + epochYearInt
 
+        let epochDayString = line1[20...31].string.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.epochDay = Double(epochDayString)!
+
+        self.epochDate = Date(from: self.epochAsJulianDate())
+        
         // Line 2
         let inclinationString = line2[8...15].string.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.inclination = Degrees(inclinationString)!
+        self.inclination = Degree(inclinationString)!
         
         let rightAscensionString = line2[17...24].string.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.rightAscension = Degrees(rightAscensionString)!
+        self.rightAscension = Degree(rightAscensionString)!
         
         let eccentricityString = line2[26...32].string.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.eccentricity = Degrees(eccentricityString)!
+        self.eccentricity = Degree("0.\(eccentricityString)")!
         
         let argumentOfPerigee = line2[34...41].string.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.argumentOfPerigee = Degrees(argumentOfPerigee)!
+        self.argumentOfPerigee = Degree(argumentOfPerigee)!
         
         let meanAnomalyString = line2[43...50].string.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.meanAnomaly = Degrees(meanAnomalyString)!
+        self.meanAnomaly = Degree(meanAnomalyString)!
         
-        let meanMotionRevsPerDayString = line2[52...62].string.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.meanMotionRevsPerDay = Double(meanMotionRevsPerDayString)!
+        let meanMotionString = line2[52...62].string.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.meanMotion = Double(meanMotionString)!
         
         let revolutionsAtEpochString = line2[63...67].string.trimmingCharacters(in: .whitespacesAndNewlines)
         self.revolutionsAtEpoch = Int(revolutionsAtEpochString)!
     }
+}
+
+extension TwoLineElement {
+    func epochAsJulianDate() -> JulianDay {
+        let julianDayFrom1970 = 2440587.5
+        var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = TimeZone(identifier: "UTC")!
+        var components = DateComponents()
+            components.year = epochYear
+        let epochFromYear = calendar.date(from: components)!
+        let epochSince1970 = floor(epochFromYear.timeIntervalSince1970)
+        return (julianDayFrom1970 + epochSince1970 / (24 * 60 * 60)) + epochDay - 1.0
+    }
+    
+
 }
