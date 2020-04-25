@@ -2,7 +2,7 @@
 //  OrbitalElementsTests.swift
 //  SwiftSatTrackTests
 //
-//  Created by Michael VanDyke on 4/23/20.
+//  Created by Michael VanDyke on 4/25/20.
 //  Copyright © 2020 Michael VanDyke. All rights reserved.
 //
 
@@ -10,9 +10,22 @@ import XCTest
 @testable import SwiftSatTrack
 
 class OrbitalElementsTests: XCTestCase {
-    func testM50DateInterval() throws {
-        let date = Date()
-        let m50date = date.asM50TimeInterval()
-        XCTAssertEqual(m50date, 0)
+
+    override func setUpWithError() throws {
+        // Put setup code here. This method is called before the invocation of each test method in the class.
     }
+
+    override func tearDownWithError() throws {
+        // Put teardown code here. This method is called after the invocation of each test method in the class.
+    }
+
+    func testOrbitalElementCalulations() throws {
+        let objectAtPerigee = MockTLEs.objectAtPerigee()
+        let oe = Orbit(from: objectAtPerigee)
+        XCTAssertEqual(oe.semimajorAxis, 6945.033345653489)
+        XCTAssertEqual(oe.trueAnomaly, 0)
+        XCTAssertEqual(oe.argumentOfPerigee, 0)
+        XCTAssertEqual(oe.eccentricity, 0.5)
+    }
+
 }

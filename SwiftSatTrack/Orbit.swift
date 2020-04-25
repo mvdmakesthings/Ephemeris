@@ -2,124 +2,132 @@
 //  Orbit.swift
 //  SwiftSatTrack
 //
-//  Created by Michael VanDyke on 4/22/20.
+//  Created by Michael VanDyke on 4/23/20.
 //  Copyright © 2020 Michael VanDyke. All rights reserved.
 //
 
 import Foundation
 
-class Orbit {
+public struct Orbit {
     
-    let title: String
-    let rightAscension: Double
+    // MARK: - Size of Orbit
+    
+    /// Describes half of the size of the orbit path from Perigee to Apogee.
+    /// Denoted by ( a ) in (km)
+    let semimajorAxis: Double
+    
+    // MARK: - Shape of Orbit
+    
+    /// Describes the shape of the orbital path.
+    /// Denoted by ( e ) with a value between 0 and 1.
     let eccentricity: Double
-    let argumentPeriapsis: Double
-    var meanAnomaly: Double
-    let meanMotion: Double
-    let epochDate: Date
     
-    init(title: String, rightAscension: Double, eccentricity: Double, argumentPeriapsis: Double, meanAnomaly: Double, meanMotion: Double, epochDate: Date) {
-        self.title = title
-        self.rightAscension = rightAscension
-        self.eccentricity = eccentricity
-        self.argumentPeriapsis = argumentPeriapsis
-        self.meanAnomaly = meanAnomaly
-        self.meanMotion = meanMotion
-        self.epochDate = epochDate
+    // MARK: - Orientation of Orbit
+    
+    /// The "tilt" in degrees from the vectors perpandicular to the orbital and equatorial planes
+    /// Denoted by ( i ) and is in degrees 0–180°
+    let inclination: Degree
+    
+    /// The "swivel" of the orbital plane in degrees in reference to the vernal equinox to the 'node' that cooresponds
+    /// with the object passing the equator in a northernly direction.
+    /// Denoted by ( Ω ) in degrees
+    let rightAscensionOfAscendingNode: Degree
+    
+    /// Describes the orientation of perigee on the orbital plane with reference to the right ascension of the ascending node
+    /// Denoted by ( ω ) in degrees
+    let argumentOfPerigee: Degree
+    
+    // MARK: - Position of Craft
+    
+    /// The true angle between the position of the craft relative to perigee along the orbital path.
+    /// Denoted as (ν or θ)
+    /// Range between 0–360°
+    let trueAnomaly: Degree
+    
+    // MARK: - Private
+
+    /// The position of the craft with respect to the mean motion.
+    /// Denoted as (M)
+    ///
+    /// https://www.youtube.com/watch?v=cf9Jh44kL20
+    ///
+    /// - Note: Calculated as
+    ///     n = mean motion
+    ///     t = time in motion
+    ///     M = Current mean anomaly
+    ///     M(Δt) = n(Δt) + M
+    private let meanAnomaly: Degree
+    
+    /// The average speed an object moves throughout an orbit.
+    /// Denoted as (n)
+    ///
+    /// https://www.youtube.com/watch?v=cf9Jh44kL20
+    ///
+    /// - Note: Calculated as
+    ///     M = Gravitational Constant of Earth (3.986004418e^5 km^3/ s^2)
+    ///     a = Semimajor axis
+    ///     Mean Motion (n) = sqrt( M / a^3 )
+    private let meanMotion: Double
+    
+    // MARK: - Initializers
+    init(from twoLineElement: TwoLineElement) {
+        self.semimajorAxis = Orbit.calculateSemimajorAxis(from: twoLineElement.meanMotion)
+        self.eccentricity = twoLineElement.eccentricity
+        self.inclination = twoLineElement.inclination
+        self.rightAscensionOfAscendingNode = twoLineElement.rightAscension
+        self.argumentOfPerigee = twoLineElement.argumentOfPerigee
+        self.trueAnomaly = Orbit.calculateTrueAnomaly(from: twoLineElement.eccentricity, with: Orbit.calculateEccentricAnomaly(from: twoLineElement.eccentricity, with: twoLineElement.meanAnomaly))
+        self.meanMotion = twoLineElement.meanMotion
+        self.meanAnomaly = twoLineElement.meanAnomaly
     }
     
-    /// Approximates Eccentric Anomaly from Mean Anomaly
-    /// - Parameters:
-    ///     - maxAccuracy: Also known as Epsilon or the total accuracy of the eccentric anomaly
-    /// - Note: Kepler's Equation is:
-    ///     M = E-eSin(E)
+    // MARK: - Functions
+    
+    /// A helper variable that bridges the gap between the true anomaly (or the true position of an object from perigee)
+    /// to the mean anomaly.
     ///
-    ///     Where:
+    /// https://www.youtube.com/watch?v=cf9Jh44kL20
     ///
-    ///     M = Mean Anomaly (range 0 - 180 degrees)
-    ///
-    ///     e = Eccentricity (range 0-1)
-    ///
-    ///     E = Eccentric Anomaly
-    ///
-    /// - Link: http://orbitsimulator.com/sheela/kepler.htm
-    /// - TODO: Better optimize using Newton's Method of finding minima: https://en.wikipedia.org/wiki/Newton%27s_method
-    func eccentricAnomaly(maxAccuracy: Double = 0.00001) -> Degree {
-        var meanAnomaly = Orbit.degreeToRadian(self.meanAnomaly)
-
-        if self.eccentricity == 0 {
-            return self.meanAnomaly
+    static func calculateEccentricAnomaly(from eccentricity: Double, with meanAnomaly: Degree, accuracy: Double = 0.0001, maxIterations: Int = 500) -> Degree {
+        let meanAnomaly: Radian = meanAnomaly.toRadians()
+        let eccentricity: Double = eccentricity
+        
+        // For small eccentricities the mean anomaly M can be used as an initial value E0 for the iteration. In case of e>0.8 the initial value E0=π is taken.
+        var eccentricAnomaly: Radian = .pi
+        if eccentricity <= 0.8 {
+            eccentricAnomaly = meanAnomaly
         }
         
-        if meanAnomaly >= 0.8 {
-            meanAnomaly = .pi
-        }
-        let meanAnomalyInRadians = meanAnomaly * .pi / 180.0
-
-        var errorRate = 0.0
-        var estimate = 0.0
-        var previousEstimate = meanAnomalyInRadians
+        var delta: Double = eccentricAnomaly - (eccentricity * sin(meanAnomaly)) - meanAnomaly
+        var iteration = 0
         
         repeat {
-            estimate = meanAnomaly - (meanAnomaly - self.eccentricity * sin(meanAnomaly) - meanAnomaly) / (1.0 - self.eccentricity * cos(meanAnomaly))
-            errorRate = fabs(estimate - previousEstimate)
-            previousEstimate = estimate
-        } while (errorRate > maxAccuracy)
+            eccentricAnomaly = eccentricAnomaly - delta / (1.0 - eccentricity * cos(eccentricAnomaly))
+            delta = eccentricAnomaly - eccentricity * sin(eccentricAnomaly) - meanAnomaly
+            print("Orbital Elements | Iteration: \(iteration + 1) | Accuracy: \(delta.round(to: 5)) | Eccentric Anomaly: \(eccentricAnomaly.toDegrees())")
+            iteration += 1
+        } while (delta > accuracy && iteration <= maxIterations)
         
-        return Orbit.radianToDegree(estimate)
+        return eccentricAnomaly.toDegrees()
     }
     
-    /// Motion per second (radians/second) of an object using mean motion
-    func motionRadiansPerSecond() -> Radian {
-        return meanMotion * 2 * .pi / (24 * 60 * 60)
+    /// The true angle relative to parigee and the position of the object along it's orbit path
+    private static func calculateTrueAnomaly(from eccentricity: Double, with eccentricAnomaly: Degree) -> Degree {
+        // all angles in calculus should be normalized to radians
+        let E = eccentricAnomaly.toRadians()
+        let fak = sqrt(1.0 - eccentricity * eccentricity)
+        let phi = atan2(fak*sin(E), cos(E)-eccentricity)
+        print("Orbital Elements | True Anomaly: \(phi.toDegrees()) degrees")
+        return phi.toDegrees()
     }
     
-    /// The time difference between now and the orbit's epoch.
-    func epochTimeDifference(from date: Date = Date()) -> TimeInterval {
-        let now = date.timeIntervalSinceNow
-        let epoch = epochDate.timeIntervalSinceNow
-        let diff = now - epoch
-        return diff
-    }
-    
-    /// The offset (in Radians) from the time difference from now until the epoch into Degrees
-    func timeAdjustedMeanAnomaly() -> Radian {
-        let adjustedMeanAnomaly = Orbit.degreeToRadian(epochTimeDifference() * motionRadiansPerSecond())
-        self.meanAnomaly += adjustedMeanAnomaly.truncatingRemainder(dividingBy: 360)
-        return self.meanAnomaly
-    }
-    
-    /// Infers the period from the TLE mean motion
-    func period() -> Double {
-        let dayInSeconds: Double = (24 * 60 * 60)
-        let period = dayInSeconds / meanMotion
-        return period
-    }
-    
-    /// Calculates the Semi-Major axis.
-    /// - Parameters:
-    ///     - keplersConstant: Standard Gravitational Parameter for the orbital body (km^3 / s^2)
-    func semiMajorAxis(with keplersConstant: Double = 398600.4418) -> Double {
-        let motionPerSecond = self.motionRadiansPerSecond()
-        return pow(keplersConstant / (4.0 * pow(.pi, 2) * pow(motionPerSecond,2)), 1.0/3.0)
-    }
-    
-    /// Calculates true anomaly
-    /// - Link: http://en.wikipedia.org/wiki/True_anomaly
-    func trueAnomalyFromEccentricAnomaly() -> Double {
-        let eccentricAnomaly = self.eccentricAnomaly() / 2.0
-        return 2.0 * atan2(sqrt(1 + self.eccentricity) * sin(eccentricAnomaly), sqrt(1 - self.eccentricity) * cos(eccentricAnomaly)) * 180.0 / .pi
-    }
-}
-
-extension Orbit {
-    /// Converts Radians to Degrees
-    public static func radianToDegree(_ radian: Radian) -> Degree {
-        return radian * 180 / .pi
-    }
-    
-    /// Converts Degrees to Radians
-    public static func degreeToRadian(_ degree: Degree) -> Radian {
-        return degree * .pi / 180
+    /// Calculating the semimajor axis from mean motion.
+    /// - Returns: Size of Orbit (km)
+    private static func calculateSemimajorAxis(from meanMotion: Double) -> Double {
+        let earthsGravitationalConstant = 398600.4418
+        let motionRadsPerSecond = (meanMotion * 2.0 * .pi) / 86400
+        let semimajorAxis = (pow(earthsGravitationalConstant, 1/3) / pow(motionRadsPerSecond, 2/3))
+        print("Orbital Elements | Semimajor Axis: \(semimajorAxis) km")
+        return semimajorAxis
     }
 }
