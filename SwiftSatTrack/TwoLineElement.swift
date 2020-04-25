@@ -80,7 +80,7 @@ class TwoLineElement {
         let epochDayString = line1[20...31].string.trimmingCharacters(in: .whitespacesAndNewlines)
         self.epochDay = Double(epochDayString)!
 
-        self.epochDate = Date(from: self.epochAsJulianDate())
+        self.epochDate = Date(from: Date.epochAsJulianDate())
         
         // Line 2
         let inclinationString = line2[8...15].string.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -104,19 +104,4 @@ class TwoLineElement {
         let revolutionsAtEpochString = line2[63...67].string.trimmingCharacters(in: .whitespacesAndNewlines)
         self.revolutionsAtEpoch = Int(revolutionsAtEpochString)!
     }
-}
-
-extension TwoLineElement {
-    func epochAsJulianDate() -> JulianDay {
-        let julianDayFrom1970 = 2440587.5
-        var calendar = Calendar(identifier: .gregorian)
-            calendar.timeZone = TimeZone(identifier: "UTC")!
-        var components = DateComponents()
-            components.year = epochYear
-        let epochFromYear = calendar.date(from: components)!
-        let epochSince1970 = floor(epochFromYear.timeIntervalSince1970)
-        return (julianDayFrom1970 + epochSince1970 / (24 * 60 * 60)) + epochDay - 1.0
-    }
-    
-
 }

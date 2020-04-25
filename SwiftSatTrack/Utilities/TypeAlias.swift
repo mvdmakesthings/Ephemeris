@@ -18,3 +18,4 @@ typealias Radian = Double
 
 /// Julian Date
 typealias JulianDay = Double
+typealias JulianDate = Double
