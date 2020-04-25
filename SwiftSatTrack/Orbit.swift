@@ -46,18 +46,27 @@ class Orbit {
     /// - TODO: Better optimize using Newton's Method of finding minima: https://en.wikipedia.org/wiki/Newton%27s_method
     func eccentricAnomaly(maxAccuracy: Double = 0.00001) -> Degree {
         var meanAnomaly = Orbit.degreeToRadian(self.meanAnomaly)
-        var eccentricAnomaly: Double?
 
+        if self.eccentricity == 0 {
+            return self.meanAnomaly
+        }
+        
         if meanAnomaly >= 0.8 {
             meanAnomaly = .pi
         }
+        let meanAnomalyInRadians = meanAnomaly * .pi / 180.0
+
+        var errorRate = 0.0
+        var estimate = 0.0
+        var previousEstimate = meanAnomalyInRadians
         
-        let eccentricAnomoly2 = meanAnomaly - (meanAnomaly - eccentricity * sin(meanAnomaly) - meanAnomaly) / (1.0 - eccentricity * cos(meanAnomaly))
-        if (abs(eccentricAnomoly2 - meanAnomaly) > maxAccuracy) {
-            eccentricAnomaly = eccentricAnomoly2
-        }
+        repeat {
+            estimate = meanAnomaly - (meanAnomaly - self.eccentricity * sin(meanAnomaly) - meanAnomaly) / (1.0 - self.eccentricity * cos(meanAnomaly))
+            errorRate = fabs(estimate - previousEstimate)
+            previousEstimate = estimate
+        } while (errorRate > maxAccuracy)
         
-        return Orbit.radianToDegree(eccentricAnomaly!) 
+        return Orbit.radianToDegree(estimate)
     }
     
     /// Motion per second (radians/second) of an object using mean motion
@@ -106,11 +115,11 @@ class Orbit {
 extension Orbit {
     /// Converts Radians to Degrees
     public static func radianToDegree(_ radian: Radian) -> Degree {
-        return radian * 180 / Double.pi
+        return radian * 180 / .pi
     }
     
     /// Converts Degrees to Radians
     public static func degreeToRadian(_ degree: Degree) -> Radian {
-        return degree * Double.pi / 180
+        return degree * .pi / 180
     }
 }
