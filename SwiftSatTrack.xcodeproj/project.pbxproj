@@ -13,14 +13,11 @@
 		80D7604D243BF11D0059CD39 /* StringProtocol+subscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D7604C243BF11D0059CD39 /* StringProtocol+subscript.swift */; };
 		80D7604F243BF61F0059CD39 /* TwoLineElementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D7604E243BF61F0059CD39 /* TwoLineElementTests.swift */; };
 		80D76051243BFCBC0059CD39 /* TypeAlias.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80D76050243BFCBC0059CD39 /* TypeAlias.swift */; };
-		80E3264A2454C600001DB402 /* PhysicalConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E326492454C600001DB402 /* PhysicalConstants.swift */; };
-		80F590F62450CDBE00BDD710 /* Orbit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F590F52450CDBE00BDD710 /* Orbit.swift */; };
-		80F590F82450CF2400BDD710 /* OrbitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F590F72450CF2400BDD710 /* OrbitTests.swift */; };
+		80E3264D2454D992001DB402 /* OrbitalElementsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E3264C2454D992001DB402 /* OrbitalElementsTests.swift */; };
+		80E3264F2454F07A001DB402 /* MockTLEs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E3264E2454F07A001DB402 /* MockTLEs.swift */; };
 		80F590FA2450D1DD00BDD710 /* Double.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F590F92450D1DD00BDD710 /* Double.swift */; };
 		80F590FD2450FE0C00BDD710 /* Date.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F590FC2450FE0C00BDD710 /* Date.swift */; };
-		80F591012451463C00BDD710 /* Satellite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F591002451463C00BDD710 /* Satellite.swift */; };
-		80F5910324514F7D00BDD710 /* OrbitalElements.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F5910224514F7D00BDD710 /* OrbitalElements.swift */; };
-		80F591052451538000BDD710 /* OrbitalElementsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F591042451538000BDD710 /* OrbitalElementsTests.swift */; };
+		80F5910324514F7D00BDD710 /* Orbit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F5910224514F7D00BDD710 /* Orbit.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -43,14 +40,12 @@
 		80D7604C243BF11D0059CD39 /* StringProtocol+subscript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StringProtocol+subscript.swift"; sourceTree = "<group>"; };
 		80D7604E243BF61F0059CD39 /* TwoLineElementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoLineElementTests.swift; sourceTree = "<group>"; };
 		80D76050243BFCBC0059CD39 /* TypeAlias.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypeAlias.swift; sourceTree = "<group>"; };
-		80E326492454C600001DB402 /* PhysicalConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhysicalConstants.swift; sourceTree = "<group>"; };
-		80F590F52450CDBE00BDD710 /* Orbit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Orbit.swift; sourceTree = "<group>"; };
-		80F590F72450CF2400BDD710 /* OrbitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitTests.swift; sourceTree = "<group>"; };
+		80E3264B2454D543001DB402 /* Playground.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = Playground.playground; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
+		80E3264C2454D992001DB402 /* OrbitalElementsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitalElementsTests.swift; sourceTree = "<group>"; };
+		80E3264E2454F07A001DB402 /* MockTLEs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTLEs.swift; sourceTree = "<group>"; };
 		80F590F92450D1DD00BDD710 /* Double.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Double.swift; sourceTree = "<group>"; };
 		80F590FC2450FE0C00BDD710 /* Date.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Date.swift; sourceTree = "<group>"; };
-		80F591002451463C00BDD710 /* Satellite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Satellite.swift; sourceTree = "<group>"; };
-		80F5910224514F7D00BDD710 /* OrbitalElements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitalElements.swift; sourceTree = "<group>"; };
-		80F591042451538000BDD710 /* OrbitalElementsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitalElementsTests.swift; sourceTree = "<group>"; };
+		80F5910224514F7D00BDD710 /* Orbit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Orbit.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,6 +70,7 @@
 		80D76024243BD4C00059CD39 = {
 			isa = PBXGroup;
 			children = (
+				80E3264B2454D543001DB402 /* Playground.playground */,
 				80D76030243BD4C00059CD39 /* SwiftSatTrack */,
 				80D7603B243BD4C10059CD39 /* SwiftSatTrackTests */,
 				80D7602F243BD4C00059CD39 /* Products */,
@@ -97,10 +93,7 @@
 				80D76031243BD4C00059CD39 /* SwiftSatTrack.h */,
 				80D76032243BD4C00059CD39 /* Info.plist */,
 				80D76048243BDE3A0059CD39 /* TwoLineElement.swift */,
-				80F590F52450CDBE00BDD710 /* Orbit.swift */,
-				80F5910224514F7D00BDD710 /* OrbitalElements.swift */,
-				80F591002451463C00BDD710 /* Satellite.swift */,
-				80E326492454C600001DB402 /* PhysicalConstants.swift */,
+				80F5910224514F7D00BDD710 /* Orbit.swift */,
 			);
 			path = SwiftSatTrack;
 			sourceTree = "<group>";
@@ -110,8 +103,8 @@
 			children = (
 				80D7603E243BD4C10059CD39 /* Info.plist */,
 				80D7604E243BF61F0059CD39 /* TwoLineElementTests.swift */,
-				80F590F72450CF2400BDD710 /* OrbitTests.swift */,
-				80F591042451538000BDD710 /* OrbitalElementsTests.swift */,
+				80E3264C2454D992001DB402 /* OrbitalElementsTests.swift */,
+				80E3264E2454F07A001DB402 /* MockTLEs.swift */,
 			);
 			path = SwiftSatTrackTests;
 			sourceTree = "<group>";
@@ -239,13 +232,10 @@
 			files = (
 				80D76051243BFCBC0059CD39 /* TypeAlias.swift in Sources */,
 				80F590FD2450FE0C00BDD710 /* Date.swift in Sources */,
-				80F5910324514F7D00BDD710 /* OrbitalElements.swift in Sources */,
+				80F5910324514F7D00BDD710 /* Orbit.swift in Sources */,
 				80D7604D243BF11D0059CD39 /* StringProtocol+subscript.swift in Sources */,
-				80E3264A2454C600001DB402 /* PhysicalConstants.swift in Sources */,
-				80F590F62450CDBE00BDD710 /* Orbit.swift in Sources */,
 				80F590FA2450D1DD00BDD710 /* Double.swift in Sources */,
 				80D76049243BDE3A0059CD39 /* TwoLineElement.swift in Sources */,
-				80F591012451463C00BDD710 /* Satellite.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -253,9 +243,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				80F591052451538000BDD710 /* OrbitalElementsTests.swift in Sources */,
-				80F590F82450CF2400BDD710 /* OrbitTests.swift in Sources */,
+				80E3264D2454D992001DB402 /* OrbitalElementsTests.swift in Sources */,
 				80D7604F243BF61F0059CD39 /* TwoLineElementTests.swift in Sources */,
+				80E3264F2454F07A001DB402 /* MockTLEs.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

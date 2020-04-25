@@ -9,52 +9,53 @@
 import Foundation
 
 /// Two-Line Element Format is data format encoding a list of orbital elements of an Earth-orbiting object for a given point in time (epoch).
+///
 /// - Link: https://en.wikipedia.org/wiki/Two-line_element_set
+///
 /// - Note: Example TLE String:
 ///     ISS (ZARYA)
 ///     1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
 ///     2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
-class TwoLineElement {
+struct TwoLineElement {
     // MARK: - Line 0
     /// Object's common name based on information from the satellite catalog.
-    var name: String = ""
+    var name: String
     
     // MARK: - Line 1
     /// Satellite catalog number
-    var catalogNumber: Int = 0
+    var catalogNumber: Int
     /// International Designator
-    var internationalDesignator: String = ""
+    var internationalDesignator: String
     /// Element Set Epoch (UTC)
     /// - Note: Spaces are acceptable in columns 21 & 22
-    var elementSetEpochUTC: String = ""
+    var elementSetEpochUTC: String
     
     /// Epoch Year (YYYY)
-    var epochYear: Int = 0
+    var epochYear: Int
     
     /// Epoch Day as fraction
-    var epochDay: Double = 0.00
+    var epochDay: Double
     
     /// Epoch Date
     var epochDate: Date = Date()
     
     // MARK: - Line 2
     /// Orbit Inclination ( i )
-    var inclination: Degree = 0.0
+    var inclination: Degree
     /// Right Ascension of Ascending Node ( Ω )
-    var rightAscension: Degree = 0.0
+    var rightAscension: Degree
     /// Eccentricity ( e )
-    var eccentricity: Double = 0.0
+    var eccentricity: Double
     /// Argument of Perigee (degrees)
-    var argumentOfPerigee: Degree = 0.0
+    var argumentOfPerigee: Degree
     /// Mean Anomaly (degrees)
-    var meanAnomaly: Degree = 0.0
+    var meanAnomaly: Degree
     /// Mean Motion (revolutions/day), the number of orbits the object completes in a total day.
-    var meanMotion: Double = 0.0
+    var meanMotion: Double
     /// Revolution Number at Epoch
-    var revolutionsAtEpoch: Int = 0
+    var revolutionsAtEpoch: Int
     
-    convenience init(from tle: String) {
-        self.init()
+    init(from tle: String) {
 
         let lines = tle.components(separatedBy: "\n")
         guard lines.count == 3 else { fatalError("Not properly formatted TLE data") }
@@ -72,7 +73,8 @@ class TwoLineElement {
         
         self.internationalDesignator = line1[9...16].string.trimmingCharacters(in: .whitespacesAndNewlines)
         
-//        let epochUTCString = line1[18...31].string.trimmingCharacters(in: .whitespacesAndNewlines)
+        let epochUTCString = line1[18...31].string.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.elementSetEpochUTC = epochUTCString
         
         let epochYearInt = Int(line1[18...19].string.trimmingCharacters(in: .whitespacesAndNewlines))!
         self.epochYear = (epochYearInt < 70) ? 2000 + epochYearInt : 1900 + epochYearInt
@@ -80,7 +82,8 @@ class TwoLineElement {
         let epochDayString = line1[20...31].string.trimmingCharacters(in: .whitespacesAndNewlines)
         self.epochDay = Double(epochDayString)!
 
-        self.epochDate = Date(from: Date.epochAsJulianDate())
+        // TODO: FIX THIS
+        self.epochDate = Date()
         
         // Line 2
         let inclinationString = line2[8...15].string.trimmingCharacters(in: .whitespacesAndNewlines)
