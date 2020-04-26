@@ -16,7 +16,7 @@ import Foundation
 ///     ISS (ZARYA)
 ///     1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
 ///     2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
-struct TwoLineElement {
+public struct TwoLineElement {
     // MARK: - Line 0
     /// Object's common name based on information from the satellite catalog.
     var name: String
@@ -55,7 +55,7 @@ struct TwoLineElement {
     /// Revolution Number at Epoch
     var revolutionsAtEpoch: Int
     
-    init(from tle: String) {
+    public init(from tle: String) {
 
         let lines = tle.components(separatedBy: "\n")
         guard lines.count == 3 else { fatalError("Not properly formatted TLE data") }

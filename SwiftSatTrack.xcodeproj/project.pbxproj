@@ -28,6 +28,13 @@
 			remoteGlobalIDString = 80D7602D243BD4C00059CD39;
 			remoteInfo = SwiftSatTrack;
 		};
+		80E32677245529ED001DB402 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 80E32673245529EC001DB402 /* SwiftSatTrackDemo.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 80E3265C245529E9001DB402;
+			remoteInfo = SwiftSatTrackDemo;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +50,7 @@
 		80E3264B2454D543001DB402 /* Playground.playground */ = {isa = PBXFileReference; lastKnownFileType = file.playground; path = Playground.playground; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.swift; };
 		80E3264C2454D992001DB402 /* OrbitalElementsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitalElementsTests.swift; sourceTree = "<group>"; };
 		80E3264E2454F07A001DB402 /* MockTLEs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTLEs.swift; sourceTree = "<group>"; };
+		80E32673245529EC001DB402 /* SwiftSatTrackDemo.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = SwiftSatTrackDemo.xcodeproj; path = SwiftSatTrackDemo/SwiftSatTrackDemo.xcodeproj; sourceTree = "<group>"; };
 		80F590F92450D1DD00BDD710 /* Double.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Double.swift; sourceTree = "<group>"; };
 		80F590FC2450FE0C00BDD710 /* Date.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Date.swift; sourceTree = "<group>"; };
 		80F5910224514F7D00BDD710 /* Orbit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Orbit.swift; sourceTree = "<group>"; };
@@ -70,6 +78,7 @@
 		80D76024243BD4C00059CD39 = {
 			isa = PBXGroup;
 			children = (
+				80E32673245529EC001DB402 /* SwiftSatTrackDemo.xcodeproj */,
 				80E3264B2454D543001DB402 /* Playground.playground */,
 				80D76030243BD4C00059CD39 /* SwiftSatTrack */,
 				80D7603B243BD4C10059CD39 /* SwiftSatTrackTests */,
@@ -118,6 +127,14 @@
 				80F590FC2450FE0C00BDD710 /* Date.swift */,
 			);
 			path = Utilities;
+			sourceTree = "<group>";
+		};
+		80E32674245529EC001DB402 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				80E32678245529ED001DB402 /* SwiftSatTrackDemo.app */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -200,6 +217,12 @@
 			mainGroup = 80D76024243BD4C00059CD39;
 			productRefGroup = 80D7602F243BD4C00059CD39 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 80E32674245529EC001DB402 /* Products */;
+					ProjectRef = 80E32673245529EC001DB402 /* SwiftSatTrackDemo.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				80D7602D243BD4C00059CD39 /* SwiftSatTrack */,
@@ -207,6 +230,16 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		80E32678245529ED001DB402 /* SwiftSatTrackDemo.app */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.application;
+			path = SwiftSatTrackDemo.app;
+			remoteRef = 80E32677245529ED001DB402 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		80D7602C243BD4C00059CD39 /* Resources */ = {
