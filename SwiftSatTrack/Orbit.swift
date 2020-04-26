@@ -133,7 +133,10 @@ public struct Orbit {
         return semimajorAxis
     }
     
-    /// Calculates the position of the orbiting object relative to earth
+    /// Calculates the position of the orbiting object relative to earth.
+    ///
+    /// - Note:
+    ///     Transform math taken from https://www.csun.edu/~hcmth017/master/node20.html
     static func calculatePosition(semimajorAxis: Double, eccentricity: Double, eccentricAnomaly: Degree, trueAnomaly: Degree, argumentOfPerigee: Degree, inclination: Degree, rightAscensionOfAscendingNode: Degree) -> (x: Double, y: Double, z: Double) {
         
         // Calculate the XYZ coordinates on the orbital plane
