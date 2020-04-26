@@ -44,8 +44,6 @@ public struct Orbit {
     /// Range between 0–360°
     public let trueAnomaly: Degree
     
-    // MARK: - Private
-
     /// The position of the craft with respect to the mean motion.
     /// Denoted as (M)
     ///
@@ -69,6 +67,8 @@ public struct Orbit {
     ///     Mean Motion (n) = sqrt( M / a^3 )
     public let meanMotion: Double
     
+    // MARK: - Private
+
     private let twoLineElement: TwoLineElement
     
     // MARK: - Initializers
@@ -78,7 +78,7 @@ public struct Orbit {
         self.inclination = twoLineElement.inclination
         self.rightAscensionOfAscendingNode = twoLineElement.rightAscension
         self.argumentOfPerigee = twoLineElement.argumentOfPerigee
-        self.trueAnomaly = Orbit.calculateTrueAnomaly(from: twoLineElement.eccentricity, with: Orbit.calculateEccentricAnomaly(eccentricity: twoLineElement.eccentricity, meanAnomaly: twoLineElement.meanAnomaly))
+        self.trueAnomaly = Orbit.calculateTrueAnomaly(eccentricity: twoLineElement.eccentricity, eccentricAnomaly: Orbit.calculateEccentricAnomaly(eccentricity: twoLineElement.eccentricity, meanAnomaly: twoLineElement.meanAnomaly))
         self.meanMotion = twoLineElement.meanMotion
         self.meanAnomaly = twoLineElement.meanAnomaly
         self.twoLineElement = twoLineElement
@@ -106,14 +106,10 @@ public struct Orbit {
         let meanAnomaly: Radian = meanAnomaly.toRadians()
         let eccentricity: Double = eccentricity
         
-        if eccentricity == 0 {
-            return meanAnomaly.toDegrees()
-        }
-        
         // For small eccentricities the mean anomaly M can be used as an initial value E0 for the iteration. In case of e>0.8 the initial value E0=π is taken.
-        var eccentricAnomaly: Double = .pi
-        if eccentricity <= 0.8 {
-            eccentricAnomaly = meanAnomaly
+        var eccentricAnomaly: Double = meanAnomaly
+        if eccentricity > 0.8 {
+            eccentricAnomaly = .pi
         }
         
         var delta: Double = eccentricAnomaly - (eccentricity * sin(meanAnomaly)) - meanAnomaly
@@ -132,7 +128,7 @@ public struct Orbit {
 
     /// The true angle relative to parigee and the position of the object along it's orbit path
     /// - Notes: Calculated from https://en.wikipedia.org/wiki/True_anomaly
-    private static func calculateTrueAnomaly(from eccentricity: Double, with eccentricAnomaly: Degree) -> Degree {
+    public static func calculateTrueAnomaly(eccentricity: Double, eccentricAnomaly: Degree) -> Degree {
         let E = eccentricAnomaly.toRadians()
         let phi = 2.0 * atan(sqrt(1 + eccentricity / 1 - eccentricity) * tan(E/2))
         print("OE | True Anomaly: \(phi.toDegrees()) degrees")
@@ -152,49 +148,46 @@ public struct Orbit {
     /// Calculates the position of the orbiting object relative to earth.
     ///
     /// - Note:
-    ///     Transform math taken from https://www.csun.edu/~hcmth017/master/node20.html
+    ///     Transform math used from https://www.csun.edu/~hcmth017/master/node20.html
+    ///     Heavily inspired by ZeitSatTrack https://github.com/dhmspector/ZeitSatTrack Apache 2.0
     public static func calculatePosition(semimajorAxis: Double, eccentricity: Double, eccentricAnomaly: Degree, trueAnomaly: Degree, argumentOfPerigee: Degree, inclination: Degree, rightAscensionOfAscendingNode: Degree) -> (x: Double, y: Double, z: Double) {
         
         // Calculate the XYZ coordinates on the orbital plane
         let orbitalRadius = semimajorAxis - (semimajorAxis * eccentricity) * cos(eccentricAnomaly.toRadians())
-        print("OE | Orbital Radius: \(orbitalRadius) km")
-        var x = orbitalRadius * cos(trueAnomaly.toRadians())
-        var y = orbitalRadius * cos(trueAnomaly.toRadians())
-        var z = 0.0
-        print("OE | Orbital Base | X: \(x) km | Y: \(y) km | Z: \(z)")
+        let x = orbitalRadius * cos(trueAnomaly.toRadians())
+        let y = orbitalRadius * sin(trueAnomaly.toRadians())
+        let z = 0.0
         
         // Rotate about z''' by the argument of perigee.
-        let argOfPerigee = argumentOfPerigee.toRadians()
-        x = cos(argOfPerigee) * x - sin(argOfPerigee) * y
-        y = sin(argOfPerigee) * x + cos(argOfPerigee) * y
-        print("OE | Rotation on Z by Argument of Perigee | X: \(x) km | Y: \(y) km | Z: \(z)")
-    
+        let argOfPerigeeRads = argumentOfPerigee.toRadians()
+        let xByPerigee = cos(argOfPerigeeRads) * x - sin(argOfPerigeeRads) * y
+        let yByPerigee = sin(argOfPerigeeRads) * x + cos(argOfPerigeeRads) * y
+        let zByPerigee = z
+        
         // Rotate about x'' axis by inclination.
-        let inclination = inclination.toRadians()
-        y = cos(inclination) * y - sin(inclination) * z
-        z = sin(inclination) * y + cos(inclination) * z
-        print("OE | Rotation on X by Inclination | X: \(x) km | Y: \(y) km | Z: \(z)")
+        let inclinationRads = inclination.toRadians()
+        let xInclination = xByPerigee;
+        let yInclination = cos(inclinationRads) * yByPerigee - sin(inclinationRads) * zByPerigee
+        let zInclination = sin(inclinationRads) * yByPerigee + cos(inclinationRads) * zByPerigee
         
         // Rotate about z' axis by right ascension of the ascending node.
-        let rightAscensionOfAscendingNode = rightAscensionOfAscendingNode.toRadians()
-        x = cos(rightAscensionOfAscendingNode) * x - sin(rightAscensionOfAscendingNode) * y
-        y = sin(rightAscensionOfAscendingNode) * x + cos(rightAscensionOfAscendingNode) * y
-        print("OE | Rotation on Z by Right Ascension | X: \(x) km | Y: \(y) km | Z: \(z)")
+        let raanRads = rightAscensionOfAscendingNode.toRadians()
+        let xRaan = cos(raanRads) * xInclination - sin(raanRads) * yInclination
+        let yRaan = sin(raanRads) * xInclination + cos(raanRads) * yInclination
+        let zRaan = zInclination
         
         // Rotate about z axis by the rotation of the earth.
-        let julianDay = Date().julianDayFromDate()
-        let gha = Date.greenwhichSiderealTime(from: julianDay)
-        let earthsRotationAtGivenTime: Radian = -gha.toRadians()
-        let earthsEquitorialRadius = 6371.0 // km
-        x = cos(earthsRotationAtGivenTime) * x - sin(earthsRotationAtGivenTime) * y
-        y = sin(earthsRotationAtGivenTime) * x + cos(earthsRotationAtGivenTime) * y
-        print("OE | Rotation on Z by Earth's rotation | X: \(x) km | Y: \(y) km | Z: \(z)")
+        let rotationFromGeocentric = 0.0 // TODO: Calculate this
+        let rotationFromGeocentricRad = -rotationFromGeocentric.toRadians()
+        let xFinal = cos(rotationFromGeocentricRad) * xRaan - sin(rotationFromGeocentricRad) * yRaan
+        let yFinal = sin(rotationFromGeocentricRad) * xRaan + cos(rotationFromGeocentricRad) * yRaan
+        let zFinal = zRaan
         
-        // Finally, Latitude, Longitude, and Altitude
-//        let latitude = 90.0 - acos(z / sqrt(x*x + y*y + z*z)).toDegrees()
-        let latitude = asin(z/earthsEquitorialRadius).toDegrees()
-        let longitude = atan2(y, x).toDegrees()
-        let altitude = orbitalRadius - earthsEquitorialRadius
+        // Geocoordinates
+        let earthsRadius = 6370.0 //km
+        let latitude = 90.0 - acos(zFinal / sqrt(xFinal * xFinal + yFinal * yFinal + zFinal * zFinal)).toDegrees()
+        let longitude = atan2(yFinal, xFinal).toDegrees()
+        let altitude = orbitalRadius - earthsRadius
 
         print("OE | Latitude: \(latitude) degrees | Longitude: \(longitude) degrees | Altitude: \(altitude)km")
 
