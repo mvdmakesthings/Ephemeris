@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		80383A0A24555A7000747629 /* IdealSat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80383A0924555A7000747629 /* IdealSat.swift */; };
+		80383A0D2456187E00747629 /* SwiftSatTrack.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80383A0C2456187E00747629 /* SwiftSatTrack.framework */; };
+		80383A0E2456187E00747629 /* SwiftSatTrack.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 80383A0C2456187E00747629 /* SwiftSatTrack.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		80E32660245529E9001DB402 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E3265F245529E9001DB402 /* AppDelegate.swift */; };
 		80E32662245529E9001DB402 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E32661245529E9001DB402 /* SceneDelegate.swift */; };
 		80E32664245529E9001DB402 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E32663245529E9001DB402 /* ViewController.swift */; };
@@ -17,8 +19,23 @@
 		80E3267A24552BCE001DB402 /* Satellite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E3267924552BCE001DB402 /* Satellite.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		80383A0F2456187E00747629 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				80383A0E2456187E00747629 /* SwiftSatTrack.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		80383A0924555A7000747629 /* IdealSat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdealSat.swift; sourceTree = "<group>"; };
+		80383A0C2456187E00747629 /* SwiftSatTrack.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = SwiftSatTrack.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		80E3265C245529E9001DB402 /* SwiftSatTrackDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftSatTrackDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		80E3265F245529E9001DB402 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		80E32661245529E9001DB402 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -35,17 +52,27 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				80383A0D2456187E00747629 /* SwiftSatTrack.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		80383A0B2456187E00747629 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				80383A0C2456187E00747629 /* SwiftSatTrack.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		80E32653245529E9001DB402 = {
 			isa = PBXGroup;
 			children = (
 				80E3265E245529E9001DB402 /* SwiftSatTrackDemo */,
 				80E3265D245529E9001DB402 /* Products */,
+				80383A0B2456187E00747629 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -83,6 +110,7 @@
 				80E32658245529E9001DB402 /* Sources */,
 				80E32659245529E9001DB402 /* Frameworks */,
 				80E3265A245529E9001DB402 /* Resources */,
+				80383A0F2456187E00747629 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
