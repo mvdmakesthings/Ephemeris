@@ -27,5 +27,12 @@ class OrbitalElementsTests: XCTestCase {
         XCTAssertEqual(oe.argumentOfPerigee, 0)
         XCTAssertEqual(oe.eccentricity, 0.5)
     }
+    
+    func testOrbitalPositionCalculation() throws {
+        let issTLE = MockTLEs.ISSSample()
+        let oe = Orbit(from: issTLE)
+        _ = Orbit.calculatePosition(semimajorAxis: oe.semimajorAxis, eccentricity: oe.eccentricity, eccentricAnomaly: Orbit.calculateEccentricAnomaly(eccentricity: oe.eccentricity, meanAnomaly: oe.meanAnomaly), trueAnomaly: oe.trueAnomaly, argumentOfPerigee: oe.argumentOfPerigee, inclination: oe.inclination, rightAscensionOfAscendingNode: oe.rightAscensionOfAscendingNode)
+    }
+    
 
 }

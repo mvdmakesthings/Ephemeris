@@ -10,7 +10,9 @@ https://onlinelibrary.wiley.com/doi/pdf/10.1002/9781118542200.app1
 
 https://www.csun.edu/~hcmth017/master/master.html
 
-https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/Tutorials/pdf/individual_docs/17_frames_and_coordinate_systems.pdf
+https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19650015945.pdf
+
+http://calculuscastle.com/orbit.pdf
 
 Several open source projects have been referenced to build this library:
 
