@@ -18,7 +18,9 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         
-        let sat = Satellite(name: "ZARYA")
+        let sat = Satellite()
+        let ideal = IdealSat(name: "Ideal", coordinate: CLLocationCoordinate2D(latitude: CLLocationDegrees(-0.0), longitude: CLLocationDegrees(-75.2)))
+        mapView.addAnnotation(ideal)
         mapView.addAnnotation(sat)
     }
 }

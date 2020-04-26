@@ -69,6 +69,8 @@ public struct Orbit {
     ///     Mean Motion (n) = sqrt( M / a^3 )
     public let meanMotion: Double
     
+    private let twoLineElement: TwoLineElement
+    
     // MARK: - Initializers
     public init(from twoLineElement: TwoLineElement) {
         self.semimajorAxis = Orbit.calculateSemimajorAxis(from: twoLineElement.meanMotion)
@@ -79,9 +81,21 @@ public struct Orbit {
         self.trueAnomaly = Orbit.calculateTrueAnomaly(from: twoLineElement.eccentricity, with: Orbit.calculateEccentricAnomaly(eccentricity: twoLineElement.eccentricity, meanAnomaly: twoLineElement.meanAnomaly))
         self.meanMotion = twoLineElement.meanMotion
         self.meanAnomaly = twoLineElement.meanAnomaly
+        self.twoLineElement = twoLineElement
     }
     
     // MARK: - Functions
+    
+    public func meanAnomalyForJulianDate(julianDate: Double) -> Double {
+        let epochJulianDate = Date.julianDayFromEpoch(epochYear: twoLineElement.epochYear, epochDayFraction: twoLineElement.epochDay)
+        let daysSinceEpoch = julianDate - epochJulianDate
+        let revolutionsSinceEpoch = meanMotion * daysSinceEpoch
+        let meanAnomalyForJulianDate = meanAnomaly + revolutionsSinceEpoch * 360.0
+        let fullRevolutions = floor(meanAnomalyForJulianDate / 360.0)
+        let adjustedMeanAnomalyForJulianDate = meanAnomalyForJulianDate - 360.0 * fullRevolutions
+        
+        return adjustedMeanAnomalyForJulianDate
+    }
     
     /// A helper variable that bridges the gap between the true anomaly (or the true position of an object from perigee)
     /// to the mean anomaly.
@@ -91,6 +105,10 @@ public struct Orbit {
     public static func calculateEccentricAnomaly(eccentricity: Double, meanAnomaly: Degree, accuracy: Double = 0.0001, maxIterations: Int = 500) -> Degree {
         let meanAnomaly: Radian = meanAnomaly.toRadians()
         let eccentricity: Double = eccentricity
+        
+        if eccentricity == 0 {
+            return meanAnomaly.toDegrees()
+        }
         
         // For small eccentricities the mean anomaly M can be used as an initial value E0 for the iteration. In case of e>0.8 the initial value E0=π is taken.
         var eccentricAnomaly: Double = .pi
@@ -111,14 +129,12 @@ public struct Orbit {
         return eccentricAnomaly.toDegrees()
     }
     
-    
-    
+
     /// The true angle relative to parigee and the position of the object along it's orbit path
+    /// - Notes: Calculated from https://en.wikipedia.org/wiki/True_anomaly
     private static func calculateTrueAnomaly(from eccentricity: Double, with eccentricAnomaly: Degree) -> Degree {
-        // all angles in calculus should be normalized to radians
         let E = eccentricAnomaly.toRadians()
-        let fak = sqrt(1.0 - eccentricity * eccentricity)
-        let phi = atan2(fak*sin(E), cos(E)-eccentricity)
+        let phi = 2.0 * atan(sqrt(1 + eccentricity / 1 - eccentricity) * tan(E/2))
         print("OE | True Anomaly: \(phi.toDegrees()) degrees")
         return phi.toDegrees()
     }
@@ -126,9 +142,9 @@ public struct Orbit {
     /// Calculating the semimajor axis from mean motion.
     /// - Returns: Size of Orbit (km)
     private static func calculateSemimajorAxis(from meanMotion: Double) -> Double {
-        let earthsGravitationalConstant = 398600.4418
-        let motionRadsPerSecond = (meanMotion * 2.0 * .pi) / 86400
-        let semimajorAxis = (pow(earthsGravitationalConstant, 1/3) / pow(motionRadsPerSecond, 2/3))
+        let earthsGravitationalConstant = 398613.52
+        let motionRadsPerSecond = meanMotion / 86400
+        let semimajorAxis = pow(earthsGravitationalConstant / (4.0 * pow(.pi, 2.0) * pow(motionRadsPerSecond, 2.0)), 1.0 / 3.0)
         print("OE | Semimajor Axis: \(semimajorAxis) km")
         return semimajorAxis
     }
@@ -166,14 +182,17 @@ public struct Orbit {
         print("OE | Rotation on Z by Right Ascension | X: \(x) km | Y: \(y) km | Z: \(z)")
         
         // Rotate about z axis by the rotation of the earth.
-        let earthsRotationAtGivenTime: Radian = 0.00 // TODO: Figure out how to calculate this.
-        let earthsEquitorialRadius = 6378.137 // km
+        let julianDay = Date().julianDayFromDate()
+        let gha = Date.greenwhichSiderealTime(from: julianDay)
+        let earthsRotationAtGivenTime: Radian = -gha.toRadians()
+        let earthsEquitorialRadius = 6371.0 // km
         x = cos(earthsRotationAtGivenTime) * x - sin(earthsRotationAtGivenTime) * y
         y = sin(earthsRotationAtGivenTime) * x + cos(earthsRotationAtGivenTime) * y
         print("OE | Rotation on Z by Earth's rotation | X: \(x) km | Y: \(y) km | Z: \(z)")
         
         // Finally, Latitude, Longitude, and Altitude
-        let latitude = 90.0 - acos(z / sqrt(x*x + y*y + z*z)).toDegrees()
+//        let latitude = 90.0 - acos(z / sqrt(x*x + y*y + z*z)).toDegrees()
+        let latitude = asin(z/earthsEquitorialRadius).toDegrees()
         let longitude = atan2(y, x).toDegrees()
         let altitude = orbitalRadius - earthsEquitorialRadius
 

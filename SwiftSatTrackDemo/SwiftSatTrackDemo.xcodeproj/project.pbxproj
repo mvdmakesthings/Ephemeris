@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		80383A0A24555A7000747629 /* IdealSat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80383A0924555A7000747629 /* IdealSat.swift */; };
 		80E32660245529E9001DB402 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E3265F245529E9001DB402 /* AppDelegate.swift */; };
 		80E32662245529E9001DB402 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E32661245529E9001DB402 /* SceneDelegate.swift */; };
 		80E32664245529E9001DB402 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E32663245529E9001DB402 /* ViewController.swift */; };
@@ -17,6 +18,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		80383A0924555A7000747629 /* IdealSat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdealSat.swift; sourceTree = "<group>"; };
 		80E3265C245529E9001DB402 /* SwiftSatTrackDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftSatTrackDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		80E3265F245529E9001DB402 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		80E32661245529E9001DB402 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -66,6 +68,7 @@
 				80E3266A245529EC001DB402 /* LaunchScreen.storyboard */,
 				80E3266D245529EC001DB402 /* Info.plist */,
 				80E3267924552BCE001DB402 /* Satellite.swift */,
+				80383A0924555A7000747629 /* IdealSat.swift */,
 			);
 			path = SwiftSatTrackDemo;
 			sourceTree = "<group>";
@@ -141,6 +144,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				80383A0A24555A7000747629 /* IdealSat.swift in Sources */,
 				80E32664245529E9001DB402 /* ViewController.swift in Sources */,
 				80E3267A24552BCE001DB402 /* Satellite.swift in Sources */,
 				80E32660245529E9001DB402 /* AppDelegate.swift in Sources */,

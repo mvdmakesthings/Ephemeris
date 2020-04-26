@@ -1,2 +1,3 @@
-import UIKit
+import Foundation
 import SwiftSatTrack
+

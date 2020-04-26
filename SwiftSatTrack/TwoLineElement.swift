@@ -19,7 +19,7 @@ import Foundation
 public struct TwoLineElement {
     // MARK: - Line 0
     /// Object's common name based on information from the satellite catalog.
-    var name: String
+    public var name: String
     
     // MARK: - Line 1
     /// Satellite catalog number
@@ -107,4 +107,6 @@ public struct TwoLineElement {
         let revolutionsAtEpochString = line2[63...67].string.trimmingCharacters(in: .whitespacesAndNewlines)
         self.revolutionsAtEpoch = Int(revolutionsAtEpochString)!
     }
+    
+
 }
