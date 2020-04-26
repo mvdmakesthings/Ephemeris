@@ -23,6 +23,9 @@ extension Date {
         return temp
     }
     
+    /// Converts epoch year, and epoch day fraction to full julian days
+    /// - Note:
+    ///     Derived from https://github.com/dhmspector/ZeitSatTrack
     public static func julianDayFromEpoch(epochYear: Int, epochDayFraction: Double) -> Double {
         var calendar =  Calendar(identifier: .gregorian)
             calendar.timeZone = TimeZone(identifier: "UTC")!
