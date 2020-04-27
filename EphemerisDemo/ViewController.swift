@@ -1,13 +1,13 @@
 //
 //  ViewController.swift
-//  SwiftSatTrackDemo
+//  EphemerisDemo
 //
 //  Created by Michael VanDyke on 4/25/20.
 //  Copyright © 2020 Michael VanDyke. All rights reserved.
 //
 
 import UIKit
-import SwiftSatTrack
+import Ephemeris
 import MapKit
 
 class ViewController: UIViewController, MKMapViewDelegate {
@@ -48,7 +48,7 @@ class ViewController: UIViewController, MKMapViewDelegate {
         let polyLine = MKPolyline(coordinates: coordinatePoints, count: coordinatePoints.count)
         mapView.addOverlay(polyLine)
 
-        let ideal = IdealSat(name: "NOAA 16", coordinate: firstOffset)
+        let ideal = Satellite(name: "NOAA 16", coordinate: firstOffset)
         mapView.addAnnotation(ideal)
 
     }
@@ -80,4 +80,3 @@ class ViewController: UIViewController, MKMapViewDelegate {
         return MKOverlayRenderer()
     }
 }
-

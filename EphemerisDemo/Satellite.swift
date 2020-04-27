@@ -1,6 +1,6 @@
 //
-//  IdealSat.swift
-//  SwiftSatTrackDemo
+//  Satellite.swift
+//  EphemerisDemo
 //
 //  Created by Michael VanDyke on 4/26/20.
 //  Copyright © 2020 Michael VanDyke. All rights reserved.
@@ -9,7 +9,7 @@
 import Foundation
 import MapKit
 
-class IdealSat: NSObject, MKAnnotation {
+class Satellite: NSObject, MKAnnotation {
     var name: String
     var coordinate: CLLocationCoordinate2D
     

@@ -1,13 +1,13 @@
 //
 //  OrbitalElementsTests.swift
-//  SwiftSatTrackTests
+//  EphemerisTests
 //
 //  Created by Michael VanDyke on 4/25/20.
 //  Copyright © 2020 Michael VanDyke. All rights reserved.
 //
 
 import XCTest
-@testable import SwiftSatTrack
+@testable import Ephemeris
 
 class OrbitalElementsTests: XCTestCase {
 

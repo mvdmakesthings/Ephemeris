@@ -10,31 +10,31 @@
         <!--View Controller-->
         <scene sceneID="tne-QT-ifu">
             <objects>
-                <viewController id="BYZ-38-t0r" customClass="ViewController" customModule="SwiftSatTrackDemo" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController id="BYZ-38-t0r" customClass="ViewController" customModule="EphemerisDemo" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="8bC-Xf-vdC">
                         <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <mapView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" mapType="satelliteFlyover" rotateEnabled="NO" showsUserLocation="YES" showsBuildings="NO" showsScale="YES" translatesAutoresizingMaskIntoConstraints="NO" id="BB2-JT-5zd">
+                            <mapView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" mapType="satelliteFlyover" showsUserLocation="YES" showsBuildings="NO" showsScale="YES" translatesAutoresizingMaskIntoConstraints="NO" id="zNt-ax-cQO">
                                 <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                             </mapView>
                         </subviews>
                         <color key="backgroundColor" systemColor="systemBackgroundColor" cocoaTouchSystemColor="whiteColor"/>
                         <constraints>
-                            <constraint firstItem="BB2-JT-5zd" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="4ci-eg-ftw"/>
-                            <constraint firstItem="BB2-JT-5zd" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" id="NI3-jh-eSk"/>
-                            <constraint firstAttribute="bottom" secondItem="BB2-JT-5zd" secondAttribute="bottom" id="Vpe-tt-Hek"/>
-                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="BB2-JT-5zd" secondAttribute="trailing" id="b26-w7-kA7"/>
+                            <constraint firstAttribute="bottom" secondItem="zNt-ax-cQO" secondAttribute="bottom" id="0i0-QH-A3w"/>
+                            <constraint firstItem="zNt-ax-cQO" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" id="L84-ca-1qh"/>
+                            <constraint firstItem="zNt-ax-cQO" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="RIE-dw-dBe"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="zNt-ax-cQO" secondAttribute="trailing" id="lSG-Ws-42Q"/>
                         </constraints>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                     </view>
                     <connections>
-                        <outlet property="mapView" destination="BB2-JT-5zd" id="JtO-46-Xir"/>
+                        <outlet property="mapView" destination="zNt-ax-cQO" id="S5z-XB-Lyz"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="139" y="119"/>
+            <point key="canvasLocation" x="139" y="138"/>
         </scene>
     </scenes>
 </document>

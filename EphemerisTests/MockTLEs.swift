@@ -1,13 +1,13 @@
 //
 //  MockTLEs.swift
-//  SwiftSatTrackTests
+//  EphemerisTests
 //
 //  Created by Michael VanDyke on 4/25/20.
 //  Copyright © 2020 Michael VanDyke. All rights reserved.
 //
 
 import Foundation
-@testable import SwiftSatTrack
+@testable import Ephemeris
 
 struct MockTLEs {
 

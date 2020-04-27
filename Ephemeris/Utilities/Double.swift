@@ -1,6 +1,6 @@
 //
 //  Double.swift
-//  SwiftSatTrack
+//  Ephemeris
 //
 //  Created by Michael VanDyke on 4/22/20.
 //  Copyright © 2020 Michael VanDyke. All rights reserved.

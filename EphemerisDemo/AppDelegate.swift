@@ -1,8 +1,8 @@
 //
 //  AppDelegate.swift
-//  SwiftSatTrackDemo
+//  EphemerisDemo
 //
-//  Created by Michael VanDyke on 4/25/20.
+//  Created by Michael VanDyke on 4/26/20.
 //  Copyright © 2020 Michael VanDyke. All rights reserved.
 //
 
