@@ -21,5 +21,5 @@ Here are some of the online resources I used or read to get a better understandi
 ---
 Licensed Apache Version 2.0, 2020
 
-See [ACKNOWLEDGEMENTS.md]() and [LICENSE.md]()
+See [ACKNOWLEDGEMENTS](./ACKNOWLEDGEMENTS.md) and [LICENSE](./LICENSE.md) for more information.
 
