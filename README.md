@@ -1,9 +1,9 @@
-# Swift Satellite Tracker Framework
+# Ephemeris - Satellite Tracker Framework
 
 ## Online Resources
 Here are some of the online resources I used or read to get a better understanding of the mechanics behind tracking orbiting bodies.
 
-- Satellite Tracking Using NORAD Two-Line Element Set Format, Transilvania University of Braşov, written by Emilian-Ionuţ CROITORU, Gheorghe OANCEA
+- Satellite Tracking Using NORAD Two-Line Element Set Format, Transilvania University of Braşov, written by Emilian-Ionuţ CROITORU, Gheorghe OANCEA
 	- http://www.afahc.ro/ro/afases/2016/MATH&IT/CROITORU_OANCEA.pdf
 - Calculation of Satellite Position from Ephemeris Data, Applied GPS for Engineers and Project Managers, ascelibrary.org
 	- https://ascelibrary.org/doi/pdf/10.1061/9780784411506.ap03
