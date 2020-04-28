@@ -89,7 +89,7 @@ public struct Orbit {
     /// - Note:
     ///     Transform math used from https://www.csun.edu/~hcmth017/master/node20.html
     ///     Heavily inspired by ZeitSatTrack https://github.com/dhmspector/ZeitSatTrack Apache 2.0
-    public mutating func calculatePosition(at date: Date?) throws -> (x: Double, y: Double, z: Double) {
+    public func calculatePosition(at date: Date?) throws -> (x: Double, y: Double, z: Double) {
         
         // Current parameters at this specific time.
         let julianDate = date?.julianDayFromDate() ?? Date().julianDayFromDate()
