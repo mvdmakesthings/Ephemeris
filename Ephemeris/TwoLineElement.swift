@@ -76,7 +76,7 @@ public struct TwoLineElement {
         let epochYearInt = Int(line1[18...19].string.trimmingCharacters(in: .whitespacesAndNewlines))!
         // Satillites weren't lauched until 1957 (Sputnik 1) so this will work... until 2057 when we will need
         // to figure out something else. 💩 Y2K for TwoLineElement standards!
-        self.epochYear = (epochYearInt >= 57) ? 2000 + epochYearInt : 1900 + epochYearInt
+        self.epochYear = (epochYearInt < 57) ? 2000 + epochYearInt : 1900 + epochYearInt
 
         let epochDayString = line1[20...31].string.trimmingCharacters(in: .whitespacesAndNewlines)
         self.epochDay = Double(epochDayString)!
