@@ -22,9 +22,9 @@ class ViewController: UIViewController, MKMapViewDelegate {
 
         let tleString =
         """
-        NOAA 16 [-]
-        1 26536U 00055A   20117.37338810 -.00000002  00000-0  21830-4 0  9997
-        2 26536  98.7360 187.6930 0009700 230.8055 129.2257 14.13250298306888
+        NOAA 15 [B]
+        1 25338U 98030A   20118.84334876  .00000037  00000-0  34099-4 0  9995
+        2 25338  98.7217 144.1403 0011283  54.5983 305.6249 14.25960903141760
         """
         let tle = TwoLineElement(from: tleString)
         let orbit = Orbit(from: tle)
@@ -33,12 +33,12 @@ class ViewController: UIViewController, MKMapViewDelegate {
         // Create PolyLines
         var coordinatePoints = [CLLocationCoordinate2D]()
         let timeIntervalOffset: TimeInterval = 15 // 5 minutes
-        let timeIntervalMax: TimeInterval = (4 * 60 * 60) // 1 full day
+        let timeIntervalMax: TimeInterval = (24 * 60 * 60) // 1 full day
         var offset: TimeInterval = 0
-        let firstOffset = calculatePosition(by: offset)
+        let firstOffset = try! calculatePosition(by: offset)
         
         repeat {
-            let coordinate = calculatePosition(by: offset)
+            let coordinate = try! calculatePosition(by: offset)
             coordinatePoints.append(coordinate)
             print("OE Plot | Plotting Points \(offset) seconds into the future. | Lat: \(coordinate.latitude) | Long: \(coordinate.longitude)")
             offset += timeIntervalOffset
@@ -53,21 +53,13 @@ class ViewController: UIViewController, MKMapViewDelegate {
 
     }
     
-    private func calculatePosition(by timeinterval: TimeInterval) -> CLLocationCoordinate2D {
-        guard let orbit = self.orbit else { fatalError() }
-        let julianDate = Date().advanced(by: timeinterval).julianDayFromDate()
-        let currentMeanAnomaly = orbit.meanAnomalyForJulianDate(julianDate: julianDate)
-        print("OE Plot | Mean Anomaly: \(currentMeanAnomaly)")
-        let eccentricAnomaly = Orbit.calculateEccentricAnomaly(eccentricity: orbit.eccentricity, meanAnomaly: currentMeanAnomaly)
-        print("OE Plot | Eccentric Anomaly: \(eccentricAnomaly)")
-        let trueAnomaly = Orbit.calculateTrueAnomaly(eccentricity: orbit.eccentricity, eccentricAnomaly: eccentricAnomaly)
-        print("OE Plot | True Anomaly: \(trueAnomaly)")
-        let position = Orbit.calculatePosition(semimajorAxis: orbit.semimajorAxis, eccentricity: orbit.eccentricity, eccentricAnomaly: eccentricAnomaly, trueAnomaly: trueAnomaly, argumentOfPerigee: orbit.argumentOfPerigee, inclination: orbit.inclination, rightAscensionOfAscendingNode: orbit.rightAscensionOfAscendingNode)
+    private func calculatePosition(by timeinterval: TimeInterval) throws -> CLLocationCoordinate2D {
+        guard var orbit = self.orbit else { fatalError() }
+        let position = try! orbit.calculatePosition(at: Date().addingTimeInterval(timeinterval))
         
         let lat = CLLocationDegrees(position.x)
         let long = CLLocationDegrees(position.y)
         let location = CLLocationCoordinate2D(latitude: lat, longitude: long)
-//        let altitude = position.z
         return location
     }
     

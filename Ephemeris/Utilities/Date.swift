@@ -10,7 +10,7 @@ import Foundation
 
 
 extension Date {
-    public static func greenwhichSiderealTime(from julianDate: Double) -> Radian {
+    public static func greenwhichSiderealTime(from julianDate: Double) -> Radians {
         let twopi = Double.pi * 2
         let deg2Rad = Double.pi / 180
         let julianCenturies = (julianDate - 2451545.0) / 36525.0

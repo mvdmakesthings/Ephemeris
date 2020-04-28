@@ -24,15 +24,19 @@ class OrbitalCalculationTests: XCTestCase {
         // 42,164.8 km (26,200.0 mi)
         let knownSemimajorAxis = 42165.0 // km
         let meanMotion = 1.00271173 // Revolutions Per Day
-        let semimajorAxis = Orbit.calculateSemimajorAxis(meanMotion: meanMotion).rounded(.towardZero)
+        let semimajorAxis = Orbit.calculateSemimajorAxis(meanMotion: meanMotion).rounded(.towardZero) // Rounded to the nearest km
         XCTAssertEqual(semimajorAxis, knownSemimajorAxis)
     }
     
     func testCalculateEccentricAnomaly() throws {
-        
+        // See numerical example: http://www.csun.edu/~hcmth017/master/node16.html
+        let eccentricAnomaly = Orbit.calculateEccentricAnomaly(eccentricity: 0.00001, meanAnomaly: 30, accuracy: 0.0001, maxIterations: 500)
+        XCTAssertEqual(eccentricAnomaly.round(to: 5), 30.00029)
     }
     
     func testCalculateTrueAnomaly() throws {
-        
+        let eccentricity = 0.5
+        let trueAnomaly = try Orbit.calculateTrueAnomaly(eccentricity: eccentricity, eccentricAnomaly: 30.000)
+        XCTAssertEqual(trueAnomaly.round(to: 1), 90.0)
     }
 }

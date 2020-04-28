@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		8045F4B4245654BB0086AE36 /* Ephemeris.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8045F4AA245654BB0086AE36 /* Ephemeris.framework */; };
-		8045F4B9245654BB0086AE36 /* EphemerisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8045F4B8245654BB0086AE36 /* EphemerisTests.swift */; };
 		8045F4BB245654BB0086AE36 /* Ephemeris.h in Headers */ = {isa = PBXBuildFile; fileRef = 8045F4AD245654BB0086AE36 /* Ephemeris.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		8045F4C5245655140086AE36 /* TwoLineElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8045F4C4245655140086AE36 /* TwoLineElement.swift */; };
 		8045F4C7245655310086AE36 /* Orbit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8045F4C6245655310086AE36 /* Orbit.swift */; };
@@ -17,7 +16,7 @@
 		8045F4CF245655570086AE36 /* StringProtocol+subscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8045F4CB245655570086AE36 /* StringProtocol+subscript.swift */; };
 		8045F4D0245655570086AE36 /* Date.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8045F4CC245655570086AE36 /* Date.swift */; };
 		8045F4D4245655790086AE36 /* TwoLineElementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8045F4D1245655790086AE36 /* TwoLineElementTests.swift */; };
-		8045F4D5245655790086AE36 /* OrbitalElementsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8045F4D2245655790086AE36 /* OrbitalElementsTests.swift */; };
+		8045F4D5245655790086AE36 /* OrbitalCalculationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8045F4D2245655790086AE36 /* OrbitalCalculationTests.swift */; };
 		8045F4D6245655790086AE36 /* MockTLEs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8045F4D3245655790086AE36 /* MockTLEs.swift */; };
 		804C9665245657820031EBC1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804C9664245657820031EBC1 /* AppDelegate.swift */; };
 		804C9667245657820031EBC1 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804C9666245657820031EBC1 /* SceneDelegate.swift */; };
@@ -66,7 +65,6 @@
 		8045F4AD245654BB0086AE36 /* Ephemeris.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Ephemeris.h; sourceTree = "<group>"; };
 		8045F4AE245654BB0086AE36 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8045F4B3245654BB0086AE36 /* EphemerisTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EphemerisTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		8045F4B8245654BB0086AE36 /* EphemerisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EphemerisTests.swift; sourceTree = "<group>"; };
 		8045F4BA245654BB0086AE36 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8045F4C4245655140086AE36 /* TwoLineElement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoLineElement.swift; sourceTree = "<group>"; };
 		8045F4C6245655310086AE36 /* Orbit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Orbit.swift; sourceTree = "<group>"; };
@@ -75,7 +73,7 @@
 		8045F4CB245655570086AE36 /* StringProtocol+subscript.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "StringProtocol+subscript.swift"; sourceTree = "<group>"; };
 		8045F4CC245655570086AE36 /* Date.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Date.swift; sourceTree = "<group>"; };
 		8045F4D1245655790086AE36 /* TwoLineElementTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TwoLineElementTests.swift; sourceTree = "<group>"; };
-		8045F4D2245655790086AE36 /* OrbitalElementsTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OrbitalElementsTests.swift; sourceTree = "<group>"; };
+		8045F4D2245655790086AE36 /* OrbitalCalculationTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OrbitalCalculationTests.swift; sourceTree = "<group>"; };
 		8045F4D3245655790086AE36 /* MockTLEs.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MockTLEs.swift; sourceTree = "<group>"; };
 		804C9662245657820031EBC1 /* EphemerisDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EphemerisDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		804C9664245657820031EBC1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -151,9 +149,8 @@
 		8045F4B7245654BB0086AE36 /* EphemerisTests */ = {
 			isa = PBXGroup;
 			children = (
-				8045F4B8245654BB0086AE36 /* EphemerisTests.swift */,
 				8045F4D3245655790086AE36 /* MockTLEs.swift */,
-				8045F4D2245655790086AE36 /* OrbitalElementsTests.swift */,
+				8045F4D2245655790086AE36 /* OrbitalCalculationTests.swift */,
 				8045F4D1245655790086AE36 /* TwoLineElementTests.swift */,
 				8045F4BA245654BB0086AE36 /* Info.plist */,
 			);
@@ -349,8 +346,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8045F4D5245655790086AE36 /* OrbitalElementsTests.swift in Sources */,
-				8045F4B9245654BB0086AE36 /* EphemerisTests.swift in Sources */,
+				8045F4D5245655790086AE36 /* OrbitalCalculationTests.swift in Sources */,
 				8045F4D4245655790086AE36 /* TwoLineElementTests.swift in Sources */,
 				8045F4D6245655790086AE36 /* MockTLEs.swift in Sources */,
 			);

@@ -10,8 +10,8 @@ import Foundation
 
 /// Type in Degrees
 /// - Note: To help with understanding the units used in the implementation sites
-public typealias Degree = Double
+public typealias Degrees = Double
 
 /// Type in Radians
 /// - Note: To help with understanding the units used in the implementaiton sites
-public typealias Radian = Double
+public typealias Radians = Double

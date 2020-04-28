@@ -38,15 +38,15 @@ public struct TwoLineElement {
     
     // MARK: - Line 2
     /// Orbit Inclination ( i )
-    var inclination: Degree
+    var inclination: Degrees
     /// Right Ascension of Ascending Node ( Ω )
-    var rightAscension: Degree
+    var rightAscension: Degrees
     /// Eccentricity ( e )
     var eccentricity: Double
     /// Argument of Perigee (degrees)
-    var argumentOfPerigee: Degree
+    var argumentOfPerigee: Degrees
     /// Mean Anomaly (degrees)
-    var meanAnomaly: Degree
+    var meanAnomaly: Degrees
     /// Mean Motion (revolutions/day), the number of orbits the object completes in a total day.
     var meanMotion: Double
     /// Revolution Number at Epoch
@@ -83,19 +83,19 @@ public struct TwoLineElement {
         
         // Line 2
         let inclinationString = line2[8...15].string.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.inclination = Degree(inclinationString)!
+        self.inclination = Degrees(inclinationString)!
         
         let rightAscensionString = line2[17...24].string.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.rightAscension = Degree(rightAscensionString)!
+        self.rightAscension = Degrees(rightAscensionString)!
         
         let eccentricityString = line2[26...32].string.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.eccentricity = Degree("0.\(eccentricityString)")!
+        self.eccentricity = Degrees("0.\(eccentricityString)")!
         
         let argumentOfPerigee = line2[34...41].string.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.argumentOfPerigee = Degree(argumentOfPerigee)!
+        self.argumentOfPerigee = Degrees(argumentOfPerigee)!
         
         let meanAnomalyString = line2[43...50].string.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.meanAnomaly = Degree(meanAnomalyString)!
+        self.meanAnomaly = Degrees(meanAnomalyString)!
         
         let meanMotionString = line2[52...62].string.trimmingCharacters(in: .whitespacesAndNewlines)
         self.meanMotion = Double(meanMotionString)!

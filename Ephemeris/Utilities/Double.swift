@@ -16,12 +16,12 @@ extension Double {
     }
     
     /// Converts degrees to radians
-    func toRadians() -> Radian {
+    func inRadians() -> Radians {
         return self * .pi / 180
     }
     
     /// Converts radians to degrees
-    func toDegrees() -> Degree {
+    func inDegrees() -> Degrees {
         return self * 180 / .pi
     }
 }
