@@ -17,7 +17,13 @@ Here are some of the online resources I used or read to get a better understandi
 	- https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19650015945.pdf
 - Satellite Orbits, calculus castle	
 	- http://calculuscastle.com/orbit.pdf
-	
+
+## Sidereal Time / Julian Time Calculations
+- https://www.academia.edu/20528856/Methods_of_Astrodynamics_a_Computer_Approach
+- http://www2.arnes.si/~gljsentvid10/sidereal.htm
+- http://www.celestrak.com/publications/AIAA/2006-6753/AIAA-2006-6753-Rev3.pdf
+- https://www.aavso.org/computing-jd
+
 ---
 Licensed Apache Version 2.0, 2020
 
