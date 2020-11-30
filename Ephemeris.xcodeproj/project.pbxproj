@@ -27,6 +27,10 @@
 		804C96772456578D0031EBC1 /* Ephemeris.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8045F4AA245654BB0086AE36 /* Ephemeris.framework */; };
 		804C96782456578D0031EBC1 /* Ephemeris.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 8045F4AA245654BB0086AE36 /* Ephemeris.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		804C967E245658650031EBC1 /* Satellite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804C967D245658650031EBC1 /* Satellite.swift */; };
+		808FDF29256F4F6000651E2B /* Math.swift in Sources */ = {isa = PBXBuildFile; fileRef = 808FDF28256F4F6000651E2B /* Math.swift */; };
+		808FDF33256F568600651E2B /* MathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 808FDF32256F568600651E2B /* MathTests.swift */; };
+		808FDF37256F654900651E2B /* PhysicalConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 808FDF36256F654900651E2B /* PhysicalConstants.swift */; };
+		808FDF68257043E800651E2B /* DateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 808FDF67257043E800651E2B /* DateTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -84,6 +88,10 @@
 		804C9670245657820031EBC1 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		804C9672245657820031EBC1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		804C967D245658650031EBC1 /* Satellite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Satellite.swift; sourceTree = "<group>"; };
+		808FDF28256F4F6000651E2B /* Math.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Math.swift; sourceTree = "<group>"; };
+		808FDF32256F568600651E2B /* MathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MathTests.swift; sourceTree = "<group>"; };
+		808FDF36256F654900651E2B /* PhysicalConstants.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PhysicalConstants.swift; sourceTree = "<group>"; };
+		808FDF67257043E800651E2B /* DateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -153,6 +161,8 @@
 				8045F4D2245655790086AE36 /* OrbitalCalculationTests.swift */,
 				8045F4D1245655790086AE36 /* TwoLineElementTests.swift */,
 				8045F4BA245654BB0086AE36 /* Info.plist */,
+				808FDF32256F568600651E2B /* MathTests.swift */,
+				808FDF67257043E800651E2B /* DateTests.swift */,
 			);
 			path = EphemerisTests;
 			sourceTree = "<group>";
@@ -160,10 +170,12 @@
 		8045F4C8245655440086AE36 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				808FDF36256F654900651E2B /* PhysicalConstants.swift */,
 				8045F4CC245655570086AE36 /* Date.swift */,
 				8045F4C9245655570086AE36 /* Double.swift */,
 				8045F4CB245655570086AE36 /* StringProtocol+subscript.swift */,
 				8045F4CA245655570086AE36 /* TypeAlias.swift */,
+				808FDF28256F4F6000651E2B /* Math.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -336,6 +348,8 @@
 				8045F4C7245655310086AE36 /* Orbit.swift in Sources */,
 				8045F4D0245655570086AE36 /* Date.swift in Sources */,
 				8045F4CD245655570086AE36 /* Double.swift in Sources */,
+				808FDF29256F4F6000651E2B /* Math.swift in Sources */,
+				808FDF37256F654900651E2B /* PhysicalConstants.swift in Sources */,
 				8045F4CE245655570086AE36 /* TypeAlias.swift in Sources */,
 				8045F4CF245655570086AE36 /* StringProtocol+subscript.swift in Sources */,
 				8045F4C5245655140086AE36 /* TwoLineElement.swift in Sources */,
@@ -349,6 +363,8 @@
 				8045F4D5245655790086AE36 /* OrbitalCalculationTests.swift in Sources */,
 				8045F4D4245655790086AE36 /* TwoLineElementTests.swift in Sources */,
 				8045F4D6245655790086AE36 /* MockTLEs.swift in Sources */,
+				808FDF33256F568600651E2B /* MathTests.swift in Sources */,
+				808FDF68257043E800651E2B /* DateTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

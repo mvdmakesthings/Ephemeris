@@ -32,8 +32,8 @@ class ViewController: UIViewController, MKMapViewDelegate {
         
         // Create PolyLines
         var coordinatePoints = [CLLocationCoordinate2D]()
-        let timeIntervalOffset: TimeInterval = 15 // 5 minutes
-        let timeIntervalMax: TimeInterval = (24 * 60 * 60) // 1 full day
+        let timeIntervalOffset: TimeInterval = 300 // 5 minutes
+        let timeIntervalMax: TimeInterval = (1 * 60 * 60) // 1 full day
         var offset: TimeInterval = 0
         let firstOffset = try! calculatePosition(by: offset)
         

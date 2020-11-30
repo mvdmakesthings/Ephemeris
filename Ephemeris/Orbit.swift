@@ -92,7 +92,7 @@ public struct Orbit {
     public func calculatePosition(at date: Date?) throws -> (x: Double, y: Double, z: Double) {
         
         // Current parameters at this specific time.
-        let julianDate = date?.julianDayFromDate() ?? Date().julianDayFromDate()
+        let julianDate = Date.julianDay(from: date ?? Date())!
 
         // Calculate 3 anomalies
         let currentMeanAnomaly = self.meanAnomalyForJulianDate(julianDate: julianDate)
@@ -124,8 +124,8 @@ public struct Orbit {
         let zRaan = zInclination
         
         // Rotate about z axis by the rotation of the earth.
-        let rotationFromGeocentric = 0.0 // TODO: Calculate this
-        let rotationFromGeocentricRad = -rotationFromGeocentric.inRadians()
+        let rotationFromGeocentric = Date.greenwichSideRealTime(from: julianDate)
+        let rotationFromGeocentricRad = -rotationFromGeocentric
         let xFinal = cos(rotationFromGeocentricRad) * xRaan - sin(rotationFromGeocentricRad) * yRaan
         let yFinal = sin(rotationFromGeocentricRad) * xRaan + cos(rotationFromGeocentricRad) * yRaan
         let zFinal = zRaan
