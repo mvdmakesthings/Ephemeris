@@ -17,6 +17,8 @@ The CI workflow runs on:
 - Steps:
   - Checks out the code
   - Sets up Xcode (latest stable version)
+  - Lists available simulators for debugging
+  - Dynamically selects an available iPhone simulator
   - Builds the Ephemeris framework
   - Runs all tests with code coverage enabled
   - Generates coverage report (JSON format)
@@ -33,15 +35,21 @@ The CI workflow runs on:
 
 ### Running Tests Locally
 
-To run the tests locally with coverage:
+To run the tests locally with coverage (replace with your preferred iPhone simulator):
 
 ```bash
 xcodebuild test \
   -project Ephemeris.xcodeproj \
   -scheme Ephemeris \
   -sdk iphonesimulator \
-  -destination 'platform=iOS Simulator,name=iPhone 14' \
+  -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
   -enableCodeCoverage YES
+```
+
+To list available simulators:
+
+```bash
+xcrun simctl list devices available | grep iPhone
 ```
 
 ### Running SwiftLint Locally

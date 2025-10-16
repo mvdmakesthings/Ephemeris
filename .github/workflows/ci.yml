@@ -26,15 +26,27 @@ jobs:
       run: xcodebuild -version
       
     - name: List available simulators
-      run: xcrun simctl list devices available | grep "iPhone"
+      run: xcrun simctl list devices available
       
+    - name: Select iOS Simulator
+      id: select-simulator
+      run: |
+        # Find an available iPhone simulator
+        SIMULATOR=$(xcrun simctl list devices available | grep "iPhone" | grep -v "unavailable" | head -1 | sed -E 's/.*iPhone ([0-9]+[^)]*).*/iPhone \1/' | xargs)
+        if [ -z "$SIMULATOR" ]; then
+          # Fallback to any iPhone
+          SIMULATOR="iPhone 15 Pro"
+        fi
+        echo "Selected simulator: $SIMULATOR"
+        echo "simulator=$SIMULATOR" >> $GITHUB_OUTPUT
+        
     - name: Build framework
       run: |
         xcodebuild build \
           -project Ephemeris.xcodeproj \
           -scheme Ephemeris \
           -sdk iphonesimulator \
-          -destination 'platform=iOS Simulator,name=iPhone 14' \
+          -destination "platform=iOS Simulator,name=${{ steps.select-simulator.outputs.simulator }}" \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO
           
@@ -44,7 +56,7 @@ jobs:
           -project Ephemeris.xcodeproj \
           -scheme Ephemeris \
           -sdk iphonesimulator \
-          -destination 'platform=iOS Simulator,name=iPhone 14' \
+          -destination "platform=iOS Simulator,name=${{ steps.select-simulator.outputs.simulator }}" \
           -enableCodeCoverage YES \
           -resultBundlePath TestResults.xcresult \
           CODE_SIGN_IDENTITY="" \
