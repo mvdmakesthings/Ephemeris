@@ -37,9 +37,10 @@ To run the tests locally with coverage:
 
 ```bash
 xcodebuild test \
+  -project Ephemeris.xcodeproj \
   -scheme Ephemeris \
   -sdk iphonesimulator \
-  -destination 'platform=iOS Simulator,name=iPhone 14,OS=latest' \
+  -destination 'platform=iOS Simulator,name=iPhone 14' \
   -enableCodeCoverage YES
 ```
 
