@@ -1,5 +1,13 @@
 # Ephemeris - Satellite Tracker Framework
 
+![CI](https://github.com/mvdmakesthings/Ephemeris/workflows/CI/badge.svg)
+
+A Swift framework for satellite tracking and orbital mechanics calculations.
+
+## CI/CD
+
+This project uses GitHub Actions for continuous integration. See [CI_CD.md](./CI_CD.md) for details about the build, test, and linting workflows.
+
 ## Online Resources
 Here are some of the online resources I used or read to get a better understanding of the mechanics behind tracking orbiting bodies.
 
