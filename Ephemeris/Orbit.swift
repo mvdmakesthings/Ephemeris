@@ -8,7 +8,7 @@
 
 import Foundation
 
-public struct Orbit {
+public struct Orbit: Orbitable {
     
     // MARK: - Size of Orbit
     
@@ -42,7 +42,13 @@ public struct Orbit {
     /// The true angle between the position of the craft relative to perigee along the orbital path.
     /// Denoted as (ν or θ)
     /// Range between 0–360°
-    public var trueAnomaly: Degrees?
+    ///
+    /// - Note: This is a computed property that calculates the true anomaly from the mean anomaly
+    /// using the eccentric anomaly as an intermediate step. If the calculation cannot be performed
+    /// (e.g., due to singularities), it returns the mean anomaly as a fallback.
+    public var trueAnomaly: Degrees {
+        return calculateTrueAnomalyFromMean()
+    }
     
     /// The position of the craft with respect to the mean motion.
     /// Denoted as (M)
@@ -154,6 +160,31 @@ extension Orbit {
         let adjustedMeanAnomalyForJulianDate = meanAnomalyForJulianDate - 360.0 * fullRevolutions
         
         return adjustedMeanAnomalyForJulianDate
+    }
+    
+    /// Calculates the true anomaly from the mean anomaly.
+    /// Uses eccentric anomaly as an intermediate calculation step.
+    /// Returns the mean anomaly as a fallback if calculation fails (e.g., singularity).
+    private func calculateTrueAnomalyFromMean() -> Degrees {
+        // Calculate eccentric anomaly from mean anomaly
+        let eccentricAnomaly = Orbit.calculateEccentricAnomaly(
+            eccentricity: self.eccentricity,
+            meanAnomaly: self.meanAnomaly
+        )
+        
+        // Try to calculate true anomaly from eccentric anomaly
+        do {
+            let trueAnomaly = try Orbit.calculateTrueAnomaly(
+                eccentricity: self.eccentricity,
+                eccentricAnomaly: eccentricAnomaly
+            )
+            return trueAnomaly
+        } catch {
+            // If calculation fails (e.g., singularity when e >= 1),
+            // return mean anomaly as a safe fallback
+            print("OE | Warning: Failed to calculate true anomaly, using mean anomaly as fallback")
+            return self.meanAnomaly
+        }
     }
 }
 
