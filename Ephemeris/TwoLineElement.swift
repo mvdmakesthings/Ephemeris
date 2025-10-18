@@ -85,10 +85,7 @@ public struct TwoLineElement {
         let line1: String = lines[1]
         let line2: String = lines[2]
         
-        // Validate line lengths
-        guard line0.count >= 25 else {
-            throw TLEParsingError.invalidFormat("Line 0 is too short (expected at least 25 characters)")
-        }
+        // Validate line lengths for Line 1 and Line 2 (Line 0 is satellite name and can vary)
         guard line1.count >= 69 else {
             throw TLEParsingError.invalidFormat("Line 1 is too short (expected at least 69 characters)")
         }
@@ -96,8 +93,8 @@ public struct TwoLineElement {
             throw TLEParsingError.invalidFormat("Line 2 is too short (expected at least 69 characters)")
         }
                 
-        // Line 0
-        self.name = line0[0...24].string
+        // Line 0 - Satellite name (can be any length, padded or truncated to fit)
+        self.name = line0.count >= 25 ? line0[0...24].string : line0
         
         // Line 1
         let catalogNumberString = line1[2...6].string.trimmingCharacters(in: .whitespacesAndNewlines)

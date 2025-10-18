@@ -100,20 +100,16 @@ class TwoLineElementTests: XCTestCase {
         }
     }
     
-    func testTLEParsingThrowsOnShortLine0() {
+    func testTLEParsingAcceptsShortLine0() throws {
+        // Line 0 (satellite name) can be any length according to TLE spec
         let tleWithShortLine0 =
             """
             ISS
             1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
             2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
             """
-        XCTAssertThrowsError(try TwoLineElement(from: tleWithShortLine0)) { error in
-            guard case TLEParsingError.invalidFormat(let message) = error else {
-                XCTFail("Expected TLEParsingError.invalidFormat but got \(error)")
-                return
-            }
-            XCTAssertTrue(message.contains("Line 0"))
-        }
+        let tle = try TwoLineElement(from: tleWithShortLine0)
+        XCTAssertEqual(tle.name, "ISS")
     }
     
     func testTLEParsingThrowsOnShortLine1() {
