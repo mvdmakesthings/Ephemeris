@@ -1,39 +1,200 @@
-# Ephemeris - Satellite Tracker Framework
+# Ephemeris
 
-![CI](https://github.com/mvdmakesthings/Ephemeris/workflows/CI/badge.svg)
+[![CI](https://github.com/mvdmakesthings/Ephemeris/workflows/CI/badge.svg)](https://github.com/mvdmakesthings/Ephemeris/actions)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.md)
+[![Platform](https://img.shields.io/badge/platform-iOS-lightgrey.svg)](https://developer.apple.com/ios/)
+[![Swift](https://img.shields.io/badge/Swift-5.0+-orange.svg)](https://swift.org)
 
-A Swift framework for satellite tracking and orbital mechanics calculations.
+A Swift framework for satellite tracking and orbital mechanics calculations. Ephemeris provides tools to parse Two-Line Element (TLE) data and calculate orbital positions for Earth-orbiting satellites.
+
+## Table of Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Documentation](#documentation)
+- [CI/CD](#cicd)
+- [Contributing](#contributing)
+- [References](#references)
+- [License](#license)
+- [Acknowledgements](#acknowledgements)
+
+## Features
+
+- 📡 **TLE Parsing**: Parse NORAD Two-Line Element (TLE) format satellite data
+- 🛰️ **Orbital Calculations**: Calculate satellite positions using orbital mechanics
+- 🌍 **Position Tracking**: Compute latitude, longitude, and altitude for satellites at any given time
+- 📐 **Orbital Elements**: Support for all standard Keplerian orbital elements:
+  - Semi-major axis
+  - Eccentricity
+  - Inclination
+  - Right Ascension of Ascending Node (RAAN)
+  - Argument of Perigee
+  - Mean Anomaly and True Anomaly
+- ⏰ **Time Conversions**: Julian date and Greenwich Sidereal Time calculations
+- 🔢 **High Precision**: Iterative algorithms for eccentric anomaly calculations
+
+## Requirements
+
+- iOS 13.0+
+- Xcode 11.0+
+- Swift 5.0+
+
+## Installation
+
+### Xcode Project
+
+1. Clone the repository:
+```bash
+git clone https://github.com/mvdmakesthings/Ephemeris.git
+```
+
+2. Open `Ephemeris.xcodeproj` in Xcode
+
+3. Build the framework target
+
+### Manual Integration
+
+1. Download the source code
+2. Drag the `Ephemeris` folder into your Xcode project
+3. Ensure the files are added to your target
+
+> **Note**: Swift Package Manager support is planned for future releases.
+
+## Usage
+
+### Basic Example
+
+```swift
+import Ephemeris
+
+// TLE data for the International Space Station (ISS)
+let tleString = """
+ISS (ZARYA)
+1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
+2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
+"""
+
+// Parse the TLE data
+let tle = TwoLineElement(from: tleString)
+print("Satellite: \(tle.name)")
+
+// Create an orbit from the TLE
+let orbit = Orbit(from: tle)
+
+// Calculate current position
+do {
+    let position = try orbit.calculatePosition(at: Date())
+    print("Latitude: \(position.x)°")
+    print("Longitude: \(position.y)°")
+    print("Altitude: \(position.z) km")
+} catch {
+    print("Error calculating position: \(error)")
+}
+```
+
+### Accessing Orbital Elements
+
+```swift
+let orbit = Orbit(from: tle)
+
+// Access orbital parameters
+print("Semi-major axis: \(orbit.semimajorAxis) km")
+print("Eccentricity: \(orbit.eccentricity)")
+print("Inclination: \(orbit.inclination)°")
+print("RAAN: \(orbit.rightAscensionOfAscendingNode)°")
+print("Argument of Perigee: \(orbit.argumentOfPerigee)°")
+print("Mean Anomaly: \(orbit.meanAnomaly)°")
+print("Mean Motion: \(orbit.meanMotion) revolutions/day")
+```
+
+### Calculate Position at Specific Time
+
+```swift
+// Create a specific date
+let calendar = Calendar.current
+let components = DateComponents(year: 2020, month: 4, day: 15, hour: 12, minute: 0)
+let specificDate = calendar.date(from: components)
+
+// Calculate position at that time
+if let date = specificDate {
+    let position = try? orbit.calculatePosition(at: date)
+    // Use position...
+}
+```
+
+## Documentation
+
+### Core Types
+
+- **`TwoLineElement`**: Represents and parses NORAD TLE format satellite data
+- **`Orbit`**: Represents orbital parameters and provides position calculation methods
+- **`Orbitable`**: Protocol defining requirements for orbital element data
+
+### Where to Get TLE Data
+
+TLE data for satellites can be obtained from:
+- [CelesTrak](https://celestrak.com/NORAD/elements/)
+- [Space-Track.org](https://www.space-track.org/) (requires free registration)
+- [N2YO.com](https://www.n2yo.com/)
+
+### Additional Documentation
+
+- [CI/CD Configuration](./CI_CD.md) - Details about the build, test, and linting workflows
+- [Acknowledgements](./ACKNOWLEDGEMENTS.md) - Credits and references
 
 ## CI/CD
 
-This project uses GitHub Actions for continuous integration. See [CI_CD.md](./CI_CD.md) for details about the build, test, and linting workflows.
+This project uses GitHub Actions for continuous integration:
 
-## Online Resources
-Here are some of the online resources I used or read to get a better understanding of the mechanics behind tracking orbiting bodies.
+- **Build and Test**: Automatically builds the framework and runs all tests on every push and pull request
+- **SwiftLint**: Enforces Swift style and conventions
 
-- Satellite Tracking Using NORAD Two-Line Element Set Format, Transilvania University of Braşov, written by Emilian-Ionuţ CROITORU, Gheorghe OANCEA
-	- http://www.afahc.ro/ro/afases/2016/MATH&IT/CROITORU_OANCEA.pdf
-- Calculation of Satellite Position from Ephemeris Data, Applied GPS for Engineers and Project Managers, ascelibrary.org
-	- https://ascelibrary.org/doi/pdf/10.1061/9780784411506.ap03
-- Describing Orbits, FAA US Gov
-	- https://www.faa.gov/about/office_org/headquarters_offices/avs/offices/aam/cami/library/online_libraries/aerospace_medicine/tutorial/media/iii.4.1.4_describing_orbits.pdf
-- Transformation of Orbit Elements, State and Coordinates of Satellites in Two-Body Motion. Space Electronic Reconnaissance: Localization Theories and Methods, First Edition.
-	- https://onlinelibrary.wiley.com/doi/pdf/10.1002/9781118542200.app1
-- Introduction to Orbital Mechanics, W. Horn, B. Shapiro, C. Shubin, F. Varedi, California State University Northridge
-	- https://www.csun.edu/~hcmth017/master/master.html
-- Computation of Sub-Satellite Points from Orbital Elements, by Richard H. Christ, John F Kennedy Space Center, NASA
-	- https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19650015945.pdf
-- Satellite Orbits, calculus castle	
-	- http://calculuscastle.com/orbit.pdf
+For more details, see [CI_CD.md](./CI_CD.md).
 
-## Sidereal Time / Julian Time Calculations
-- https://www.academia.edu/20528856/Methods_of_Astrodynamics_a_Computer_Approach
-- http://www2.arnes.si/~gljsentvid10/sidereal.htm
-- http://www.celestrak.com/publications/AIAA/2006-6753/AIAA-2006-6753-Rev3.pdf
-- https://www.aavso.org/computing-jd
+## Contributing
 
----
-Licensed Apache Version 2.0, 2020
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
-See [ACKNOWLEDGEMENTS](./ACKNOWLEDGEMENTS.md) and [LICENSE](./LICENSE.md) for more information.
+### Development Setup
+
+1. Fork the repository
+2. Clone your fork
+3. Create a feature branch (`git checkout -b feature/amazing-feature`)
+4. Make your changes
+5. Run SwiftLint: `swiftlint lint`
+6. Run tests if possible
+7. Commit your changes (`git commit -m 'Add amazing feature'`)
+8. Push to the branch (`git push origin feature/amazing-feature`)
+9. Open a Pull Request
+
+## References
+
+### Satellite Tracking and Orbital Mechanics
+
+- [Satellite Tracking Using NORAD Two-Line Element Set Format](http://www.afahc.ro/ro/afases/2016/MATH&IT/CROITORU_OANCEA.pdf) - Transilvania University of Braşov, by Emilian-Ionuţ CROITORU and Gheorghe OANCEA
+- [Calculation of Satellite Position from Ephemeris Data](https://ascelibrary.org/doi/pdf/10.1061/9780784411506.ap03) - Applied GPS for Engineers and Project Managers, ascelibrary.org
+- [Describing Orbits](https://www.faa.gov/about/office_org/headquarters_offices/avs/offices/aam/cami/library/online_libraries/aerospace_medicine/tutorial/media/iii.4.1.4_describing_orbits.pdf) - FAA US Government
+- [Transformation of Orbit Elements](https://onlinelibrary.wiley.com/doi/pdf/10.1002/9781118542200.app1) - Space Electronic Reconnaissance: Localization Theories and Methods
+- [Introduction to Orbital Mechanics](https://www.csun.edu/~hcmth017/master/master.html) - W. Horn, B. Shapiro, C. Shubin, F. Varedi, California State University Northridge
+- [Computation of Sub-Satellite Points from Orbital Elements](https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19650015945.pdf) - Richard H. Christ, NASA
+- [Satellite Orbits](http://calculuscastle.com/orbit.pdf) - Calculus Castle
+
+### Sidereal Time and Julian Date Calculations
+
+- [Methods of Astrodynamics: A Computer Approach](https://www.academia.edu/20528856/Methods_of_Astrodynamics_a_Computer_Approach)
+- [Sidereal Time](http://www2.arnes.si/~gljsentvid10/sidereal.htm)
+- [Revisiting Spacetrack Report #3](http://www.celestrak.com/publications/AIAA/2006-6753/AIAA-2006-6753-Rev3.pdf) - Celestrak
+- [Computing Julian Date](https://www.aavso.org/computing-jd) - AAVSO
+
+## License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE.md](LICENSE.md) file for details.
+
+Copyright © 2020 Michael VanDyke
+
+## Acknowledgements
+
+Special thanks to all the researchers, institutions, and open source projects that made this work possible. See [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md) for a complete list of references and credits.
 
