@@ -139,6 +139,17 @@ TLE data for satellites can be obtained from:
 - [Space-Track.org](https://www.space-track.org/) (requires free registration)
 - [N2YO.com](https://www.n2yo.com/)
 
+### TLE Format Limitations
+
+The TLE format uses 2-digit years, which requires interpretation logic. Ephemeris uses a **±50 year window** relative to the current date:
+
+- **Supported Range**: TLE data from approximately 50 years in the past to 50 years in the future is supported
+- **Recent Data**: The framework is designed for current/recent satellite tracking data
+- **Historical Data**: Very old TLE data (>50 years old) may be parsed incorrectly
+- **Future-Proof**: The Y2K-style date handling automatically adjusts as time progresses, preventing issues through at least 2107
+
+For typical use cases involving current satellite tracking, this limitation is not a concern.
+
 ### Additional Documentation
 
 - [CI/CD Configuration](./CI_CD.md) - Details about the build, test, and linting workflows
