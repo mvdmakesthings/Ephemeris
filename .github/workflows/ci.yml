@@ -31,36 +31,84 @@ jobs:
     - name: Select iOS Simulator
       id: select-simulator
       run: |
-        # Find an available iPhone simulator
-        SIMULATOR=$(xcrun simctl list devices available | grep "iPhone" | grep -v "unavailable" | head -1 | sed -E 's/.*iPhone ([0-9]+[^)]*).*/iPhone \1/' | xargs)
-        if [ -z "$SIMULATOR" ]; then
-          # Fallback to any iPhone
-          SIMULATOR="iPhone 15 Pro"
+        # Find an available iPhone simulator and extract the device name
+        DEVICE_LINE=$(xcrun simctl list devices available | grep "iPhone" | grep -v "unavailable" | head -1)
+        
+        if [ -n "$DEVICE_LINE" ]; then
+          # Extract device name from line like "    iPhone 15 Pro (12345678-1234-1234-1234-123456789012) (Booted)"
+          SIMULATOR=$(echo "$DEVICE_LINE" | sed -E 's/^[[:space:]]+([^(]+).*/\1/' | xargs)
+          echo "Found simulator: $SIMULATOR"
+        else
+          # Try common device names as fallback
+          for device in "iPhone 15 Pro" "iPhone 15" "iPhone 14 Pro" "iPhone 14" "iPhone 13"; do
+            if xcrun simctl list devices available | grep -q "$device"; then
+              SIMULATOR="$device"
+              echo "Fallback to: $SIMULATOR"
+              break
+            fi
+          done
         fi
+        
+        # Final fallback - use any iOS Simulator
+        if [ -z "$SIMULATOR" ]; then
+          SIMULATOR="any iOS Simulator"
+          echo "Using generic iOS Simulator destination"
+        fi
+        
         echo "Selected simulator: $SIMULATOR"
         echo "simulator=$SIMULATOR" >> $GITHUB_OUTPUT
         
     - name: Build framework
       run: |
-        xcodebuild build \
-          -project Ephemeris.xcodeproj \
-          -scheme Ephemeris \
-          -sdk iphonesimulator \
-          -destination "platform=iOS Simulator,name=${{ steps.select-simulator.outputs.simulator }}" \
-          CODE_SIGN_IDENTITY="" \
-          CODE_SIGNING_REQUIRED=NO
+        DEST="${{ steps.select-simulator.outputs.simulator }}"
+        if [ "$DEST" = "any iOS Simulator" ]; then
+          xcodebuild build \
+            -project Ephemeris.xcodeproj \
+            -scheme Ephemeris \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+        else
+          xcodebuild build \
+            -project Ephemeris.xcodeproj \
+            -scheme Ephemeris \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,name=$DEST" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+        fi
           
     - name: Run tests with coverage
       run: |
-        xcodebuild test \
-          -project Ephemeris.xcodeproj \
-          -scheme Ephemeris \
-          -sdk iphonesimulator \
-          -destination "platform=iOS Simulator,name=${{ steps.select-simulator.outputs.simulator }}" \
-          -enableCodeCoverage YES \
-          -resultBundlePath TestResults.xcresult \
-          CODE_SIGN_IDENTITY="" \
-          CODE_SIGNING_REQUIRED=NO
+        DEST="${{ steps.select-simulator.outputs.simulator }}"
+        if [ "$DEST" = "any iOS Simulator" ]; then
+          # For tests, we need a specific device, so find one dynamically
+          TEST_DEVICE=$(xcrun simctl list devices available | grep "iPhone" | head -1 | sed -E 's/^[[:space:]]+([^(]+).*/\1/' | xargs)
+          if [ -z "$TEST_DEVICE" ]; then
+            TEST_DEVICE="iPhone 15 Pro"
+          fi
+          echo "Running tests on: $TEST_DEVICE"
+          xcodebuild test \
+            -project Ephemeris.xcodeproj \
+            -scheme Ephemeris \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,name=$TEST_DEVICE" \
+            -enableCodeCoverage YES \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+        else
+          xcodebuild test \
+            -project Ephemeris.xcodeproj \
+            -scheme Ephemeris \
+            -sdk iphonesimulator \
+            -destination "platform=iOS Simulator,name=$DEST" \
+            -enableCodeCoverage YES \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+        fi
           
     - name: Generate coverage report
       run: |
