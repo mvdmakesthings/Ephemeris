@@ -136,8 +136,6 @@ public struct Orbit {
         let longitude = atan2(yFinal, xFinal).inDegrees()
         let altitude = orbitalRadius - earthsRadius
 
-        print("OE | Latitude: \(latitude) degrees | Longitude: \(longitude) degrees | Altitude: \(altitude)km")
-
         return (latitude, longitude, altitude)
     }
 }
@@ -192,11 +190,9 @@ extension Orbit {
             let f2 = 1 - eccentricity * cos(eccentricAnomaly)
             ratio = f / f2
             eccentricAnomaly = eccentricAnomaly - ratio
-            print("OE | Eccentric Anomaly | Iteration: \(iteration) | Accuracy: \(ratio) | Eccentric Anomaly: \(eccentricAnomaly.inDegrees())")
             iteration += 1
         } while (ratio > accuracy && iteration <= maxIterations)
         
-        print("OE | Eccentric Anomaly | Total Iterations: \(iteration) | Accuracy: \(ratio) | Eccentric Anomaly: \(eccentricAnomaly.inDegrees())")
         return eccentricAnomaly.inDegrees()
     }
     
@@ -206,7 +202,6 @@ extension Orbit {
         if eccentricity >= 1 { throw CalculationError.reachedSingularity }
         let E = eccentricAnomaly.inRadians()
         let trueAnomaly = (2.0 * atan2(sqrt(1 + eccentricity) * sin(E), sqrt(1 - eccentricity) * cos(E))).inDegrees()
-        print("OE | True Anomaly: \(trueAnomaly) degrees")
         return trueAnomaly
     }
 }
