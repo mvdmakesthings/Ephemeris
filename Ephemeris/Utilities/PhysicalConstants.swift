@@ -26,8 +26,62 @@ public struct PhysicalConstants {
         /// Earth's radius in Kilometers
         public static let radius: Double = 6378137.0 / 1000
         
+        /// Mean radius of Earth in kilometers (simplified sphere model)
+        /// - Note: For precise calculations, use `radius` (WGS84 equatorial radius)
+        public static let meanRadius: Double = 6371.0
+        
         /// Number of rads earth rotates in 1 solar day
         /// - Note: Taken from "Methods of Astrondynamics, A Computer Approach (v3) " by Capt David Vallado, Department of Astronautics, U.S. Air Force Academy https://www.academia.edu/20528856/Methods_of_Astrodynamics_a_Computer_Approach
         public static let radsPerDay: Double = 6.3003809866574
+    }
+    
+    /// Time conversion constants
+    public struct Time {
+        private init() {}
+        
+        /// Seconds in one solar day
+        public static let secondsPerDay: Double = 86400.0
+        
+        /// Days in one Julian century
+        public static let daysPerJulianCentury: Double = 36525.0
+        
+        /// Seconds in one hour
+        public static let secondsPerHour: Double = 3600.0
+        
+        /// Seconds in one minute
+        public static let secondsPerMinute: Double = 60.0
+    }
+    
+    /// Julian date reference points
+    public struct Julian {
+        private init() {}
+        
+        /// Julian Day Number for Unix Epoch (Jan 1, 1970 00:00:00 UTC)
+        public static let unixEpoch: Double = 2440587.5
+        
+        /// Julian Day Number for J2000.0 Epoch (Jan 1, 2000 12:00:00 TT)
+        public static let j2000Epoch: Double = 2451545.0
+    }
+    
+    /// Constants for iterative calculations
+    public struct Calculation {
+        private init() {}
+        
+        /// Default convergence accuracy for iterative calculations
+        public static let defaultAccuracy: Double = 0.00001
+        
+        /// Maximum iterations for convergence algorithms
+        public static let maxIterations: Int = 500
+    }
+    
+    /// Angular measurement constants
+    public struct Angle {
+        private init() {}
+        
+        /// Degrees in a full circle
+        public static let degreesPerCircle: Double = 360.0
+        
+        /// Radians in a full circle (2π)
+        public static let radiansPerCircle: Double = 2.0 * .pi
     }
 }

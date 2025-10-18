@@ -131,7 +131,7 @@ public struct Orbit {
         let zFinal = zRaan
         
         // Geocoordinates
-        let earthsRadius = 6370.0 //km
+        let earthsRadius = PhysicalConstants.Earth.meanRadius
         let latitude = 90.0 - acos(zFinal / sqrt(xFinal * xFinal + yFinal * yFinal + zFinal * zFinal)).inDegrees()
         let longitude = atan2(yFinal, xFinal).inDegrees()
         let altitude = orbitalRadius - earthsRadius
@@ -149,9 +149,9 @@ extension Orbit {
         let epochJulianDate = Date.julianDayFromEpoch(epochYear: twoLineElement.epochYear, epochDayFraction: twoLineElement.epochDay)
         let daysSinceEpoch = julianDate - epochJulianDate
         let revolutionsSinceEpoch = self.meanMotion * daysSinceEpoch
-        let meanAnomalyForJulianDate = self.meanAnomaly + revolutionsSinceEpoch * 360.0
-        let fullRevolutions = floor(meanAnomalyForJulianDate / 360.0)
-        let adjustedMeanAnomalyForJulianDate = meanAnomalyForJulianDate - 360.0 * fullRevolutions
+        let meanAnomalyForJulianDate = self.meanAnomaly + revolutionsSinceEpoch * PhysicalConstants.Angle.degreesPerCircle
+        let fullRevolutions = floor(meanAnomalyForJulianDate / PhysicalConstants.Angle.degreesPerCircle)
+        let adjustedMeanAnomalyForJulianDate = meanAnomalyForJulianDate - PhysicalConstants.Angle.degreesPerCircle * fullRevolutions
         
         return adjustedMeanAnomalyForJulianDate
     }
@@ -162,8 +162,8 @@ extension Orbit {
 extension Orbit {
     /// Used to describe the "size" of the orbit path which is half the distance between the perigee and apogee in km
     static func calculateSemimajorAxis(meanMotion: Double) -> Double {
-        let earthsGravitationalConstant = 398613.52 // km
-        let motionRadsPerSecond = meanMotion / 86400
+        let earthsGravitationalConstant = PhysicalConstants.Earth.µ
+        let motionRadsPerSecond = meanMotion / PhysicalConstants.Time.secondsPerDay
         let semimajorAxis = pow(earthsGravitationalConstant / (4.0 * pow(.pi, 2.0) * pow(motionRadsPerSecond, 2.0)), 1.0 / 3.0)
         return semimajorAxis // km
     }
@@ -173,7 +173,7 @@ extension Orbit {
     ///
     /// https://www.sciencedirect.com/topics/engineering/eccentric-anomaly
     ///
-    static func calculateEccentricAnomaly(eccentricity: Double, meanAnomaly: Degrees, accuracy: Double = 0.00001, maxIterations: Int = 500) -> Degrees {
+    static func calculateEccentricAnomaly(eccentricity: Double, meanAnomaly: Degrees, accuracy: Double = PhysicalConstants.Calculation.defaultAccuracy, maxIterations: Int = PhysicalConstants.Calculation.maxIterations) -> Degrees {
         // Always convert degrees to radians before doing calculations
         let meanAnomaly: Radians = meanAnomaly.inRadians()
         var eccentricAnomaly: Radians = 0.0
