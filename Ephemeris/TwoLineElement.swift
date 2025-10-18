@@ -119,7 +119,7 @@ public struct TwoLineElement {
     ///         adjusts for future dates as long as TLE data is reasonably current.
     ///
     /// Examples:
-    /// - In 2025: year 20 → 2020, year 57 → 1957, year 75 → 2075
+    /// - In 2025: year 20 → 2020, year 57 → 2057, year 99 → 1999
     /// - In 2057: year 20 → 2020, year 57 → 2057, year 99 → 2099
     private static func parse2DigitYear(_ twoDigitYear: Int) -> Int {
         let now = Date()
