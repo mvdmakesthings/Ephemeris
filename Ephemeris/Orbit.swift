@@ -131,7 +131,7 @@ public struct Orbit {
         let zFinal = zRaan
         
         // Geocoordinates
-        let earthsRadius = 6370.0 //km
+        let earthsRadius = PhysicalConstants.Earth.radius
         let latitude = 90.0 - acos(zFinal / sqrt(xFinal * xFinal + yFinal * yFinal + zFinal * zFinal)).inDegrees()
         let longitude = atan2(yFinal, xFinal).inDegrees()
         let altitude = orbitalRadius - earthsRadius
@@ -162,8 +162,8 @@ extension Orbit {
 extension Orbit {
     /// Used to describe the "size" of the orbit path which is half the distance between the perigee and apogee in km
     static func calculateSemimajorAxis(meanMotion: Double) -> Double {
-        let earthsGravitationalConstant = 398613.52 // km
-        let motionRadsPerSecond = meanMotion / 86400
+        let earthsGravitationalConstant = PhysicalConstants.Earth.µ
+        let motionRadsPerSecond = meanMotion / PhysicalConstants.Time.secondsPerDay
         let semimajorAxis = pow(earthsGravitationalConstant / (4.0 * pow(.pi, 2.0) * pow(motionRadsPerSecond, 2.0)), 1.0 / 3.0)
         return semimajorAxis // km
     }

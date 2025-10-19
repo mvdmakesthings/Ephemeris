@@ -30,4 +30,12 @@ public struct PhysicalConstants {
         /// - Note: Taken from "Methods of Astrondynamics, A Computer Approach (v3) " by Capt David Vallado, Department of Astronautics, U.S. Air Force Academy https://www.academia.edu/20528856/Methods_of_Astrodynamics_a_Computer_Approach
         public static let radsPerDay: Double = 6.3003809866574
     }
+    
+    /// Time-related constants
+    public struct Time {
+        private init() {}
+        
+        /// Number of seconds in one solar day
+        public static let secondsPerDay: Double = 86400.0
+    }
 }
