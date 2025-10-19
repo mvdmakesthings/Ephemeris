@@ -180,7 +180,6 @@ extension Orbit {
         } catch {
             // If calculation fails (e.g., singularity when e >= 1),
             // return mean anomaly as a safe fallback
-            print("OE | Warning: Failed to calculate true anomaly, using mean anomaly as fallback")
             return self.meanAnomaly
         }
     }

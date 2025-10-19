@@ -13,7 +13,7 @@ import Foundation
 public typealias Degrees = Double
 
 /// Type in Radians
-/// - Note: To help with understanding the units used in the implementaiton sites
+/// - Note: To help with understanding the units used in the implementation sites
 public typealias Radians = Double
 
 /// Julian day is the continuous count of days since the beginning of the Julian Period and is used primarily by astronomers, and in software for easily calculating elapsed days between two events (e.g. food production date and sell by date)
