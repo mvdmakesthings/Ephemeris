@@ -165,6 +165,7 @@ For typical use cases involving current satellite tracking, this limitation is n
 
 ### Additional Documentation
 
+- **[Introduction to Orbital Elements](./docs/Introduction-to-Orbital-Elements.md)** - Comprehensive guide to understanding the six Keplerian orbital elements, TLE format, and ensuring prediction accuracy
 - [CI/CD Configuration](./CI_CD.md) - Details about the build, test, and linting workflows
 - [Acknowledgements](./ACKNOWLEDGEMENTS.md) - Credits and references
 

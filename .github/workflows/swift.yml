@@ -5,7 +5,7 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
 
 jobs:
@@ -33,9 +33,12 @@ jobs:
     runs-on: macos-latest
     
     steps:
-    - uses: actions/checkout@v4
-    - name: Install SwiftLint
-      run: brew install swiftlint
-    - name: Run SwiftLint
-      run: swiftlint lint --strict
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+        
+      - name: Run SwiftLint
+        run: swiftlint lint --strict
 
