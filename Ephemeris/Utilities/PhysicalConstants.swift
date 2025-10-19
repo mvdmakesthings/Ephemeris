@@ -32,7 +32,7 @@ public struct PhysicalConstants {
         public static let meanRadius: Double = 6371.0
         
         /// Number of rads earth rotates in 1 solar day
-        /// - Note: Taken from "Methods of Astrondynamics, A Computer Approach (v3) " by Capt David Vallado, Department of Astronautics, U.S. Air Force Academy https://www.academia.edu/20528856/Methods_of_Astrodynamics_a_Computer_Approach
+        /// - Note: Taken from "Methods of Astrodynamics, A Computer Approach (v3) " by Capt David Vallado, Department of Astronautics, U.S. Air Force Academy https://www.academia.edu/20528856/Methods_of_Astrodynamics_a_Computer_Approach
         public static let radsPerDay: Double = 6.3003809866574
     }
     

@@ -90,20 +90,20 @@ ISS (ZARYA)
 """
 
 // Parse the TLE data
-let tle = TwoLineElement(from: tleString)
-print("Satellite: \(tle.name)")
-
-// Create an orbit from the TLE
-let orbit = Orbit(from: tle)
-
-// Calculate current position
 do {
+    let tle = try TwoLineElement(from: tleString)
+    print("Satellite: \(tle.name)")
+    
+    // Create an orbit from the TLE
+    let orbit = Orbit(from: tle)
+    
+    // Calculate current position
     let position = try orbit.calculatePosition(at: Date())
     print("Latitude: \(position.x)°")
     print("Longitude: \(position.y)°")
     print("Altitude: \(position.z) km")
 } catch {
-    print("Error calculating position: \(error)")
+    print("Error: \(error)")
 }
 ```
 
