@@ -147,9 +147,9 @@ extension Orbit {
         let epochJulianDate = Date.julianDayFromEpoch(epochYear: twoLineElement.epochYear, epochDayFraction: twoLineElement.epochDay)
         let daysSinceEpoch = julianDate - epochJulianDate
         let revolutionsSinceEpoch = self.meanMotion * daysSinceEpoch
-        let meanAnomalyForJulianDate = self.meanAnomaly + revolutionsSinceEpoch * 360.0
-        let fullRevolutions = floor(meanAnomalyForJulianDate / 360.0)
-        let adjustedMeanAnomalyForJulianDate = meanAnomalyForJulianDate - 360.0 * fullRevolutions
+        let meanAnomalyForJulianDate = self.meanAnomaly + revolutionsSinceEpoch * PhysicalConstants.Angle.degreesPerCircle
+        let fullRevolutions = floor(meanAnomalyForJulianDate / PhysicalConstants.Angle.degreesPerCircle)
+        let adjustedMeanAnomalyForJulianDate = meanAnomalyForJulianDate - PhysicalConstants.Angle.degreesPerCircle * fullRevolutions
         
         return adjustedMeanAnomalyForJulianDate
     }
@@ -171,7 +171,7 @@ extension Orbit {
     ///
     /// https://www.sciencedirect.com/topics/engineering/eccentric-anomaly
     ///
-    static func calculateEccentricAnomaly(eccentricity: Double, meanAnomaly: Degrees, accuracy: Double = 0.00001, maxIterations: Int = 500) -> Degrees {
+    static func calculateEccentricAnomaly(eccentricity: Double, meanAnomaly: Degrees, accuracy: Double = PhysicalConstants.Calculation.defaultAccuracy, maxIterations: Int = PhysicalConstants.Calculation.maxIterations) -> Degrees {
         // Always convert degrees to radians before doing calculations
         let meanAnomaly: Radians = meanAnomaly.inRadians()
         var eccentricAnomaly: Radians = 0.0

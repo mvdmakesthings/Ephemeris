@@ -81,14 +81,14 @@ extension Date {
         guard let jan1 = calendar.date(from: components) else {
             // Fallback calculation if date creation fails
             let jan1SecondsSince1970 = Double((epochYear - 1970) * 365 + (epochYear - 1969) / 4) * PhysicalConstants.Time.secondsPerDay
-            return 2440587.5 + jan1SecondsSince1970 / PhysicalConstants.Time.secondsPerDay + epochDayFraction - 1.0
+            return PhysicalConstants.Julian.unixEpoch + jan1SecondsSince1970 / PhysicalConstants.Time.secondsPerDay + epochDayFraction - 1.0
         }
         
         // Get Julian Day for January 1st
         guard let jan1JD = julianDay(from: jan1) else {
             // Fallback calculation
             let jan1SecondsSince1970 = jan1.timeIntervalSince1970
-            return 2440587.5 + jan1SecondsSince1970 / PhysicalConstants.Time.secondsPerDay + epochDayFraction - 1.0
+            return PhysicalConstants.Julian.unixEpoch + jan1SecondsSince1970 / PhysicalConstants.Time.secondsPerDay + epochDayFraction - 1.0
         }
         
         // Add the epoch day fraction (subtract 1 because day 1 is January 1st, not day 0)
@@ -108,7 +108,7 @@ extension Date {
     /// - Note: Based on the algorithm from "Methods of Astrodynamics, A Computer Approach (v3)"
     ///         by Capt David Vallado
     public static func greenwichSideRealTime(from julianDay: JulianDay) -> Radians {
-        let twopi: Double = 2.0 * .pi
+        let twopi: Double = PhysicalConstants.Angle.radiansPerCircle
         
         // Convert to Julian centuries since J2000.0
         let T = toJ2000(from: julianDay)
@@ -138,7 +138,7 @@ extension Date {
     public static func toJ2000(from julianDay: JulianDay) -> J2000 {
         // JD 2451545.0 = January 1, 2000, 12:00 TT (J2000.0 epoch)
         // 36525 days = 1 Julian century
-        return (julianDay - 2451545.0) / 36525.0
+        return (julianDay - PhysicalConstants.Julian.j2000Epoch) / PhysicalConstants.Time.daysPerJulianCentury
     }
     
 }
