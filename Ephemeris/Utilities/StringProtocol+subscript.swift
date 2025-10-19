@@ -1,4 +1,12 @@
-// https://stackoverflow.com/a/38215613
+//
+//  StringProtocol+subscript.swift
+//  Ephemeris
+//
+//  Created by Michael VanDyke on 4/6/20.
+//  Copyright © 2020 Michael VanDyke. All rights reserved.
+//
+//  String subscripting utilities
+//  Based on: https://stackoverflow.com/a/38215613
 
 import Foundation
 
