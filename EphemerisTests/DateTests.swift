@@ -18,7 +18,10 @@ class DateTests: XCTestCase {
         // Known JulianDay from above date
         let knownJulianDay = 2440587.5
         
-        let julianDay = Date.julianDay(from: date)
+        guard let julianDay = Date.julianDay(from: date) else {
+            XCTFail("Failed to calculate Julian Day")
+            return
+        }
         XCTAssertEqual(julianDay, knownJulianDay, accuracy: 0.000001)
     }
     
@@ -28,7 +31,10 @@ class DateTests: XCTestCase {
         // At noon, JD should be exactly 2440588.0 (since JD starts at noon)
         let knownJulianDay = 2440588.0
         
-        let julianDay = Date.julianDay(from: date)
+        guard let julianDay = Date.julianDay(from: date) else {
+            XCTFail("Failed to calculate Julian Day")
+            return
+        }
         XCTAssertEqual(julianDay, knownJulianDay, accuracy: 0.000001)
     }
     
@@ -109,7 +115,10 @@ class DateTests: XCTestCase {
             return
         }
         
-        let julianDay = Date.julianDay(from: date)
+        guard let julianDay = Date.julianDay(from: date) else {
+            XCTFail("Failed to calculate Julian Day")
+            return
+        }
         // Known JD for Oct 15, 1582 00:00:00 UTC
         let knownJulianDay = 2299160.5
         XCTAssertEqual(julianDay, knownJulianDay, accuracy: 0.5) // Allow small tolerance for historical dates
@@ -133,7 +142,10 @@ class DateTests: XCTestCase {
             return
         }
         
-        let julianDay = Date.julianDay(from: date)
+        guard let julianDay = Date.julianDay(from: date) else {
+            XCTFail("Failed to calculate Julian Day")
+            return
+        }
         // Known JD for Jan 1, 2100 00:00:00 UTC
         let knownJulianDay = 2488069.5
         XCTAssertEqual(julianDay, knownJulianDay, accuracy: 0.000001)

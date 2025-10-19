@@ -42,7 +42,7 @@ class OrbitalCalculationTests: XCTestCase {
     
     func testOrbitConformsToOrbitable() throws {
         // Test that Orbit struct properly conforms to Orbitable protocol
-        let tle = MockTLEs.ISSSample()
+        let tle = try MockTLEs.ISSSample()
         let orbit = Orbit(from: tle)
         
         // Verify that orbit can be used as Orbitable

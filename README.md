@@ -166,7 +166,6 @@ For typical use cases involving current satellite tracking, this limitation is n
 ### Additional Documentation
 
 - [CI/CD Configuration](./CI_CD.md) - Details about the build, test, and linting workflows
-- [Known Issues](./KNOWN_ISSUES.md) - Current test compilation issues and their fixes
 - [Acknowledgements](./ACKNOWLEDGEMENTS.md) - Credits and references
 
 ## CI/CD

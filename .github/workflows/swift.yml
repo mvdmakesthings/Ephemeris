@@ -24,7 +24,6 @@ jobs:
       run: swift build -v
     - name: Run tests
       run: swift test -v
-      continue-on-error: true  # Tests currently have compilation issues that need to be fixed
       
   lint:
     name: SwiftLint
