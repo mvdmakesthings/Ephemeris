@@ -1,7 +1,7 @@
 # This workflow will build a Swift project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
 
-name: Swift
+name: CI
 
 on:
   push:
@@ -10,13 +10,49 @@ on:
     branches: [ "master" ]
 
 jobs:
-  build:
-
+  spm-build:
+    name: Swift Package Manager Build
     runs-on: macos-latest
-
+    
     steps:
     - uses: actions/checkout@v4
-    - name: Build
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+    - name: Swift version
+      run: swift --version
+    - name: Build with SPM
       run: swift build -v
-    - name: Run tests
-      run: swift test -v
+      
+  xcode-build:
+    name: Xcode Build and Test
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+    - name: List available simulators
+      run: xcrun simctl list devices available | grep iPhone
+    - name: Build framework
+      run: |
+        xcodebuild build \
+          -project Ephemeris.xcodeproj \
+          -scheme Ephemeris \
+          -sdk iphonesimulator \
+          -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
+          | xcpretty || xcodebuild build \
+          -project Ephemeris.xcodeproj \
+          -scheme Ephemeris \
+          -sdk iphonesimulator \
+          -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=latest'
+      
+  lint:
+    name: SwiftLint
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install SwiftLint
+      run: brew install swiftlint
+    - name: Run SwiftLint
+      run: swiftlint lint --strict
