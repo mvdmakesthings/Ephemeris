@@ -50,14 +50,12 @@ class ViewController: UIViewController, MKMapViewDelegate {
             do {
                 let coordinate = try calculatePosition(by: offset)
                 coordinatePoints.append(coordinate)
-                print("OE Plot | Plotting Points \(offset) seconds into the future. | Lat: \(coordinate.latitude) | Long: \(coordinate.longitude)")
             } catch {
                 print("Error calculating position at offset \(offset): \(error.localizedDescription)")
             }
             offset += timeIntervalOffset
         } while (offset <= timeIntervalMax)
         
-        print("OE Plot | \(coordinatePoints.count) total plotted points.")
         let polyLine = MKPolyline(coordinates: coordinatePoints, count: coordinatePoints.count)
         mapView.addOverlay(polyLine)
 
