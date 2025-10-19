@@ -56,7 +56,7 @@ class OrbitalCalculationTests: XCTestCase {
     
     func testTrueAnomalyAlwaysReturnsValue() throws {
         // Test that trueAnomaly always returns a value, even for edge cases
-        let tle = MockTLEs.ISSSample()
+        let tle = try MockTLEs.ISSSample()
         let orbit = Orbit(from: tle)
         
         // Access trueAnomaly - should never be nil
