@@ -19,7 +19,7 @@ The CI workflow runs on:
   - Sets up Xcode (for Swift toolchain)
   - Displays Swift version
   - Builds the Ephemeris package using Swift Package Manager
-  - Runs all tests with Swift Package Manager
+  - Runs all tests with Swift Package Manager (currently set to continue-on-error due to pre-existing test compilation issues - see [KNOWN_ISSUES.md](./KNOWN_ISSUES.md))
 
 **2. Lint**
 - Runs on: macOS latest
