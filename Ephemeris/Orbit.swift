@@ -190,10 +190,15 @@ extension Orbit {
 
 extension Orbit {
     /// Used to describe the "size" of the orbit path which is half the distance between the perigee and apogee in km
+    /// - Parameter meanMotion: Mean motion in revolutions per day
+    /// - Returns: Semi-major axis in kilometers
+    /// - Note: Uses Kepler's Third Law: a³ = µ/(n²), where n is mean motion in radians/second
     static func calculateSemimajorAxis(meanMotion: Double) -> Double {
-        let earthsGravitationalConstant = PhysicalConstants.Earth.µ
-        let motionRadsPerSecond = meanMotion / PhysicalConstants.Time.secondsPerDay
-        let semimajorAxis = pow(earthsGravitationalConstant / (4.0 * pow(.pi, 2.0) * pow(motionRadsPerSecond, 2.0)), 1.0 / 3.0)
+        let earthsGravitationalConstant = PhysicalConstants.Earth.µ // km^3/s^2
+        // Convert mean motion from revolutions/day to radians/second
+        // revolutions/day * (2π radians/revolution) * (1 day/86400 seconds)
+        let motionRadsPerSecond = meanMotion * 2.0 * .pi / PhysicalConstants.Time.secondsPerDay
+        let semimajorAxis = pow(earthsGravitationalConstant / pow(motionRadsPerSecond, 2.0), 1.0 / 3.0)
         return semimajorAxis // km
     }
     

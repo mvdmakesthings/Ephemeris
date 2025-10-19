@@ -19,8 +19,9 @@ public struct PhysicalConstants {
     public struct Earth {
         private init() {}
         
-        /// (µ = GM) Earth's gravitational constant (Km^3/s^2)
-        public static let µ: Double = 3.986004418 * pow(10, 14) / 1000
+        /// (µ = GM) Earth's gravitational constant (km^3/s^2)
+        /// WGS84 value: 3.986004418 × 10^14 m^3/s^2 = 398600.4418 km^3/s^2
+        public static let µ: Double = 398600.4418
 
         
         /// Earth's radius in Kilometers
