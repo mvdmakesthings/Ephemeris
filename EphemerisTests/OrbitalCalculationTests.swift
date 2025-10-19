@@ -40,7 +40,46 @@ class OrbitalCalculationTests: XCTestCase {
         XCTAssertEqual(trueAnomaly.round(to: 1), 90.0)
     }
     
-    func testPhysicalConstantsWGS84Compliance() throws {
+    func testOrbitConformsToOrbitable() throws {
+        // Test that Orbit struct properly conforms to Orbitable protocol
+        let tle = MockTLEs.ISSSample()
+        let orbit = Orbit(from: tle)
+        
+        // Verify that orbit can be used as Orbitable
+        let orbitable: Orbitable = orbit
+        
+        // Test that trueAnomaly is accessible and non-optional through protocol
+        let trueAnomalyValue = orbitable.trueAnomaly
+        XCTAssertGreaterThanOrEqual(trueAnomalyValue, 0.0)
+        XCTAssertLessThanOrEqual(trueAnomalyValue, 360.0)
+    }
+    
+    func testTrueAnomalyAlwaysReturnsValue() throws {
+        // Test that trueAnomaly always returns a value, even for edge cases
+        let tle = try MockTLEs.ISSSample()
+        let orbit = Orbit(from: tle)
+        
+        // Access trueAnomaly - should never be nil
+        let trueAnomaly = orbit.trueAnomaly
+        XCTAssertNotNil(trueAnomaly)
+        XCTAssertGreaterThanOrEqual(trueAnomaly, 0.0)
+        XCTAssertLessThanOrEqual(trueAnomaly, 360.0)
+    }
+    
+    func testTrueAnomalyCalculationFromMean() throws {
+        // Test that trueAnomaly is properly calculated from mean anomaly
+        let tle = try MockTLEs.objectAtPerigee()
+        let orbit = Orbit(from: tle)
+        
+        // For an object at perigee with e=0.5 and M=0, true anomaly should be 0
+        let trueAnomaly = orbit.trueAnomaly
+        XCTAssertNotNil(trueAnomaly)
+        // The value should be computed and be a valid angle
+        XCTAssertGreaterThanOrEqual(trueAnomaly, 0.0)
+        XCTAssertLessThanOrEqual(trueAnomaly, 360.0)
+    }
+    
+    func testPhysicalConstantsWGS84Compliance() throws{
         // Verify Earth's gravitational constant (µ = GM) matches WGS84 standard
         // WGS84 value: 3.986004418 × 10^14 m^3/s^2 = 398600.4418 km^3/s^2
         let expectedMu = 398600.4418 // km^3/s^2

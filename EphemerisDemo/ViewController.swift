@@ -40,12 +40,20 @@ class ViewController: UIViewController, MKMapViewDelegate {
         let timeIntervalOffset: TimeInterval = 5 * PhysicalConstants.Time.secondsPerMinute
         let timeIntervalMax: TimeInterval = PhysicalConstants.Time.secondsPerHour
         var offset: TimeInterval = 0
-        let firstOffset = try! calculatePosition(by: offset)
+        
+        guard let firstOffset = try? calculatePosition(by: offset) else {
+            print("Error calculating initial position")
+            return
+        }
         
         repeat {
-            let coordinate = try! calculatePosition(by: offset)
-            coordinatePoints.append(coordinate)
-            print("OE Plot | Plotting Points \(offset) seconds into the future. | Lat: \(coordinate.latitude) | Long: \(coordinate.longitude)")
+            do {
+                let coordinate = try calculatePosition(by: offset)
+                coordinatePoints.append(coordinate)
+                print("OE Plot | Plotting Points \(offset) seconds into the future. | Lat: \(coordinate.latitude) | Long: \(coordinate.longitude)")
+            } catch {
+                print("Error calculating position at offset \(offset): \(error.localizedDescription)")
+            }
             offset += timeIntervalOffset
         } while (offset <= timeIntervalMax)
         
@@ -59,8 +67,8 @@ class ViewController: UIViewController, MKMapViewDelegate {
     }
     
     private func calculatePosition(by timeinterval: TimeInterval) throws -> CLLocationCoordinate2D {
-        guard var orbit = self.orbit else { fatalError() }
-        let position = try! orbit.calculatePosition(at: Date().addingTimeInterval(timeinterval))
+        guard let orbit = self.orbit else { fatalError() }
+        let position = try orbit.calculatePosition(at: Date().addingTimeInterval(timeinterval))
         
         let lat = CLLocationDegrees(position.x)
         let long = CLLocationDegrees(position.y)

@@ -8,7 +8,7 @@
 
 import Foundation
 
-public struct Orbit {
+public struct Orbit: Orbitable {
     
     // MARK: - Size of Orbit
     
@@ -24,12 +24,12 @@ public struct Orbit {
     
     // MARK: - Orientation of Orbit
     
-    /// The "tilt" in degrees from the vectors perpandicular to the orbital and equatorial planes
+    /// The "tilt" in degrees from the vectors perpendicular to the orbital and equatorial planes
     /// Denoted by ( i ) and is in degrees 0–180°
     public let inclination: Degrees
     
-    /// The "swivel" of the orbital plane in degrees in reference to the vernal equinox to the 'node' that cooresponds
-    /// with the object passing the equator in a northernly direction.
+    /// The "swivel" of the orbital plane in degrees in reference to the vernal equinox to the 'node' that corresponds
+    /// with the object passing the equator in a northerly direction.
     /// Denoted by ( Ω ) in degrees
     public let rightAscensionOfAscendingNode: Degrees
     
@@ -42,7 +42,13 @@ public struct Orbit {
     /// The true angle between the position of the craft relative to perigee along the orbital path.
     /// Denoted as (ν or θ)
     /// Range between 0–360°
-    public var trueAnomaly: Degrees?
+    ///
+    /// - Note: This is a computed property that calculates the true anomaly from the mean anomaly
+    /// using the eccentric anomaly as an intermediate step. If the calculation cannot be performed
+    /// (e.g., due to singularities), it returns the mean anomaly as a fallback.
+    public var trueAnomaly: Degrees {
+        return calculateTrueAnomalyFromMean()
+    }
     
     /// The position of the craft with respect to the mean motion.
     /// Denoted as (M)
@@ -153,6 +159,31 @@ extension Orbit {
         
         return adjustedMeanAnomalyForJulianDate
     }
+    
+    /// Calculates the true anomaly from the mean anomaly.
+    /// Uses eccentric anomaly as an intermediate calculation step.
+    /// Returns the mean anomaly as a fallback if calculation fails (e.g., singularity).
+    private func calculateTrueAnomalyFromMean() -> Degrees {
+        // Calculate eccentric anomaly from mean anomaly
+        let eccentricAnomaly = Orbit.calculateEccentricAnomaly(
+            eccentricity: self.eccentricity,
+            meanAnomaly: self.meanAnomaly
+        )
+        
+        // Try to calculate true anomaly from eccentric anomaly
+        do {
+            let trueAnomaly = try Orbit.calculateTrueAnomaly(
+                eccentricity: self.eccentricity,
+                eccentricAnomaly: eccentricAnomaly
+            )
+            return trueAnomaly
+        } catch {
+            // If calculation fails (e.g., singularity when e >= 1),
+            // return mean anomaly as a safe fallback
+            print("OE | Warning: Failed to calculate true anomaly, using mean anomaly as fallback")
+            return self.meanAnomaly
+        }
+    }
 }
 
 // MARK: - Static Functions
@@ -196,7 +227,7 @@ extension Orbit {
         return eccentricAnomaly.inDegrees()
     }
     
-    /// The true angle relative to parigee and the position of the object along it's orbit path
+    /// The true angle relative to perigee and the position of the object along its orbit path
     /// 
     static func calculateTrueAnomaly(eccentricity: Double, eccentricAnomaly: Degrees) throws -> Degrees {
         if eccentricity >= 1 { throw CalculationError.reachedSingularity }
