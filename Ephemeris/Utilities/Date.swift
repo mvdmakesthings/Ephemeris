@@ -108,7 +108,7 @@ extension Date {
     /// - Note: Based on the algorithm from "Methods of Astrodynamics, A Computer Approach (v3)"
     ///         by Capt David Vallado
     public static func greenwichSideRealTime(from julianDay: JulianDay) -> Radians {
-        let twopi: Double = 2.0 * .pi
+        let twopi: Double = PhysicalConstants.Angle.radiansPerCircle
         
         // Convert to Julian centuries since J2000.0
         let T = toJ2000(from: julianDay)

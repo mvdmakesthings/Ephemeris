@@ -26,20 +26,30 @@ public struct PhysicalConstants {
         /// Earth's radius in Kilometers
         public static let radius: Double = 6378137.0 / 1000
         
+        /// Mean radius of Earth in kilometers (simplified sphere model)
+        /// - Note: For precise calculations, use `radius` (WGS84 equatorial radius)
+        public static let meanRadius: Double = 6371.0
+        
         /// Number of rads earth rotates in 1 solar day
         /// - Note: Taken from "Methods of Astrondynamics, A Computer Approach (v3) " by Capt David Vallado, Department of Astronautics, U.S. Air Force Academy https://www.academia.edu/20528856/Methods_of_Astrodynamics_a_Computer_Approach
         public static let radsPerDay: Double = 6.3003809866574
     }
     
-    /// Time-related constants
+    /// Time conversion constants
     public struct Time {
         private init() {}
         
-        /// Number of seconds in one solar day
+        /// Seconds in one solar day
         public static let secondsPerDay: Double = 86400.0
         
         /// Days in one Julian century
         public static let daysPerJulianCentury: Double = 36525.0
+        
+        /// Seconds in one hour
+        public static let secondsPerHour: Double = 3600.0
+        
+        /// Seconds in one minute
+        public static let secondsPerMinute: Double = 60.0
     }
     
     /// Julian date reference points
@@ -53,7 +63,7 @@ public struct PhysicalConstants {
         public static let j2000Epoch: Double = 2451545.0
     }
     
-    /// Calculation-related constants
+    /// Constants for iterative calculations
     public struct Calculation {
         private init() {}
         
@@ -64,7 +74,7 @@ public struct PhysicalConstants {
         public static let maxIterations: Int = 500
     }
     
-    /// Angle-related constants
+    /// Angular measurement constants
     public struct Angle {
         private init() {}
         
