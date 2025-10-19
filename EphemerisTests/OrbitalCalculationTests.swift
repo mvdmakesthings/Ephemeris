@@ -68,7 +68,7 @@ class OrbitalCalculationTests: XCTestCase {
     
     func testTrueAnomalyCalculationFromMean() throws {
         // Test that trueAnomaly is properly calculated from mean anomaly
-        let tle = MockTLEs.objectAtPerigee()
+        let tle = try MockTLEs.objectAtPerigee()
         let orbit = Orbit(from: tle)
         
         // For an object at perigee with e=0.5 and M=0, true anomaly should be 0
