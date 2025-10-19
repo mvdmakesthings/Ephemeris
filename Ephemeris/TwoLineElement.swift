@@ -112,7 +112,7 @@ public struct TwoLineElement {
         guard let epochYearInt = Int(epochYearString) else {
             throw TLEParsingError.invalidNumber(field: "epochYear", value: epochYearString)
         }
-        // Satillites weren't lauched until 1957 (Sputnik 1) so this will work... until 2057 when we will need
+        // Satellites weren't launched until 1957 (Sputnik 1) so this will work... until 2057 when we will need
         // to figure out something else. 💩 Y2K for TwoLineElement standards!
         self.epochYear = (epochYearInt < 57) ? 2000 + epochYearInt : 1900 + epochYearInt
 

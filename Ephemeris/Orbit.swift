@@ -28,8 +28,8 @@ public struct Orbit {
     /// Denoted by ( i ) and is in degrees 0–180°
     public let inclination: Degrees
     
-    /// The "swivel" of the orbital plane in degrees in reference to the vernal equinox to the 'node' that cooresponds
-    /// with the object passing the equator in a northernly direction.
+    /// The "swivel" of the orbital plane in degrees in reference to the vernal equinox to the 'node' that corresponds
+    /// with the object passing the equator in a northerly direction.
     /// Denoted by ( Ω ) in degrees
     public let rightAscensionOfAscendingNode: Degrees
     
@@ -196,7 +196,7 @@ extension Orbit {
         return eccentricAnomaly.inDegrees()
     }
     
-    /// The true angle relative to parigee and the position of the object along it's orbit path
+    /// The true angle relative to perigee and the position of the object along its orbit path
     /// 
     static func calculateTrueAnomaly(eccentricity: Double, eccentricAnomaly: Degrees) throws -> Degrees {
         if eccentricity >= 1 { throw CalculationError.reachedSingularity }
