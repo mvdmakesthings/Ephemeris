@@ -22,9 +22,8 @@ By participating in this project, you agree to maintain a respectful and inclusi
 
 ### Prerequisites
 
-- Xcode 11.0 or later
-- Swift 5.0 or later
-- macOS for development
+- Swift 5.5 or later
+- macOS for development (or Linux for cross-platform development)
 - Git
 
 ### Finding Issues to Work On
@@ -43,21 +42,25 @@ git clone https://github.com/mvdmakesthings/Ephemeris.git
 cd Ephemeris
 ```
 
-### Using Xcode
-
-1. Open `Ephemeris.xcodeproj` in Xcode
-2. Select the Ephemeris scheme
-3. Build the project (⌘+B)
-4. Run tests (⌘+U)
-
-### Using Swift Package Manager
+### Build and Test
 
 ```bash
 # Build the package
 swift build
 
-# Run tests (note: some tests may have compilation issues - this is a known issue)
+# Run tests
 swift test
+```
+
+### Using Xcode (Optional)
+
+You can also open the package in Xcode:
+
+```bash
+open Package.swift
+```
+
+This will open the package in Xcode where you can build (⌘+B) and run tests (⌘+U).
 ```
 
 ### Install SwiftLint
@@ -142,22 +145,12 @@ public static func calculateSemimajorAxis(meanMotion: Double) -> Double {
 
 ### Running Tests
 
-#### Xcode
 ```bash
-# Command line
-xcodebuild test \
-  -project Ephemeris.xcodeproj \
-  -scheme Ephemeris \
-  -sdk iphonesimulator \
-  -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
-
-# Or use Xcode UI (⌘+U)
-```
-
-#### Swift Package Manager
-```bash
+# Swift Package Manager
 swift test
 ```
+
+You can also run tests in Xcode by opening `Package.swift` and pressing ⌘+U.
 
 ### Test Coverage
 

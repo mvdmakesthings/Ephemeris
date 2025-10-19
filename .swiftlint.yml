@@ -4,7 +4,6 @@
 included:
   - Ephemeris
   - EphemerisTests
-  - EphemerisDemo
 
 excluded:
   - Pods

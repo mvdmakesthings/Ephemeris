@@ -10,8 +10,8 @@ on:
     branches: [ "master" ]
 
 jobs:
-  spm-build:
-    name: Swift Package Manager Build
+  build:
+    name: Build and Test
     runs-on: macos-latest
     
     steps:
@@ -22,29 +22,6 @@ jobs:
       run: swift --version
     - name: Build with SPM
       run: swift build -v
-      
-  xcode-build:
-    name: Xcode Build and Test
-    runs-on: macos-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    - name: Select Xcode version
-      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-    - name: List available simulators
-      run: xcrun simctl list devices available | grep iPhone
-    - name: Build framework
-      run: |
-        xcodebuild build \
-          -project Ephemeris.xcodeproj \
-          -scheme Ephemeris \
-          -sdk iphonesimulator \
-          -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
-          | xcpretty || xcodebuild build \
-          -project Ephemeris.xcodeproj \
-          -scheme Ephemeris \
-          -sdk iphonesimulator \
-          -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=latest'
       
   lint:
     name: SwiftLint
