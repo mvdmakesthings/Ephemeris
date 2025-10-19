@@ -24,7 +24,7 @@ public struct Orbit {
     
     // MARK: - Orientation of Orbit
     
-    /// The "tilt" in degrees from the vectors perpandicular to the orbital and equatorial planes
+    /// The "tilt" in degrees from the vectors perpendicular to the orbital and equatorial planes
     /// Denoted by ( i ) and is in degrees 0–180°
     public let inclination: Degrees
     

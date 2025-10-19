@@ -20,7 +20,7 @@ public protocol Orbitable {
     var eccentricity: Double { get }
     
     // MARK: - Orientation of Orbit
-    /// The "tilt" in degrees from the vectors perpandicular to the orbital and equatorial planes
+    /// The "tilt" in degrees from the vectors perpendicular to the orbital and equatorial planes
     /// Denoted by ( i ) and is in degrees 0–180°
     var inclination: Degrees { get }
     
