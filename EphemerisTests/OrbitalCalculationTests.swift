@@ -55,4 +55,68 @@ class OrbitalCalculationTests: XCTestCase {
         let expectedSecondsPerDay = 86400.0
         XCTAssertEqual(PhysicalConstants.Time.secondsPerDay, expectedSecondsPerDay, "Seconds per day should be 86400")
     }
+    
+    func testOrbitConformsToOrbitable() throws {
+        // Create an orbit from a TLE
+        let tle = try TwoLineElement(from: MockTLEs.iss)
+        let orbit = Orbit(from: tle)
+        
+        // Verify the orbit can be used as an Orbitable
+        let orbitable: Orbitable = orbit
+        
+        // Verify protocol properties are accessible
+        XCTAssertGreaterThan(orbitable.semimajorAxis, 0)
+        XCTAssertGreaterThanOrEqual(orbitable.eccentricity, 0)
+        XCTAssertLessThan(orbitable.eccentricity, 1)
+        XCTAssertGreaterThanOrEqual(orbitable.inclination, 0)
+        XCTAssertLessThanOrEqual(orbitable.inclination, 180)
+        XCTAssertGreaterThanOrEqual(orbitable.rightAscensionOfAscendingNode, 0)
+        XCTAssertLessThan(orbitable.rightAscensionOfAscendingNode, 360)
+        XCTAssertGreaterThanOrEqual(orbitable.argumentOfPerigee, 0)
+        XCTAssertLessThan(orbitable.argumentOfPerigee, 360)
+        XCTAssertGreaterThanOrEqual(orbitable.meanAnomaly, 0)
+        XCTAssertLessThan(orbitable.meanAnomaly, 360)
+        XCTAssertGreaterThan(orbitable.meanMotion, 0)
+        
+        // Most importantly, verify trueAnomaly is non-optional and accessible
+        let trueAnomaly = orbitable.trueAnomaly
+        XCTAssertGreaterThanOrEqual(trueAnomaly, 0)
+        XCTAssertLessThan(trueAnomaly, 360)
+    }
+    
+    func testTrueAnomalyAlwaysReturnsValue() throws {
+        // Create orbit from TLE
+        let tle = try TwoLineElement(from: MockTLEs.iss)
+        let orbit = Orbit(from: tle)
+        
+        // Verify trueAnomaly always returns a value (non-optional)
+        let trueAnomaly = orbit.trueAnomaly
+        
+        // Verify it's a reasonable value
+        XCTAssertGreaterThanOrEqual(trueAnomaly, 0, "True anomaly should be >= 0 degrees")
+        XCTAssertLessThan(trueAnomaly, 360, "True anomaly should be < 360 degrees")
+    }
+    
+    func testTrueAnomalyCalculationFromMean() throws {
+        // Test with different orbital scenarios
+        
+        // Scenario 1: Low eccentricity orbit (circular-ish like ISS)
+        let tle1 = try TwoLineElement(from: MockTLEs.iss)
+        let orbit1 = Orbit(from: tle1)
+        let trueAnomaly1 = orbit1.trueAnomaly
+        
+        // For low eccentricity, true anomaly should be close to mean anomaly
+        let difference1 = abs(trueAnomaly1 - orbit1.meanAnomaly)
+        XCTAssertLessThan(difference1, 10, "For low eccentricity, true anomaly should be close to mean anomaly")
+        
+        // Scenario 2: Create a TLE with higher eccentricity (elliptical orbit)
+        // Using GOES 16 which has very low eccentricity, but we'll test the calculation still works
+        let tle2 = try TwoLineElement(from: MockTLEs.goes16)
+        let orbit2 = Orbit(from: tle2)
+        let trueAnomaly2 = orbit2.trueAnomaly
+        
+        // Verify calculation returns valid values
+        XCTAssertGreaterThanOrEqual(trueAnomaly2, 0)
+        XCTAssertLessThan(trueAnomaly2, 360)
+    }
 }

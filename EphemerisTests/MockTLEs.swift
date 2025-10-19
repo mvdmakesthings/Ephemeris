@@ -40,4 +40,30 @@ struct MockTLEs {
             """
         return try TwoLineElement(from: tleString)
     }
+    
+    static func GOES16Sample() throws -> TwoLineElement {
+        let tleString =
+            """
+            GOES 16
+            1 41866U 16071A   20097.54907407 -.00000280  00000-0  00000+0 0  9992
+            2 41866   0.0162 290.6937 0000598  42.6052 343.2534  1.00271173 12977
+            """
+        return try TwoLineElement(from: tleString)
+    }
+    
+    // ISS TLE as a constant
+    static let iss =
+        """
+        ISS (ZARYA)
+        1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
+        2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
+        """
+    
+    // GOES 16 TLE as a constant
+    static let goes16 =
+        """
+        GOES 16
+        1 41866U 16071A   20097.54907407 -.00000280  00000-0  00000+0 0  9992
+        2 41866   0.0162 290.6937 0000598  42.6052 343.2534  1.00271173 12977
+        """
 }

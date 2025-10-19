@@ -8,7 +8,7 @@
 
 import Foundation
 
-public struct Orbit {
+public struct Orbit: Orbitable {
     
     // MARK: - Size of Orbit
     
@@ -42,7 +42,12 @@ public struct Orbit {
     /// The true angle between the position of the craft relative to perigee along the orbital path.
     /// Denoted as (ν or θ)
     /// Range between 0–360°
-    public var trueAnomaly: Degrees?
+    ///
+    /// This is a computed property that calculates the true anomaly from the mean anomaly.
+    /// If the calculation fails (e.g., when eccentricity >= 1), it returns the mean anomaly as a fallback.
+    public var trueAnomaly: Degrees {
+        return calculateTrueAnomalyFromMean()
+    }
     
     /// The position of the craft with respect to the mean motion.
     /// Denoted as (M)
@@ -152,6 +157,27 @@ extension Orbit {
         let adjustedMeanAnomalyForJulianDate = meanAnomalyForJulianDate - PhysicalConstants.Angle.degreesPerCircle * fullRevolutions
         
         return adjustedMeanAnomalyForJulianDate
+    }
+    
+    /// Calculates the true anomaly from the mean anomaly.
+    ///
+    /// This method uses the eccentric anomaly as an intermediate step:
+    /// 1. Calculate eccentric anomaly from mean anomaly
+    /// 2. Calculate true anomaly from eccentric anomaly
+    ///
+    /// If the calculation fails (e.g., when eccentricity >= 1, which represents a singularity),
+    /// the method returns the mean anomaly as a mathematically reasonable fallback.
+    ///
+    /// - Returns: The true anomaly in degrees, or mean anomaly if calculation fails
+    private func calculateTrueAnomalyFromMean() -> Degrees {
+        do {
+            let eccentricAnomaly = Orbit.calculateEccentricAnomaly(eccentricity: self.eccentricity, meanAnomaly: self.meanAnomaly)
+            let trueAnomaly = try Orbit.calculateTrueAnomaly(eccentricity: self.eccentricity, eccentricAnomaly: eccentricAnomaly)
+            return trueAnomaly
+        } catch {
+            // If calculation fails (e.g., eccentricity >= 1), return mean anomaly as fallback
+            return self.meanAnomaly
+        }
     }
 }
 
