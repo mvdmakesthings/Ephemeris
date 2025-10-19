@@ -26,9 +26,14 @@ class ViewController: UIViewController, MKMapViewDelegate {
         1 25338U 98030A   20118.84334876  .00000037  00000-0  34099-4 0  9995
         2 25338  98.7217 144.1403 0011283  54.5983 305.6249 14.25960903141760
         """
-        let tle = TwoLineElement(from: tleString)
-        let orbit = Orbit(from: tle)
-        self.orbit = orbit
+        do {
+            let tle = try TwoLineElement(from: tleString)
+            let orbit = Orbit(from: tle)
+            self.orbit = orbit
+        } catch {
+            print("Error parsing TLE: \(error.localizedDescription)")
+            return
+        }
         
         // Create PolyLines
         var coordinatePoints = [CLLocationCoordinate2D]()
