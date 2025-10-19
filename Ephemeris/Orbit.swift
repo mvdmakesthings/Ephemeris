@@ -137,12 +137,10 @@ public struct Orbit: Orbitable {
         let zFinal = zRaan
         
         // Geocoordinates
-        let earthsRadius = 6370.0 //km
+        let earthsRadius = PhysicalConstants.Earth.radius
         let latitude = 90.0 - acos(zFinal / sqrt(xFinal * xFinal + yFinal * yFinal + zFinal * zFinal)).inDegrees()
         let longitude = atan2(yFinal, xFinal).inDegrees()
         let altitude = orbitalRadius - earthsRadius
-
-        print("OE | Latitude: \(latitude) degrees | Longitude: \(longitude) degrees | Altitude: \(altitude)km")
 
         return (latitude, longitude, altitude)
     }
@@ -193,8 +191,8 @@ extension Orbit {
 extension Orbit {
     /// Used to describe the "size" of the orbit path which is half the distance between the perigee and apogee in km
     static func calculateSemimajorAxis(meanMotion: Double) -> Double {
-        let earthsGravitationalConstant = 398613.52 // km
-        let motionRadsPerSecond = meanMotion / 86400
+        let earthsGravitationalConstant = PhysicalConstants.Earth.µ
+        let motionRadsPerSecond = meanMotion / PhysicalConstants.Time.secondsPerDay
         let semimajorAxis = pow(earthsGravitationalConstant / (4.0 * pow(.pi, 2.0) * pow(motionRadsPerSecond, 2.0)), 1.0 / 3.0)
         return semimajorAxis // km
     }
@@ -223,11 +221,9 @@ extension Orbit {
             let f2 = 1 - eccentricity * cos(eccentricAnomaly)
             ratio = f / f2
             eccentricAnomaly = eccentricAnomaly - ratio
-            print("OE | Eccentric Anomaly | Iteration: \(iteration) | Accuracy: \(ratio) | Eccentric Anomaly: \(eccentricAnomaly.inDegrees())")
             iteration += 1
         } while (ratio > accuracy && iteration <= maxIterations)
         
-        print("OE | Eccentric Anomaly | Total Iterations: \(iteration) | Accuracy: \(ratio) | Eccentric Anomaly: \(eccentricAnomaly.inDegrees())")
         return eccentricAnomaly.inDegrees()
     }
     
@@ -237,7 +233,6 @@ extension Orbit {
         if eccentricity >= 1 { throw CalculationError.reachedSingularity }
         let E = eccentricAnomaly.inRadians()
         let trueAnomaly = (2.0 * atan2(sqrt(1 + eccentricity) * sin(E), sqrt(1 - eccentricity) * cos(E))).inDegrees()
-        print("OE | True Anomaly: \(trueAnomaly) degrees")
         return trueAnomaly
     }
 }

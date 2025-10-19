@@ -78,4 +78,20 @@ class OrbitalCalculationTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(trueAnomaly, 0.0)
         XCTAssertLessThanOrEqual(trueAnomaly, 360.0)
     }
+    
+    func testPhysicalConstantsWGS84Compliance() throws {
+        // Verify Earth's gravitational constant (µ = GM) matches WGS84 standard
+        // WGS84 value: 3.986004418 × 10^14 m^3/s^2 = 398600.4418 km^3/s^2
+        let expectedMu = 398600.4418 // km^3/s^2
+        XCTAssertEqual(PhysicalConstants.Earth.µ, expectedMu, accuracy: 0.0001, "Earth's gravitational constant should match WGS84 standard")
+        
+        // Verify Earth's radius matches WGS84 standard
+        // WGS84 equatorial radius: 6378.137 km
+        let expectedRadius = 6378.137 // km
+        XCTAssertEqual(PhysicalConstants.Earth.radius, expectedRadius, accuracy: 0.001, "Earth's radius should match WGS84 standard")
+        
+        // Verify seconds per day is correct
+        let expectedSecondsPerDay = 86400.0
+        XCTAssertEqual(PhysicalConstants.Time.secondsPerDay, expectedSecondsPerDay, "Seconds per day should be 86400")
+    }
 }

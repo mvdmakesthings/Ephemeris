@@ -47,7 +47,7 @@ extension Date {
         
         // Convert time to fraction of day (0.0 to 1.0)
         let totalSeconds = Double(hour) * 3600.0 + Double(minute) * 60.0 + Double(second) + Double(nanosecond) / 1_000_000_000.0
-        let dayFraction = totalSeconds / 86400.0
+        let dayFraction = totalSeconds / PhysicalConstants.Time.secondsPerDay
         
         // Julian Day = JDN - 0.5 (to convert from noon to midnight) + day fraction
         let julianDay = Double(jdn) - 0.5 + dayFraction
@@ -80,15 +80,15 @@ extension Date {
         
         guard let jan1 = calendar.date(from: components) else {
             // Fallback calculation if date creation fails
-            let jan1SecondsSince1970 = Double((epochYear - 1970) * 365 + (epochYear - 1969) / 4) * 86400.0
-            return 2440587.5 + jan1SecondsSince1970 / 86400.0 + epochDayFraction - 1.0
+            let jan1SecondsSince1970 = Double((epochYear - 1970) * 365 + (epochYear - 1969) / 4) * PhysicalConstants.Time.secondsPerDay
+            return 2440587.5 + jan1SecondsSince1970 / PhysicalConstants.Time.secondsPerDay + epochDayFraction - 1.0
         }
         
         // Get Julian Day for January 1st
         guard let jan1JD = julianDay(from: jan1) else {
             // Fallback calculation
             let jan1SecondsSince1970 = jan1.timeIntervalSince1970
-            return 2440587.5 + jan1SecondsSince1970 / 86400.0 + epochDayFraction - 1.0
+            return 2440587.5 + jan1SecondsSince1970 / PhysicalConstants.Time.secondsPerDay + epochDayFraction - 1.0
         }
         
         // Add the epoch day fraction (subtract 1 because day 1 is January 1st, not day 0)
