@@ -20,12 +20,12 @@ public protocol Orbitable {
     var eccentricity: Double { get }
     
     // MARK: - Orientation of Orbit
-    /// The "tilt" in degrees from the vectors perpandicular to the orbital and equatorial planes
+    /// The "tilt" in degrees from the vectors perpendicular to the orbital and equatorial planes
     /// Denoted by ( i ) and is in degrees 0–180°
     var inclination: Degrees { get }
     
-    /// The "swivel" of the orbital plane in degrees in reference to the vernal equinox to the 'node' that cooresponds
-    /// with the object passing the equator in a northernly direction.
+    /// The "swivel" of the orbital plane in degrees in reference to the vernal equinox to the 'node' that corresponds
+    /// with the object passing the equator in a northerly direction.
     /// Denoted by ( Ω ) in degrees
     var rightAscensionOfAscendingNode: Degrees { get }
     
