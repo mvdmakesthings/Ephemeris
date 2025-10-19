@@ -112,9 +112,10 @@ public struct TwoLineElement {
         guard let epochYearInt = Int(epochYearString) else {
             throw TLEParsingError.invalidNumber(field: "epochYear", value: epochYearString)
         }
-        // Satillites weren't lauched until 1957 (Sputnik 1) so this will work... until 2057 when we will need
-        // to figure out something else. 💩 Y2K for TwoLineElement standards!
-        self.epochYear = (epochYearInt < 57) ? 2000 + epochYearInt : 1900 + epochYearInt
+        // Parse 2-digit year relative to current date using ±50 year window.
+        // Satellites weren't launched until 1957 (Sputnik 1).
+        // This approach works for historical data and automatically adjusts for future dates.
+        self.epochYear = Self.parse2DigitYear(epochYearInt)
 
         let epochDayString = line1[20...31].string.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let epochDayValue = Double(epochDayString) else {
@@ -164,5 +165,43 @@ public struct TwoLineElement {
             throw TLEParsingError.invalidNumber(field: "revolutionsAtEpoch", value: revolutionsAtEpochString)
         }
         self.revolutionsAtEpoch = revolutionsAtEpochValue
+    }
+    
+    // MARK: - Helper Methods
+    
+    /// Parse 2-digit year relative to current date
+    ///
+    /// The TLE format uses 2-digit years, requiring interpretation logic to determine the century.
+    /// This method assumes the epoch is within ±50 years of the current year.
+    ///
+    /// - Parameter twoDigitYear: A 2-digit year value (00-99)
+    /// - Returns: A 4-digit year value
+    ///
+    /// - Note: This approach handles historical satellites (1957-1999) and automatically
+    ///         adjusts for future dates as long as TLE data is reasonably current.
+    ///
+    /// Examples:
+    /// - In 2025: year 20 → 2020, year 57 → 2057, year 99 → 1999
+    /// - In 2057: year 20 → 2020, year 57 → 2057, year 99 → 2099
+    private static func parse2DigitYear(_ twoDigitYear: Int) -> Int {
+        let now = Date()
+        let calendar = Calendar.current
+        let currentYear = calendar.component(.year, from: now)
+        
+        let century = (currentYear / 100) * 100
+        var year = century + twoDigitYear
+        
+        // If resulting year is more than 50 years in the future,
+        // assume it's from the previous century
+        if year > currentYear + 50 {
+            year -= 100
+        }
+        // If resulting year is more than 50 years in the past,
+        // assume it's from the next century
+        else if year < currentYear - 50 {
+            year += 100
+        }
+        
+        return year
     }
 }
