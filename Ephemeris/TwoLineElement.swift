@@ -23,6 +23,8 @@ public enum TLEParsingError: Error, LocalizedError {
     case invalidNumber(field: String, value: String)
     case missingLine(expected: Int, actual: Int)
     case invalidStringRange(field: String, range: String)
+    case invalidChecksum(line: Int, expected: Int, actual: Int)
+    case invalidEccentricity(value: Double)
     
     public var errorDescription: String? {
         switch self {
@@ -34,6 +36,10 @@ public enum TLEParsingError: Error, LocalizedError {
             return "Invalid TLE: expected \(expected) lines but got \(actual)"
         case .invalidStringRange(let field, let range):
             return "Invalid string range for field '\(field)': \(range)"
+        case .invalidChecksum(let line, let expected, let actual):
+            return "Invalid checksum for line \(line): expected \(expected) but got \(actual)"
+        case .invalidEccentricity(let value):
+            return "Invalid eccentricity: \(value) must be less than 1.0"
         }
     }
 }
@@ -57,6 +63,15 @@ public struct TwoLineElement {
     
     /// Epoch Day as Julian Day fraction
     var epochDay: Double
+    
+    /// First derivative of mean motion (revolutions/day²)
+    var meanMotionFirstDerivative: Double
+    
+    /// Second derivative of mean motion (revolutions/day³)
+    var meanMotionSecondDerivative: Double
+    
+    /// BSTAR drag term (1/earth radii)
+    var bstarDragTerm: Double
     
     // MARK: - Line 2
     /// Orbit Inclination ( i )
@@ -92,6 +107,10 @@ public struct TwoLineElement {
         guard line2.count >= 69 else {
             throw TLEParsingError.invalidFormat("Line 2 is too short (expected at least 69 characters)")
         }
+        
+        // Validate checksums
+        try Self.validateChecksum(line: line1, lineNumber: 1)
+        try Self.validateChecksum(line: line2, lineNumber: 2)
                 
         // Line 0 - Satellite name (can be any length, padded or truncated to fit)
         self.name = line0.count >= 25 ? line0[0...24].string : line0
@@ -123,6 +142,27 @@ public struct TwoLineElement {
         }
         self.epochDay = epochDayValue
         
+        // Parse mean motion first derivative (can be negative)
+        let meanMotionFirstDerivativeString = line1[33...42].string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let meanMotionFirstDerivativeValue = Double(meanMotionFirstDerivativeString) else {
+            throw TLEParsingError.invalidNumber(field: "meanMotionFirstDerivative", value: meanMotionFirstDerivativeString)
+        }
+        self.meanMotionFirstDerivative = meanMotionFirstDerivativeValue
+        
+        // Parse mean motion second derivative (scientific notation with assumed decimal)
+        let meanMotionSecondDerivativeString = line1[44...51].string.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.meanMotionSecondDerivative = try Self.parseScientificNotation(
+            meanMotionSecondDerivativeString,
+            fieldName: "meanMotionSecondDerivative"
+        )
+        
+        // Parse BSTAR drag term (scientific notation with assumed decimal)
+        let bstarString = line1[53...60].string.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.bstarDragTerm = try Self.parseScientificNotation(
+            bstarString,
+            fieldName: "bstarDragTerm"
+        )
+        
         // Line 2
         let inclinationString = line2[8...15].string.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let inclinationValue = Degrees(inclinationString) else {
@@ -139,6 +179,10 @@ public struct TwoLineElement {
         let eccentricityString = line2[26...32].string.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let eccentricityValue = Degrees("0.\(eccentricityString)") else {
             throw TLEParsingError.invalidNumber(field: "eccentricity", value: eccentricityString)
+        }
+        // Validate eccentricity is less than 1.0
+        guard eccentricityValue < 1.0 else {
+            throw TLEParsingError.invalidEccentricity(value: eccentricityValue)
         }
         self.eccentricity = eccentricityValue
         
@@ -203,5 +247,125 @@ public struct TwoLineElement {
         }
         
         return year
+    }
+    
+    /// Validate the modulo-10 checksum for a TLE line
+    ///
+    /// The checksum is computed by summing all numeric digits (0-9) in the line,
+    /// treating minus signs (-) as having a value of 1, and taking modulo 10.
+    /// The last character of the line should equal this computed checksum.
+    ///
+    /// - Parameters:
+    ///   - line: The TLE line to validate (either line 1 or line 2)
+    ///   - lineNumber: The line number (1 or 2) for error reporting
+    /// - Throws: TLEParsingError.invalidChecksum if checksum validation fails
+    private static func validateChecksum(line: String, lineNumber: Int) throws {
+        guard line.count >= 69 else {
+            throw TLEParsingError.invalidFormat("Line \(lineNumber) is too short for checksum validation")
+        }
+        
+        // The checksum is the last character (column 69, index 68)
+        let checksumChar = line[68...68].string
+        guard let expectedChecksum = Int(checksumChar) else {
+            throw TLEParsingError.invalidFormat("Line \(lineNumber) checksum character is not a digit")
+        }
+        
+        // Calculate checksum from columns 1-68
+        var sum = 0
+        for i in 0..<68 {
+            let char = line[i...i].string
+            if let digit = Int(char) {
+                sum += digit
+            } else if char == "-" {
+                sum += 1
+            }
+            // All other characters (letters, spaces, +, .) are ignored
+        }
+        
+        let calculatedChecksum = sum % 10
+        
+        guard calculatedChecksum == expectedChecksum else {
+            throw TLEParsingError.invalidChecksum(
+                line: lineNumber,
+                expected: expectedChecksum,
+                actual: calculatedChecksum
+            )
+        }
+    }
+    
+    /// Parse a number in TLE scientific notation format
+    ///
+    /// TLE format uses a compact scientific notation with an assumed decimal point:
+    /// - Format: ±XXXXX±Y where the decimal point is assumed after the sign
+    /// - Example: "12345-3" → +0.12345 × 10⁻³ = 0.00012345
+    /// - Example: "-12345-3" → -0.12345 × 10⁻³ = -0.00012345
+    /// - Example: "00000-0" → 0.0
+    ///
+    /// - Parameters:
+    ///   - string: The string to parse in TLE scientific notation
+    ///   - fieldName: The field name for error reporting
+    /// - Returns: The parsed double value
+    /// - Throws: TLEParsingError.invalidNumber if parsing fails
+    private static func parseScientificNotation(_ string: String, fieldName: String) throws -> Double {
+        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Handle empty or all-zero cases
+        if trimmed.isEmpty {
+            return 0.0
+        }
+        
+        // Handle the special case of all spaces or "00000-0" or "00000+0"
+        if trimmed.allSatisfy({ $0 == "0" || $0 == " " || $0 == "-" || $0 == "+" }) {
+            return 0.0
+        }
+        
+        // Split on the exponent sign (look for last + or - that's not at the start)
+        var mantissaSign = 1.0
+        var mantissaString = ""
+        var exponentString = ""
+        
+        // Find the position of the exponent sign (last + or - that's not at position 0)
+        var exponentSignIndex: Int?
+        for i in 1..<trimmed.count {
+            let char = trimmed[i...i].string
+            if char == "+" || char == "-" {
+                exponentSignIndex = i
+            }
+        }
+        
+        if let expIndex = exponentSignIndex {
+            // Extract mantissa and exponent parts
+            mantissaString = trimmed[0..<expIndex].string
+            exponentString = trimmed[expIndex...].string
+            
+            // Handle the sign of the mantissa (first character)
+            if mantissaString.hasPrefix("-") {
+                mantissaSign = -1.0
+                mantissaString = String(mantissaString.dropFirst())
+            } else if mantissaString.hasPrefix("+") {
+                mantissaString = String(mantissaString.dropFirst())
+            } else if mantissaString.hasPrefix(" ") {
+                mantissaString = mantissaString.trimmingCharacters(in: .whitespaces)
+            }
+            
+            // Parse mantissa (assumed decimal point at the beginning)
+            guard let mantissaValue = Double("0." + mantissaString) else {
+                throw TLEParsingError.invalidNumber(field: fieldName, value: string)
+            }
+            
+            // Parse exponent
+            guard let exponentValue = Int(exponentString) else {
+                throw TLEParsingError.invalidNumber(field: fieldName, value: string)
+            }
+            
+            // Compute the final value: ±0.mantissa × 10^exponent
+            return mantissaSign * mantissaValue * pow(10.0, Double(exponentValue))
+        } else {
+            // No exponent sign found, try parsing as a regular number
+            guard let value = Double(trimmed) else {
+                throw TLEParsingError.invalidNumber(field: fieldName, value: string)
+            }
+            return value
+        }
     }
 }
