@@ -471,7 +471,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
             $0.it("validates normal eccentricity values") {
                 // Test valid eccentricity (less than 1.0)
                 let tle = try MockTLEs.ISSSample()
-                _ = try expect(tle.eccentricity < 1.0)
+                _ = expect(tle.eccentricity < 1.0)
                 _ = try expect(abs(tle.eccentricity - 0.0003880) < 1e-7)
             }
             
@@ -487,7 +487,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     """
                 let tle = try TwoLineElement(from: tleString)
                 _ = try expect(abs(tle.eccentricity - 0.9000000) < 1e-7)
-                _ = try expect(tle.eccentricity < 1.0)
+                _ = expect(tle.eccentricity < 1.0)
             }
             
             $0.it("validates maximum eccentricity values") {
@@ -505,7 +505,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                 // This should succeed as 0.9999999 < 1.0
                 let tle = try? TwoLineElement(from: tleString)
                 _ = try expect(tle != nil)
-                _ = try expect(tle!.eccentricity < 1.0)
+                _ = expect(tle!.eccentricity < 1.0)
             }
         }
         

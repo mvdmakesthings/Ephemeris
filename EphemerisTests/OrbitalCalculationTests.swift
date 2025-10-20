@@ -43,8 +43,8 @@ let orbitalCalculationTests: ((ContextType) -> Void) = {
             
             // Test that trueAnomaly is accessible and non-optional through protocol
             let trueAnomalyValue = orbitable.trueAnomaly
-            _ = try expect(trueAnomalyValue >= 0.0)
-            _ = try expect(trueAnomalyValue <= 360.0)
+            _ = expect(trueAnomalyValue >= 0.0)
+            _ = expect(trueAnomalyValue <= 360.0)
         }
         
         $0.it("true anomaly always returns a value") {
@@ -54,8 +54,8 @@ let orbitalCalculationTests: ((ContextType) -> Void) = {
             
             // Access trueAnomaly - should never be nil
             let trueAnomaly = orbit.trueAnomaly
-            _ = try expect(trueAnomaly >= 0.0)
-            _ = try expect(trueAnomaly <= 360.0)
+            _ = expect(trueAnomaly >= 0.0)
+            _ = expect(trueAnomaly <= 360.0)
         }
         
         $0.it("calculates true anomaly from mean anomaly") {
@@ -66,8 +66,8 @@ let orbitalCalculationTests: ((ContextType) -> Void) = {
             // For an object at perigee with e=0.5 and M=0, true anomaly should be 0
             let trueAnomaly = orbit.trueAnomaly
             // The value should be computed and be a valid angle
-            _ = try expect(trueAnomaly >= 0.0)
-            _ = try expect(trueAnomaly <= 360.0)
+            _ = expect(trueAnomaly >= 0.0)
+            _ = expect(trueAnomaly <= 360.0)
         }
         
         $0.it("validates WGS84 physical constants") {

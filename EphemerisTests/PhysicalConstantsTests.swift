@@ -40,7 +40,7 @@ let physicalConstantsTests: ((ContextType) -> Void) = {
                 _ = try expect(abs(PhysicalConstants.Earth.radsPerDay - 6.3003809866574) < 0.0000001)
                 
                 // Should be slightly more than 2π (difference between solar and sidereal day)
-                _ = try expect(PhysicalConstants.Earth.radsPerDay > 2.0 * .pi)
+                _ = expect(PhysicalConstants.Earth.radsPerDay > 2.0 * .pi)
                 _ = try expect(abs(PhysicalConstants.Earth.radsPerDay - 2.0 * .pi) < 0.02)
             }
         }
@@ -90,7 +90,7 @@ let physicalConstantsTests: ((ContextType) -> Void) = {
             
             $0.it("has correct max iterations") {
                 _ = expect(PhysicalConstants.Calculation.maxIterations == 500)
-                _ = try expect(PhysicalConstants.Calculation.maxIterations > 0)
+                _ = expect(PhysicalConstants.Calculation.maxIterations > 0)
             }
         }
         

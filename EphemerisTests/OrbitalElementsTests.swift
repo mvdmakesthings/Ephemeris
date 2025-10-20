@@ -39,8 +39,8 @@ let orbitalElementsTests: ((ContextType) -> Void) = {
             // Test that function returns valid angles (0-360°)
             let eccentricAnomaly: Degrees = 45.0
             let trueAnomaly = try Orbit.calculateTrueAnomaly(eccentricity: eccentricity, eccentricAnomaly: eccentricAnomaly)
-            _ = try expect(trueAnomaly >= 0.0)
-            _ = try expect(trueAnomaly <= 360.0)
+            _ = expect(trueAnomaly >= 0.0)
+            _ = expect(trueAnomaly <= 360.0)
         }
         
         $0.it("initializes orbit from TLE") {
@@ -49,11 +49,11 @@ let orbitalElementsTests: ((ContextType) -> Void) = {
             let orbit = Orbit(from: tle)
             
             // Verify basic orbital elements are set
-            _ = try expect(orbit.semimajorAxis > 0)
-            _ = try expect(orbit.eccentricity >= 0)
-            _ = try expect(orbit.eccentricity <= 1)
-            _ = try expect(orbit.inclination >= 0)
-            _ = try expect(orbit.inclination <= 180)
+            _ = expect(orbit.semimajorAxis > 0)
+            _ = expect(orbit.eccentricity >= 0)
+            _ = expect(orbit.eccentricity <= 1)
+            _ = expect(orbit.inclination >= 0)
+            _ = expect(orbit.inclination <= 180)
         }
     }
 }
