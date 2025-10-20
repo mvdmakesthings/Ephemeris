@@ -1,4 +1,4 @@
-// swift-tools-version:6.0
+// swift-tools-version:5.9
 import PackageDescription
 
 let package = Package(
@@ -11,19 +11,26 @@ let package = Package(
         .library(
             name: "Ephemeris",
             targets: ["Ephemeris"]
+        ),
+        .executable(
+            name: "EphemerisTests",
+            targets: ["EphemerisTests"]
         )
     ],
     dependencies: [
-        // Add package dependencies here, if any.
+        .package(url: "https://github.com/kylef/Spectre.git", from: "0.10.1")
     ],
     targets: [
         .target(
             name: "Ephemeris",
             path: "Ephemeris"
         ),
-        .testTarget(
+        .executableTarget(
             name: "EphemerisTests",
-            dependencies: ["Ephemeris"],
+            dependencies: [
+                "Ephemeris",
+                .product(name: "Spectre", package: "Spectre")
+            ],
             path: "EphemerisTests"
         )
     ]
