@@ -19,6 +19,39 @@ let package = Package(
     targets: [
         .target(
             name: "Ephemeris",
+            path: "Ephemeris",
+            exclude: ["Info.plist", "Ephemeris.h"]
+        ),
+        .testTarget(
+            name: "EphemerisTests",
+            dependencies: ["Ephemeris"],
+            path: "EphemerisTests",
+            exclude: ["Info.plist"]
+        )
+    ]
+)
+
+// swift-tools-version:6.0
+import PackageDescription
+
+let package = Package(
+    name: "Ephemeris",
+    platforms: [
+        .iOS(.v16),
+        .macOS(.v13)
+    ],
+    products: [
+        .library(
+            name: "Ephemeris",
+            targets: ["Ephemeris"]
+        )
+    ],
+    dependencies: [
+        // Add package dependencies here, if any.
+    ],
+    targets: [
+        .target(
+            name: "Ephemeris",
             path: "Ephemeris"
         ),
         .testTarget(
