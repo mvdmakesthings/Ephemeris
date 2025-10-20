@@ -1,57 +1,108 @@
-Ephemeris: Swift Satellite Tracking Framework
+# Ephemeris
 
-PURPOSE AND SCOPE
+> Pure Swift framework for satellite orbital mechanics and tracking. Parses NORAD Two-Line Element (TLE) data and calculates orbital positions, velocities, and observer-relative parameters using Keplerian orbital mechanics. Implements coordinate transformations, pass prediction, and visualization support for Earth-orbiting satellites.
 
-Ephemeris is a pure Swift framework for satellite orbital mechanics and tracking. It enables developers to parse Two-Line Element (TLE) satellite data and calculate orbital positions, velocities, and other astrodynamics parameters for Earth-orbiting satellites. The framework implements Keplerian orbital mechanics with academic reference accuracy, making it suitable for educational tools, hobby projects, and non-critical astronomy applications.
+## Overview
 
-CORE COMPONENTS
+Ephemeris enables developers to track satellites by parsing TLE data and computing orbital positions at any given time. The framework provides position calculations (latitude, longitude, altitude), observer-relative coordinates (azimuth, elevation, range), satellite pass predictions (AOS/LOS/max elevation), and visualization paths (ground tracks and sky tracks).
 
-TwoLineElement: Parses and validates NORAD Two-Line Element format satellite data. This is the standard format used to distribute orbital parameters for satellites tracked by NORAD and Space Force. The parser handles the complex fixed-width format, performs checksum validation, and extracts all orbital elements including epoch time, mean motion, eccentricity, inclination, right ascension of ascending node (RAAN), argument of perigee, and mean anomaly.
+**Language**: Swift 6.0
+**Platforms**: iOS 16+, macOS 13+
+**Dependencies**: None (pure Swift implementation)
+**Geodetic Standard**: WGS-84
 
-Orbit: Represents a satellite's orbital path using the six classical Keplerian orbital elements. This struct provides methods to calculate satellite positions (latitude, longitude, altitude) at any given time. It implements iterative algorithms for solving Kepler's equation to find eccentric anomaly and true anomaly. The Orbit type conforms to the Orbitable protocol, which defines the interface for types that represent orbital element data.
+## Core Types
 
-Orbitable: Protocol that defines the requirements for types containing orbital element data. Any type conforming to this protocol must provide the six classical orbital elements: semi-major axis, eccentricity, inclination, right ascension of ascending node, argument of perigee, and mean anomaly.
+**TwoLineElement**: Parses and validates NORAD Two-Line Element format satellite data with checksum verification. Extracts orbital elements including epoch time, mean motion, eccentricity, inclination, RAAN, argument of perigee, and mean anomaly.
 
-DESIGN PHILOSOPHY
+**Orbit**: Represents satellite orbital path using six classical Keplerian elements. Calculates positions by solving Kepler's equation using Newton-Raphson iteration. Conforms to `Orbitable` protocol.
 
-The framework emphasizes correctness, readability, and maintainability over raw performance. All calculations are based on peer-reviewed academic papers and NASA documentation, with source references included in code comments. The implementation is pure Swift with no dependencies on external C/C++ libraries or command-line tools, making it easy to integrate into Swift projects and Swift Package Manager workflows.
+**Observer**: Represents ground station or observer location on Earth with latitude, longitude, and altitude (WGS-84). Used for topocentric calculations and pass predictions.
 
-Physical constants use WGS84 values for Earth's radius and gravitational parameter, ensuring accuracy for modern satellite tracking. The codebase follows Apple's Swift API Design Guidelines and includes comprehensive inline documentation.
+**Topocentric**: Observer-relative satellite coordinates including azimuth (degrees), elevation (degrees), range (km), and range rate (km/s). Used for antenna pointing and visibility determination.
 
-INTENDED USE CASES
+**PassWindow**: Complete satellite pass event with acquisition of signal (AOS), maximum elevation point, and loss of signal (LOS). Includes calculated duration.
 
-Educational astronomy tools: Teaching orbital mechanics concepts, demonstrating satellite motion, and visualizing orbital parameters.
+**CoordinateTransforms**: Utility for coordinate system conversions: ECI ↔ ECEF ↔ Geodetic ↔ ENU ↔ Horizontal. Includes atmospheric refraction correction.
 
-Ground station planning: Hobbyist satellite tracking applications that predict when satellites will be visible from specific locations on Earth.
+## Key Features
 
-Augmented reality sky visualization: AR apps that overlay satellite positions on camera views of the sky in real-time.
+- TLE parsing with 2-digit year interpretation (±50 year window) and checksum validation
+- Orbital position calculation using Keplerian elements
+- True/eccentric anomaly calculation from mean anomaly
+- Semi-major axis derivation from mean motion (Kepler's Third Law)
+- Topocentric coordinate calculations (azimuth, elevation, range, range rate)
+- Satellite pass prediction with AOS/LOS bisection refinement (1-second accuracy)
+- Maximum elevation finding using golden-section search
+- Ground track generation (sub-satellite point path over Earth)
+- Sky track generation (path across observer's sky in azimuth/elevation)
+- Atmospheric refraction correction using Bennett formula
+- Greenwich Mean Sidereal Time (GMST) calculations for Earth rotation
+- Julian Day Number conversions and J2000 epoch transformations
 
-AI-integrated astronomy assistants: Chatbots and AI tools that answer questions about satellite positions, orbital characteristics, and pass predictions.
+## Physical Constants
 
-Amateur radio satellite tracking: Applications for ham radio operators tracking communication satellites.
+Uses WGS-84 values:
+- Earth gravitational parameter (µ): 398,600.4418 km³/s²
+- Earth mean radius: 6,371.0 km
+- Earth equatorial radius: 6,378.137 km
+- Earth polar radius: 6,356.752 km
 
-FUTURE ROADMAP
+## Limitations
 
-The framework is under active development with planned features including:
+**Not suitable for:**
+- Mission-critical operations: Does not implement SGP4/SDP4 atmospheric drag models. Accuracy degrades beyond several days from TLE epoch.
+- Deep-space trajectories: Only Earth-orbiting satellites supported. No interplanetary, lunar, or non-Earth-centric orbits.
+- Specialized orbit types: Advanced perturbation models (lunar/solar perturbations, station-keeping) not implemented.
+- Professional operations: Educational/hobbyist software without formal verification or certification.
 
-Observer: A type representing a ground station or observer location on Earth, with methods to calculate azimuth, elevation, range, and other observer-relative parameters for satellites.
+**Propagation method:** Keplerian orbital mechanics (two-body problem). Does not account for atmospheric drag, solar radiation pressure, or gravitational perturbations from Sun/Moon.
 
-PassWindow: Prediction of satellite pass times including acquisition of signal (AOS), loss of signal (LOS), maximum elevation, and visibility duration for a given observer location.
+## Use Cases
 
-Visibility estimation: Determining whether a satellite is sunlit and visible to ground observers based on sun position and shadow geometry.
+- Educational astronomy tools and orbital mechanics demonstrations
+- Ground station planning for hobbyist satellite tracking
+- Augmented reality sky visualization with real-time satellite overlays
+- Amateur radio satellite tracking applications
+- AI astronomy assistants answering satellite position queries
 
-SwiftUI sample apps: Example applications demonstrating framework usage in iOS and macOS apps with interactive visualizations.
+## Documentation
 
-NOT INTENDED FOR
+- [Introduction to Orbital Elements](docs/Introduction-to-Orbital-Elements.md): Comprehensive guide to Keplerian orbital elements, TLE format explanation, mean vs. eccentric vs. true anomaly, and practical prediction accuracy considerations
+- [Observer Geometry](docs/observer_geometry.md): Coordinate transformation theory, topocentric calculations, pass prediction algorithms, and observer geometry fundamentals
+- [Visualization](docs/visualization.md): Ground track mathematics (sub-satellite point), sky track calculations (azimuth/elevation paths), and LaTeX formulas for visualization
 
-Ephemeris is NOT suitable for:
+## Reference
 
-Real-time mission-critical operations: The framework does not implement high-precision propagators like SGP4/SDP4 that account for atmospheric drag perturbations, so accuracy degrades significantly beyond a few days from the TLE epoch.
+- [API Reference](docs/API-Reference.md): Complete API documentation with type signatures and method descriptions for all public types
+- [README](README.md): Quick start guide, installation instructions, usage examples, and TLE data sources
 
-Deep-space trajectories: Only Earth-orbiting satellites are supported. The framework does not handle interplanetary trajectories, lunar orbits, or other non-Earth-centric scenarios.
+## Testing
 
-Highly specialized orbit types: Unusual orbit types requiring advanced perturbation models (like station-keeping maneuvers, highly elliptical orbits with significant lunar/solar perturbations) are not accurately modeled.
+Framework includes comprehensive test suite (1,950 lines) using Spectre BDD framework:
+- TLE parsing and validation tests
+- Orbital element calculation tests
+- Position and pass prediction tests
+- Coordinate transformation tests
+- Ground track and sky track generation tests
 
-Professional satellite operations: Use dedicated astrodynamics libraries like GMAT, Orekit, or AGI's Systems Tool Kit for operational satellite mission planning and analysis.
+Run tests: `swift run EphemerisTests`
 
-Military or regulated applications: This is educational/hobbyist software without formal verification, validation, or certification processes.
+## Package Information
+
+Swift Package Manager compatible. Add to Package.swift:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/mvdmakesthings/Ephemeris.git", from: "1.0.0")
+]
+```
+
+## Implementation Notes
+
+- Pure Swift with no C/C++ dependencies
+- All calculations based on peer-reviewed academic papers and NASA documentation
+- Source references included in code comments
+- Follows Apple Swift API Design Guidelines
+- Comprehensive inline documentation
+- SwiftLint enforced for code style consistency
