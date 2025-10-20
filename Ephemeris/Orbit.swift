@@ -150,6 +150,62 @@ public struct Orbit: Orbitable {
         }
     }
 
+    /// Calculates the ECI (Earth-Centered Inertial) position and velocity vectors.
+    ///
+    /// This internal method computes the satellite's state vector in the ECI frame,
+    /// which is needed for topocentric calculations and other advanced operations.
+    ///
+    /// - Parameter date: The date and time for which to calculate the state vector
+    /// - Returns: Tuple of (position vector in km, velocity vector in km/s) in ECI frame
+    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    ///
+    /// - Note: Internal method used by calculatePosition and topocentric calculations
+    func calculateECIStateVector(at date: Date) throws -> (position: Vector3D, velocity: Vector3D) {
+        let julianDate = Date.julianDay(from: date)!
+        
+        // Calculate 3 anomalies
+        let currentMeanAnomaly = self.meanAnomalyForJulianDate(julianDate: julianDate)
+        let currentEccentricAnomaly = Orbit.calculateEccentricAnomaly(eccentricity: self.eccentricity, meanAnomaly: currentMeanAnomaly)
+        let currentTrueAnomaly = try Orbit.calculateTrueAnomaly(eccentricity: self.eccentricity, eccentricAnomaly: currentEccentricAnomaly)
+        
+        // Calculate the radius and position in the orbital plane
+        let orbitalRadius = self.semimajorAxis * (1.0 - self.eccentricity * cos(currentEccentricAnomaly.inRadians()))
+        
+        // Position in orbital plane
+        let x_orb = orbitalRadius * cos(currentTrueAnomaly.inRadians())
+        let y_orb = orbitalRadius * sin(currentTrueAnomaly.inRadians())
+        
+        // Velocity in orbital plane (using vis-viva equation)
+        let µ = PhysicalConstants.Earth.µ
+        let h = sqrt(µ * self.semimajorAxis * (1.0 - self.eccentricity * self.eccentricity)) // Specific angular momentum
+        let vx_orb = -µ / h * sin(currentTrueAnomaly.inRadians())
+        let vy_orb = µ / h * (self.eccentricity + cos(currentTrueAnomaly.inRadians()))
+        
+        // Transform from orbital plane to ECI frame
+        let argOfPerigeeRad = self.argumentOfPerigee.inRadians()
+        let inclinationRad = self.inclination.inRadians()
+        let raanRad = self.rightAscensionOfAscendingNode.inRadians()
+        
+        let cosω = cos(argOfPerigeeRad)
+        let sinω = sin(argOfPerigeeRad)
+        let cosΩ = cos(raanRad)
+        let sinΩ = sin(raanRad)
+        let cosi = cos(inclinationRad)
+        let sini = sin(inclinationRad)
+        
+        // Position transformation to ECI
+        let x_eci = (cosΩ * cosω - sinΩ * sinω * cosi) * x_orb + (-cosΩ * sinω - sinΩ * cosω * cosi) * y_orb
+        let y_eci = (sinΩ * cosω + cosΩ * sinω * cosi) * x_orb + (-sinΩ * sinω + cosΩ * cosω * cosi) * y_orb
+        let z_eci = (sinω * sini) * x_orb + (cosω * sini) * y_orb
+        
+        // Velocity transformation to ECI
+        let vx_eci = (cosΩ * cosω - sinΩ * sinω * cosi) * vx_orb + (-cosΩ * sinω - sinΩ * cosω * cosi) * vy_orb
+        let vy_eci = (sinΩ * cosω + cosΩ * sinω * cosi) * vx_orb + (-sinΩ * sinω + cosΩ * cosω * cosi) * vy_orb
+        let vz_eci = (sinω * sini) * vx_orb + (cosω * sini) * vy_orb
+        
+        return (Vector3D(x: x_eci, y: y_eci, z: z_eci), Vector3D(x: vx_eci, y: vy_eci, z: vz_eci))
+    }
+    
     /// Calculates the geographic position of the satellite at a specific time.
     ///
     /// This method performs a complete orbital propagation from the epoch time to the
@@ -225,6 +281,76 @@ public struct Orbit: Orbitable {
         let altitude = orbitalRadius - earthsRadius
 
         return Position(latitude: latitude, longitude: longitude, altitude: altitude)
+    }
+}
+
+// MARK: - Observer-Based Calculations
+
+extension Orbit {
+    /// Calculates topocentric (observer-relative) coordinates for the satellite.
+    ///
+    /// This method computes the satellite's position as seen from a specific observer
+    /// location on Earth, returning azimuth, elevation, range, and range rate.
+    ///
+    /// - Parameters:
+    ///   - date: The date and time for the calculation
+    ///   - observer: The observer's location on Earth
+    ///   - applyRefraction: Whether to apply atmospheric refraction correction (default: false)
+    /// - Returns: Topocentric coordinates (azimuth, elevation, range, range rate)
+    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    ///
+    /// ## Example
+    /// ```swift
+    /// let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
+    /// let topo = try orbit.topocentric(at: Date(), for: observer)
+    /// print("Az: \(topo.azimuthDeg)°, El: \(topo.elevationDeg)°")
+    /// ```
+    ///
+    /// - Note: Coordinate transformations follow Vallado, "Fundamentals of Astrodynamics"
+    public func topocentric(at date: Date, for observer: Observer, applyRefraction: Bool = false) throws -> Topocentric {
+        // Get Julian date and GMST
+        let julianDate = Date.julianDay(from: date)!
+        let gmst = Date.greenwichSideRealTime(from: julianDate)
+        
+        // Calculate satellite position and velocity in ECI frame
+        let (eciPosition, eciVelocity) = try calculateECIStateVector(at: date)
+        
+        // Transform satellite position and velocity to ECEF
+        let satECEF = CoordinateTransforms.eciToECEF(eciPosition: eciPosition, gmst: gmst)
+        let satVelECEF = CoordinateTransforms.eciVelocityToECEF(eciPosition: eciPosition, eciVelocity: eciVelocity, gmst: gmst)
+        
+        // Calculate observer position in ECEF
+        let obsECEF = CoordinateTransforms.geodeticToECEF(
+            latitudeDeg: observer.latitudeDeg,
+            longitudeDeg: observer.longitudeDeg,
+            altitudeMeters: observer.altitudeMeters
+        )
+        
+        // Transform to ENU (local observer frame)
+        let enu = CoordinateTransforms.ecefToENU(
+            ecefPosition: satECEF,
+            observerECEF: obsECEF,
+            observerLatDeg: observer.latitudeDeg,
+            observerLonDeg: observer.longitudeDeg
+        )
+        
+        // Calculate azimuth, elevation, and range
+        let (azimuth, elevation, range) = CoordinateTransforms.enuToAzEl(enu: enu)
+        
+        // Apply refraction correction if requested
+        let correctedElevation = applyRefraction ? CoordinateTransforms.applyRefraction(elevationDeg: elevation) : elevation
+        
+        // Calculate range rate (rate of change of distance)
+        // Project velocity onto the line-of-sight vector
+        let relativePos = satECEF.subtract(obsECEF)
+        let rangeRate = relativePos.dot(satVelECEF) / range
+        
+        return Topocentric(
+            azimuthDeg: azimuth,
+            elevationDeg: correctedElevation,
+            rangeKm: range,
+            rangeRateKmPerSec: rangeRate
+        )
     }
 }
 
