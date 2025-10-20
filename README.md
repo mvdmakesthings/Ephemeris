@@ -14,6 +14,7 @@ A Swift framework for satellite tracking and orbital mechanics calculations. Eph
 - [Installation](#installation)
 - [Usage](#usage)
 - [Documentation](#documentation)
+- [For AI Tools and Developers](#for-ai-tools-and-developers)
 - [CI/CD](#cicd)
 - [Contributing](#contributing)
 - [References](#references)
@@ -311,6 +312,19 @@ For typical use cases involving current satellite tracking, this limitation is n
 
 - **[Introduction to Orbital Elements](./docs/Introduction-to-Orbital-Elements.md)** - Comprehensive guide to understanding the six Keplerian orbital elements, TLE format, and ensuring prediction accuracy
 - **[API Reference](./docs/API-Reference.md)** - Complete API documentation for all public types and methods
+
+## For AI Tools and Developers
+
+For developers using AI-assisted coding tools (ChatGPT, Claude, GitHub Copilot), Ephemeris includes an **[LLM.txt](./LLM.txt)** file that provides natural-language context about the project's purpose, architecture, and design goals. This helps large language models better understand the framework when providing code suggestions, generating documentation, or answering questions about the codebase.
+
+The LLM.txt file includes:
+- High-level overview of what Ephemeris is and what it isn't
+- Descriptions of core components and their relationships
+- Design philosophy and implementation approach
+- Intended use cases and limitations
+- Future roadmap features
+
+This context-aware documentation improves the accuracy of AI-generated code and explanations when working with Ephemeris.
 
 ## CI/CD
 
