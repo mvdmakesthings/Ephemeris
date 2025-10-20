@@ -19,14 +19,12 @@ let package = Package(
     targets: [
         .target(
             name: "Ephemeris",
-            path: "Ephemeris",
-            exclude: ["Info.plist", "Ephemeris.h"]
+            path: "Ephemeris"
         ),
         .testTarget(
             name: "EphemerisTests",
             dependencies: ["Ephemeris"],
-            path: "EphemerisTests",
-            exclude: ["Info.plist"]
+            path: "EphemerisTests"
         )
     ]
 )

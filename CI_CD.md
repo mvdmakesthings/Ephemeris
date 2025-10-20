@@ -4,7 +4,7 @@ This repository uses GitHub Actions for continuous integration and deployment.
 
 ## Workflows
 
-### CI Workflow (`.github/workflows/ci.yml`)
+### CI Workflow (`.github/workflows/swift.yml`)
 
 The CI workflow runs on:
 - Push to `master` branch
@@ -16,13 +16,10 @@ The CI workflow runs on:
 - Runs on: macOS latest
 - Steps:
   - Checks out the code
-  - Sets up Xcode (latest stable version)
-  - Lists available simulators for debugging
-  - Dynamically selects an available iPhone simulator
-  - Builds the Ephemeris framework
-  - Runs all tests with code coverage enabled
-  - Generates coverage report (JSON format)
-  - Uploads coverage to Codecov (optional, requires setup)
+  - Sets up Xcode (for Swift toolchain)
+  - Displays Swift version
+  - Builds the Ephemeris package using Swift Package Manager
+  - Runs all tests with Swift Package Manager
 
 **2. Lint**
 - Runs on: macOS latest
@@ -35,21 +32,14 @@ The CI workflow runs on:
 
 ### Running Tests Locally
 
-To run the tests locally with coverage (replace with your preferred iPhone simulator):
+To run the tests locally with Swift Package Manager:
 
 ```bash
-xcodebuild test \
-  -project Ephemeris.xcodeproj \
-  -scheme Ephemeris \
-  -sdk iphonesimulator \
-  -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
-  -enableCodeCoverage YES
-```
+# Build the package
+swift build
 
-To list available simulators:
-
-```bash
-xcrun simctl list devices available | grep iPhone
+# Run tests
+swift test
 ```
 
 ### Running SwiftLint Locally
@@ -81,31 +71,12 @@ The `.swiftlint.yml` file contains the linting rules for this project. Key confi
 - **Function body length**: Warning at 60 lines, error at 100 lines
 - **Excluded paths**: Pods, .build, DerivedData, fastlane, documentation
 
-## Code Coverage
-
-Code coverage is tracked through:
-1. Xcode's built-in coverage tools (`xccov`)
-2. Optional integration with [Codecov](https://codecov.io)
-
-### Setting Up Codecov (Optional)
-
-To enable Codecov integration:
-
-1. Sign up for [Codecov](https://codecov.io) and connect your repository
-2. Add the `CODECOV_TOKEN` secret to your repository:
-   - Go to repository Settings → Secrets and variables → Actions
-   - Click "New repository secret"
-   - Name: `CODECOV_TOKEN`
-   - Value: Your Codecov token
-3. The CI workflow will automatically upload coverage reports
-
 ## Build Status
 
 Once the workflow has run, you can add badges to your README.md:
 
 ```markdown
 ![CI](https://github.com/mvdmakesthings/Ephemeris/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/mvdmakesthings/Ephemeris/branch/master/graph/badge.svg)](https://codecov.io/gh/mvdmakesthings/Ephemeris)
 ```
 
 ## Troubleshooting
@@ -125,11 +96,3 @@ If SwiftLint reports violations:
 1. Review the SwiftLint output to see what rules are violated
 2. Fix the issues manually or run `swiftlint lint --fix` for auto-fixable issues
 3. If a rule doesn't fit your project, you can disable it in `.swiftlint.yml`
-
-### Coverage Upload Issues
-
-If coverage upload fails:
-
-- This is set to `continue-on-error: true`, so it won't fail the build
-- Verify that `CODECOV_TOKEN` is set correctly in repository secrets
-- Check the Codecov dashboard for any error messages

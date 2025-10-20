@@ -21,10 +21,10 @@ class OrbitalCalculationTests: XCTestCase {
     
     func testCalculateSemimajorAxis() throws {
         // GOES 16 Satellite
-        // 42,164.8 km (26,200.0 mi)
+        // 42,164.9 km (26,200.0 mi)
         let knownSemimajorAxis = 42165.0 // km
         let meanMotion = 1.00271173 // Revolutions Per Day
-        let semimajorAxis = Orbit.calculateSemimajorAxis(meanMotion: meanMotion).rounded(.towardZero) // Rounded to the nearest km
+        let semimajorAxis = Orbit.calculateSemimajorAxis(meanMotion: meanMotion).rounded() // Rounded to the nearest km
         XCTAssertEqual(semimajorAxis, knownSemimajorAxis)
     }
     
@@ -42,7 +42,7 @@ class OrbitalCalculationTests: XCTestCase {
     
     func testOrbitConformsToOrbitable() throws {
         // Test that Orbit struct properly conforms to Orbitable protocol
-        let tle = MockTLEs.ISSSample()
+        let tle = try MockTLEs.ISSSample()
         let orbit = Orbit(from: tle)
         
         // Verify that orbit can be used as Orbitable

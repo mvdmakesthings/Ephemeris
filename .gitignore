@@ -44,6 +44,11 @@ playground.xcworkspace
 # Package.pins
 # Package.resolved
 .build/
+.swiftpm/
+
+# Swift Package Manager - Package.resolved should be tracked in version control
+# Uncomment the next line if you want to ignore it
+# Package.resolved
 
 # CocoaPods
 #

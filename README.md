@@ -37,30 +37,43 @@ A Swift framework for satellite tracking and orbital mechanics calculations. Eph
 
 ## Requirements
 
-- iOS 13.0+
-- Xcode 11.0+
-- Swift 5.0+
+- iOS 13.0+ / macOS 10.15+
+- Swift 5.5+
 
 ## Installation
 
-### Xcode Project
+### Swift Package Manager
 
-1. Clone the repository:
-```bash
-git clone https://github.com/mvdmakesthings/Ephemeris.git
+Add Ephemeris to your `Package.swift` dependencies:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/mvdmakesthings/Ephemeris.git", from: "1.0.0")
+]
 ```
 
-2. Open `Ephemeris.xcodeproj` in Xcode
+Then add it to your target dependencies:
 
-3. Build the framework target
+```swift
+targets: [
+    .target(
+        name: "YourTarget",
+        dependencies: ["Ephemeris"]
+    )
+]
+```
+
+Or in Xcode:
+
+1. File → Add Packages...
+2. Enter: `https://github.com/mvdmakesthings/Ephemeris.git`
+3. Select version and click "Add Package"
 
 ### Manual Integration
 
 1. Download the source code
 2. Drag the `Ephemeris` folder into your Xcode project
 3. Ensure the files are added to your target
-
-> **Note**: Swift Package Manager support is planned for future releases.
 
 ## Usage
 
