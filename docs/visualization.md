@@ -1,10 +1,23 @@
 # Ground-Track and Sky-Track Visualization
 
-This document describes the mathematical foundations and practical applications of ground-track and sky-track plotting for satellite motion visualization in the Ephemeris framework.
+> **Brief Description**: Learn to visualize satellite motion using ground tracks and sky tracks, from mathematical foundations to SwiftUI Charts and MapKit integration.
 
 ## Overview
 
-Ephemeris provides two primary visualization methods for satellite motion:
+This document describes the mathematical foundations and practical applications of ground-track and sky-track plotting for satellite motion visualization in the Ephemeris framework.
+
+**Theory-First Approach**: We start with the mathematics of projecting satellite positions onto Earth's surface and observer skies, then demonstrate how to visualize these paths using SwiftUI, Charts, and MapKit.
+
+**What You'll Learn:**
+- Ground track mathematics (sub-satellite point calculation)
+- Sky track calculations (azimuth/elevation paths)
+- Swift implementation with `groundTrack()` and `skyTrack()` methods
+- SwiftUI Charts integration for plotting
+- MapKit overlays for ground tracks
+- GeoJSON and KML export formats
+- Performance considerations for real-time visualization
+
+**Ephemeris provides two primary visualization methods for satellite motion:**
 
 1. **Ground Track**: The path traced by the satellite's sub-satellite point (SSP) on Earth's surface
 2. **Sky Track**: The path traced by the satellite across an observer's local sky
@@ -388,12 +401,494 @@ For a 24-hour ground track with 60-second steps:
 
 ---
 
-## See Also
+## iOS Integration: SwiftUI and MapKit
 
-- [Introduction to Orbital Elements](Introduction-to-Orbital-Elements.md)
-- [Observer Geometry](observer_geometry.md)
-- [API Reference](API-Reference.md)
+Now let's see how to integrate Ephemeris visualizations into iOS apps using SwiftUI Charts and MapKit.
+
+### SwiftUI Charts: Plotting Ground Tracks
+
+Display ground tracks on a 2D chart showing latitude vs. longitude:
+
+```swift
+import SwiftUI
+import Charts
+import Ephemeris
+
+struct GroundTrackChartView: View {
+    let groundTrack: [Orbit.GroundTrackPoint]
+
+    var body: some View {
+        Chart {
+            ForEach(Array(groundTrack.enumerated()), id: \.offset) { index, point in
+                LineMark(
+                    x: .value("Longitude", point.longitudeDeg),
+                    y: .value("Latitude", point.latitudeDeg)
+                )
+                .foregroundStyle(.blue)
+                .lineStyle(StrokeStyle(lineWidth: 2))
+            }
+        }
+        .chartXScale(domain: -180...180)
+        .chartYScale(domain: -90...90)
+        .chartXAxis {
+            AxisMarks(values: .stride(by: 30)) { value in
+                AxisGridLine()
+                AxisValueLabel {
+                    if let deg = value.as(Double.self) {
+                        Text("\(Int(deg))°")
+                    }
+                }
+            }
+        }
+        .chartYAxis {
+            AxisMarks(values: .stride(by: 30)) { value in
+                AxisGridLine()
+                AxisValueLabel {
+                    if let deg = value.as(Double.self) {
+                        Text("\(Int(deg))°")
+                    }
+                }
+            }
+        }
+        .padding()
+    }
+}
+```
+
+### MapKit: Ground Track Overlays
+
+Display ground tracks on an interactive map:
+
+```swift
+import SwiftUI
+import MapKit
+import Ephemeris
+
+struct SatelliteTrackMapView: View {
+    @State private var groundTrack: [Orbit.GroundTrackPoint] = []
+    @State private var region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+        span: MKCoordinateSpan(latitudeDelta: 90, longitudeDelta: 180)
+    )
+
+    let orbit: Orbit
+
+    var body: some View {
+        Map(coordinateRegion: $region, annotationItems: []) { _ in
+            // Empty annotation for now
+        }
+        .overlay(
+            GroundTrackOverlay(points: groundTrack)
+        )
+        .onAppear {
+            loadGroundTrack()
+        }
+    }
+
+    func loadGroundTrack() {
+        let now = Date()
+        let oneOrbitLater = now.addingTimeInterval(5400) // ~90 minutes
+
+        do {
+            groundTrack = try orbit.groundTrack(
+                from: now,
+                to: oneOrbitLater,
+                stepSeconds: 30
+            )
+        } catch {
+            print("Error generating ground track: \(error)")
+        }
+    }
+}
+
+struct GroundTrackOverlay: View {
+    let points: [Orbit.GroundTrackPoint]
+
+    var body: some View {
+        GeometryReader { geometry in
+            Path { path in
+                guard !points.isEmpty else { return }
+
+                let firstPoint = mapToScreen(points[0], in: geometry.size)
+                path.move(to: firstPoint)
+
+                for point in points.dropFirst() {
+                    let screenPoint = mapToScreen(point, in: geometry.size)
+                    path.addLine(to: screenPoint)
+                }
+            }
+            .stroke(Color.blue, lineWidth: 2)
+        }
+    }
+
+    func mapToScreen(_ point: Orbit.GroundTrackPoint, in size: CGSize) -> CGPoint {
+        // Map longitude (-180 to 180) to x (0 to width)
+        let x = (point.longitudeDeg + 180) / 360 * size.width
+        // Map latitude (-90 to 90) to y (height to 0, inverted)
+        let y = (90 - point.latitudeDeg) / 180 * size.height
+        return CGPoint(x: x, y: y)
+    }
+}
+```
+
+### Sky Track: Polar Plot View
+
+Visualize satellite passes as polar plots showing azimuth and elevation:
+
+```swift
+import SwiftUI
+import Charts
+import Ephemeris
+
+struct SkyTrackPolarView: View {
+    let skyTrack: [Orbit.SkyTrackPoint]
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Draw concentric circles for elevation
+                ForEach([0, 30, 60, 90], id: \.self) { elevation in
+                    Circle()
+                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                        .frame(
+                            width: elevationToRadius(90 - Double(elevation), in: geometry.size),
+                            height: elevationToRadius(90 - Double(elevation), in: geometry.size)
+                        )
+                }
+
+                // Draw azimuth lines (N, E, S, W)
+                Path { path in
+                    let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    let radius = min(geometry.size.width, geometry.size.height) / 2
+
+                    for angle in stride(from: 0.0, to: 360.0, by: 45.0) {
+                        let radians = angle * .pi / 180
+                        let x = center.x + radius * sin(radians)
+                        let y = center.y - radius * cos(radians)
+
+                        path.move(to: center)
+                        path.addLine(to: CGPoint(x: x, y: y))
+                    }
+                }
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+
+                // Draw satellite path
+                Path { path in
+                    guard !skyTrack.isEmpty else { return }
+
+                    let firstPoint = polarToCartesian(skyTrack[0], in: geometry.size)
+                    path.move(to: firstPoint)
+
+                    for point in skyTrack.dropFirst() where point.elevationDeg > 0 {
+                        let screenPoint = polarToCartesian(point, in: geometry.size)
+                        path.addLine(to: screenPoint)
+                    }
+                }
+                .stroke(Color.blue, lineWidth: 3)
+
+                // Labels
+                VStack {
+                    Text("N")
+                    Spacer()
+                    Text("S")
+                }
+                HStack {
+                    Text("W")
+                    Spacer()
+                    Text("E")
+                }
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .padding()
+    }
+
+    func polarToCartesian(_ point: Orbit.SkyTrackPoint, in size: CGSize) -> CGPoint {
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let maxRadius = min(size.width, size.height) / 2
+
+        // Distance from center (elevation: 90° = center, 0° = edge)
+        let radius = elevationToRadius(90 - point.elevationDeg, in: size)
+
+        // Angle (azimuth: 0° = North = up)
+        let angleRadians = point.azimuthDeg * .pi / 180
+
+        let x = center.x + radius * sin(angleRadians)
+        let y = center.y - radius * cos(angleRadians)
+
+        return CGPoint(x: x, y: y)
+    }
+
+    func elevationToRadius(_ zenithAngle: Double, in size: CGSize) -> CGFloat {
+        let maxRadius = min(size.width, size.height) / 2
+        return CGFloat(zenithAngle / 90.0) * maxRadius
+    }
+}
+```
+
+### Complete SwiftUI App Example
+
+Here's a complete satellite tracker app with ground track visualization:
+
+```swift
+import SwiftUI
+import Ephemeris
+
+@main
+struct SatelliteTrackerApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+
+struct ContentView: View {
+    @State private var orbit: Orbit?
+    @State private var groundTrack: [Orbit.GroundTrackPoint] = []
+    @State private var currentPosition: Orbit.Position?
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+
+    let timer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        NavigationView {
+            VStack {
+                if isLoading {
+                    ProgressView("Loading satellite data...")
+                } else if let error = errorMessage {
+                    Text("Error: \(error)")
+                        .foregroundColor(.red)
+                } else {
+                    // Current position
+                    if let position = currentPosition {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Current ISS Position")
+                                .font(.headline)
+                            Text("Latitude: \(String(format: "%.2f", position.latitude))°")
+                            Text("Longitude: \(String(format: "%.2f", position.longitude))°")
+                            Text("Altitude: \(String(format: "%.0f", position.altitude)) km")
+                        }
+                        .padding()
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(8)
+                    }
+
+                    // Ground track chart
+                    GroundTrackChartView(groundTrack: groundTrack)
+                        .frame(height: 300)
+
+                    Button("Refresh") {
+                        updateData()
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .padding()
+            .navigationTitle("ISS Tracker")
+            .onAppear {
+                loadSatelliteData()
+            }
+            .onReceive(timer) { _ in
+                updatePosition()
+            }
+        }
+    }
+
+    func loadSatelliteData() {
+        // In a real app, fetch TLE from CelesTrak or Space-Track
+        let issТLE = """
+        ISS (ZARYA)
+        1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
+        2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+        """
+
+        do {
+            let tle = try TwoLineElement(from: issТLE)
+            orbit = Orbit(from: tle)
+            updateData()
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    func updateData() {
+        guard let orbit = orbit else { return }
+
+        // Update ground track (next 90 minutes)
+        let now = Date()
+        let oneOrbitLater = now.addingTimeInterval(5400)
+
+        do {
+            groundTrack = try orbit.groundTrack(
+                from: now,
+                to: oneOrbitLater,
+                stepSeconds: 60
+            )
+            currentPosition = try orbit.calculatePosition(at: now)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func updatePosition() {
+        guard let orbit = orbit else { return }
+
+        do {
+            currentPosition = try orbit.calculatePosition(at: Date())
+        } catch {
+            print("Error updating position: \(error)")
+        }
+    }
+}
+```
+
+### Export Formats
+
+#### GeoJSON Export
+
+Export ground tracks for use with web mapping libraries:
+
+```swift
+import Ephemeris
+
+extension Orbit.GroundTrackPoint {
+    static func exportGeoJSON(_ groundTrack: [Orbit.GroundTrackPoint]) -> String {
+        let coordinates = groundTrack.map { point in
+            "[\(point.longitudeDeg), \(point.latitudeDeg)]"
+        }.joined(separator: ", ")
+
+        return """
+        {
+          "type": "Feature",
+          "properties": {
+            "name": "Satellite Ground Track",
+            "description": "Ground track visualization"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [\(coordinates)]
+          }
+        }
+        """
+    }
+}
+
+// Usage
+let groundTrack = try orbit.groundTrack(from: now, to: later, stepSeconds: 60)
+let geoJSON = Orbit.GroundTrackPoint.exportGeoJSON(groundTrack)
+try geoJSON.write(toFile: "ground_track.geojson", atomically: true, encoding: .utf8)
+```
+
+#### KML Export
+
+Export for Google Earth visualization:
+
+```swift
+extension Orbit.GroundTrackPoint {
+    static func exportKML(_ groundTrack: [Orbit.GroundTrackPoint]) -> String {
+        let coordinates = groundTrack.map { point in
+            "\(point.longitudeDeg),\(point.latitudeDeg),\(point.altitudeKm * 1000)"
+        }.joined(separator: " ")
+
+        return """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <kml xmlns="http://www.opengis.net/kml/2.2">
+          <Document>
+            <name>Satellite Ground Track</name>
+            <Placemark>
+              <name>Ground Track</name>
+              <LineString>
+                <extrude>1</extrude>
+                <tessellate>1</tessellate>
+                <altitudeMode>absolute</altitudeMode>
+                <coordinates>
+                  \(coordinates)
+                </coordinates>
+              </LineString>
+            </Placemark>
+          </Document>
+        </kml>
+        """
+    }
+}
+```
+
+### Performance Optimization Tips
+
+**Real-Time Tracking:**
+```swift
+// Use coarser time steps for smooth animation
+let groundTrack = try orbit.groundTrack(
+    from: now,
+    to: later,
+    stepSeconds: 120  // 2-minute intervals for smoother rendering
+)
+```
+
+**Memory Management:**
+```swift
+// Limit ground track points for long durations
+let maxPoints = 500
+let duration: TimeInterval = 24 * 3600  // 24 hours
+let stepSeconds = duration / Double(maxPoints)
+
+let groundTrack = try orbit.groundTrack(
+    from: now,
+    to: now.addingTimeInterval(duration),
+    stepSeconds: Int(stepSeconds)
+)
+```
+
+**Caching:**
+```swift
+// Cache ground tracks that don't change often
+class GroundTrackCache {
+    private var cache: [String: [Orbit.GroundTrackPoint]] = [:]
+
+    func getGroundTrack(for tle: TwoLineElement, duration: TimeInterval) throws -> [Orbit.GroundTrackPoint] {
+        let key = "\(tle.catalogNumber)-\(duration)"
+
+        if let cached = cache[key] {
+            return cached
+        }
+
+        let orbit = Orbit(from: tle)
+        let track = try orbit.groundTrack(
+            from: Date(),
+            to: Date().addingTimeInterval(duration),
+            stepSeconds: 60
+        )
+
+        cache[key] = track
+        return track
+    }
+}
+```
 
 ---
 
-*Last Updated: October 20, 2025*
+## See Also
+
+**Learning Path:**
+- **Previous**: [Observer Geometry](observer-geometry.md) - Coordinate transformations and topocentric coordinates
+- [Orbital Elements](orbital-elements.md) - Foundation of satellite motion
+
+**Practical Guides:**
+- [Getting Started](getting-started.md) - Quick-start tutorial
+- [API Reference](api-reference.md) - Complete API documentation
+
+**iOS Development:**
+- [SwiftUI Charts Documentation](https://developer.apple.com/documentation/charts)
+- [MapKit Framework](https://developer.apple.com/documentation/mapkit)
+
+---
+
+*This documentation is part of the [Ephemeris](https://github.com/mvdmakesthings/Ephemeris) framework for satellite tracking in Swift.*
+
+**Last Updated**: October 20, 2025
+**Version**: 1.0
