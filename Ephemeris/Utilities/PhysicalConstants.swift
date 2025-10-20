@@ -23,7 +23,6 @@ public struct PhysicalConstants {
         /// WGS84 value: 3.986004418 × 10^14 m^3/s^2 = 398600.4418 km^3/s^2
         public static let µ: Double = 398600.4418
 
-        
         /// Earth's radius in Kilometers
         public static let radius: Double = 6378137.0 / 1000
         
