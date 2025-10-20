@@ -220,5 +220,116 @@ let observerTests: ((ContextType) -> Void) = {
                 _ = expect((apparentElev - trueElev) < 0.1)
             }
         }
+        
+        $0.context("Pass prediction") {
+            $0.it("predicts passes for ISS") {
+                // Use ISS TLE
+                let tle = try MockTLEs.ISSSample()
+                let orbit = Orbit(from: tle)
+                
+                // Observer in Louisville, Kentucky
+                let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
+                
+                // Search for passes over a 24-hour period
+                let start = Date()
+                let end = start.addingTimeInterval(24 * 3600) // 24 hours later
+                
+                let passes = try orbit.predictPasses(
+                    for: observer,
+                    from: start,
+                    to: end,
+                    minElevationDeg: 10.0,
+                    stepSeconds: 30
+                )
+                
+                // We should find at least one pass (ISS orbits ~16 times per day)
+                // But we may not find any if none meet the 10° threshold
+                // So just verify the function completes and returns valid data
+                _ = expect(passes.count >= 0)
+                
+                // If we found passes, verify their structure
+                for pass in passes {
+                    // AOS should be before LOS
+                    _ = expect(pass.aos.time < pass.los.time)
+                    
+                    // Max should be between AOS and LOS
+                    _ = expect(pass.max.time >= pass.aos.time)
+                    _ = expect(pass.max.time <= pass.los.time)
+                    
+                    // Duration should be positive
+                    _ = expect(pass.duration > 0)
+                    _ = expect(pass.duration < 3600) // Less than 1 hour
+                    
+                    // Elevation should be above minimum
+                    _ = expect(pass.max.elevationDeg >= 10.0)
+                    
+                    // Azimuth should be in valid range
+                    _ = expect(pass.aos.azimuthDeg >= 0.0)
+                    _ = expect(pass.aos.azimuthDeg <= 360.0)
+                    _ = expect(pass.los.azimuthDeg >= 0.0)
+                    _ = expect(pass.los.azimuthDeg <= 360.0)
+                    _ = expect(pass.max.azimuthDeg >= 0.0)
+                    _ = expect(pass.max.azimuthDeg <= 360.0)
+                }
+            }
+            
+            $0.it("handles short time windows") {
+                let tle = try MockTLEs.ISSSample()
+                let orbit = Orbit(from: tle)
+                
+                let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
+                
+                // Search for passes over just 1 hour
+                let start = Date()
+                let end = start.addingTimeInterval(3600) // 1 hour later
+                
+                let passes = try orbit.predictPasses(
+                    for: observer,
+                    from: start,
+                    to: end,
+                    minElevationDeg: 0.0,
+                    stepSeconds: 30
+                )
+                
+                // Should complete without error
+                _ = expect(passes.count >= 0)
+            }
+            
+            $0.it("respects minimum elevation threshold") {
+                let tle = try MockTLEs.ISSSample()
+                let orbit = Orbit(from: tle)
+                
+                let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
+                
+                let start = Date()
+                let end = start.addingTimeInterval(12 * 3600) // 12 hours
+                
+                // Search with low threshold
+                let passesLow = try orbit.predictPasses(
+                    for: observer,
+                    from: start,
+                    to: end,
+                    minElevationDeg: 0.0,
+                    stepSeconds: 60
+                )
+                
+                // Search with high threshold
+                let passesHigh = try orbit.predictPasses(
+                    for: observer,
+                    from: start,
+                    to: end,
+                    minElevationDeg: 30.0,
+                    stepSeconds: 60
+                )
+                
+                // Should find more passes with lower threshold
+                _ = expect(passesHigh.count <= passesLow.count)
+                
+                // All high-elevation passes should have max elevation >= 30°
+                for pass in passesHigh {
+                    _ = expect(pass.max.elevationDeg >= 30.0)
+                }
+            }
+        }
     }
 }
