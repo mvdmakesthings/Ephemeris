@@ -111,16 +111,16 @@ extension Date {
         let twopi: Double = PhysicalConstants.Angle.radiansPerCircle
         
         // Convert to Julian centuries since J2000.0
-        let T = toJ2000(from: julianDay)
+        let t = toJ2000(from: julianDay)
         
         // Calculate GST using polynomial approximation
         // Formula: GST = 1.753368559 + 628.3319705*T + 6.770708127e-6*T^2 (in radians)
-        var gst = 1.753368559 + 628.3319705 * T + 6.770708127e-6 * T * T
+        var gst = 1.753368559 + 628.3319705 * t + 6.770708127e-6 * t * t
         
         // Normalize to 0 to 2π range
         gst = gst.truncatingRemainder(dividingBy: twopi)
         if gst < 0.0 {
-            gst = gst + twopi
+            gst += twopi
         }
         
         return gst

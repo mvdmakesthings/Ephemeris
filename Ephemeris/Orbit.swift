@@ -95,7 +95,7 @@ public struct Orbit: Orbitable {
     /// - Note:
     ///     Transform math used from https://www.csun.edu/~hcmth017/master/node20.html
     ///     Heavily inspired by ZeitSatTrack https://github.com/dhmspector/ZeitSatTrack Apache 2.0
-    public func calculatePosition(at date: Date?) throws -> (x: Double, y: Double, z: Double) {
+    public func calculatePosition(at date: Date?) throws -> (Double, Double, Double) {
         
         // Current parameters at this specific time.
         let julianDate = Date.julianDay(from: date ?? Date())!
@@ -119,7 +119,7 @@ public struct Orbit: Orbitable {
         
         // Rotate about x'' axis by inclination.
         let inclinationRads = self.inclination.inRadians()
-        let xInclination = xByPerigee;
+        let xInclination = xByPerigee
         let yInclination = cos(inclinationRads) * yByPerigee - sin(inclinationRads) * zByPerigee
         let zInclination = sin(inclinationRads) * yByPerigee + cos(inclinationRads) * zByPerigee
         
@@ -224,7 +224,7 @@ extension Orbit {
             let f = eccentricAnomaly - eccentricity * sin(eccentricAnomaly) - meanAnomaly
             let f2 = 1 - eccentricity * cos(eccentricAnomaly)
             ratio = f / f2
-            eccentricAnomaly = eccentricAnomaly - ratio
+            eccentricAnomaly -= ratio
             iteration += 1
         } while (ratio > accuracy && iteration <= maxIterations)
         
