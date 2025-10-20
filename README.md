@@ -26,6 +26,8 @@ A Swift framework for satellite tracking and orbital mechanics calculations. Eph
 - 📡 **TLE Parsing**: Parse NORAD Two-Line Element (TLE) format satellite data
 - 🛰️ **Orbital Calculations**: Calculate satellite positions using orbital mechanics
 - 🌍 **Position Tracking**: Compute latitude, longitude, and altitude for satellites at any given time
+- 👁️ **Observer-Based Tracking**: Calculate azimuth, elevation, range, and range rate from any location on Earth
+- 🔭 **Pass Prediction**: Predict satellite passes with AOS, maximum elevation, and LOS times
 - 📐 **Orbital Elements**: Support for all standard Keplerian orbital elements:
   - Semi-major axis
   - Eccentricity
@@ -33,6 +35,8 @@ A Swift framework for satellite tracking and orbital mechanics calculations. Eph
   - Right Ascension of Ascending Node (RAAN)
   - Argument of Perigee
   - Mean Anomaly and True Anomaly
+- 🌐 **Coordinate Transformations**: ECI ↔ ECEF ↔ ENU coordinate system conversions
+- 🌫️ **Atmospheric Refraction**: Optional correction for low-elevation observations
 - ⏰ **Time Conversions**: Julian date and Greenwich Sidereal Time calculations
 - 🔢 **High Precision**: Iterative algorithms for eccentric anomaly calculations
 
@@ -243,6 +247,78 @@ let epochJD = Date.julianDayFromEpoch(epochYear: 2020, epochDayFraction: 97.8287
 print("TLE Epoch as Julian Day: \(epochJD)")
 ```
 
+### Predict Satellite Passes
+
+Calculate when and where a satellite will be visible from your location:
+
+```swift
+import Ephemeris
+
+// Parse ISS TLE
+let tleString = """
+ISS (ZARYA)
+1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
+2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
+"""
+let tle = try TwoLineElement(from: tleString)
+let orbit = Orbit(from: tle)
+
+// Define your observer location (Louisville, Kentucky)
+let observer = Observer(
+    latitudeDeg: 38.2542,    // Latitude (positive = north)
+    longitudeDeg: -85.7594,  // Longitude (positive = east)
+    altitudeMeters: 140      // Altitude above sea level
+)
+
+// Predict passes over the next 24 hours
+let now = Date()
+let tomorrow = now.addingTimeInterval(24 * 3600)
+
+let passes = try orbit.predictPasses(
+    for: observer,
+    from: now,
+    to: tomorrow,
+    minElevationDeg: 10.0,  // Only passes above 10° elevation
+    stepSeconds: 30          // Search granularity
+)
+
+// Display results
+for (i, pass) in passes.enumerated() {
+    print("\nPass #\(i + 1)")
+    print("AOS: \(pass.aos.time)")
+    print("  Azimuth: \(pass.aos.azimuthDeg)°")
+    print("MAX: \(pass.max.time)")
+    print("  Elevation: \(pass.max.elevationDeg)°")
+    print("  Azimuth: \(pass.max.azimuthDeg)°")
+    print("LOS: \(pass.los.time)")
+    print("  Azimuth: \(pass.los.azimuthDeg)°")
+    print("Duration: \(Int(pass.duration)) seconds")
+}
+```
+
+### Calculate Topocentric Coordinates
+
+Get azimuth, elevation, and range for a satellite at any time:
+
+```swift
+// Calculate current look angles
+let topo = try orbit.topocentric(at: Date(), for: observer)
+
+print("Satellite Position:")
+print("  Azimuth: \(topo.azimuthDeg)°")        // Direction (0° = North, 90° = East)
+print("  Elevation: \(topo.elevationDeg)°")    // Angle above horizon
+print("  Range: \(topo.rangeKm) km")           // Distance to satellite
+print("  Range Rate: \(topo.rangeRateKmPerSec) km/s")  // Approaching/receding
+
+// Apply atmospheric refraction correction for low elevations
+let topoRefracted = try orbit.topocentric(
+    at: Date(),
+    for: observer,
+    applyRefraction: true
+)
+print("Apparent Elevation (with refraction): \(topoRefracted.elevationDeg)°")
+```
+
 ### Custom Satellite Analysis
 
 ```swift
@@ -289,6 +365,10 @@ analyzeOrbit(orbit)
 - **`TwoLineElement`**: Represents and parses NORAD TLE format satellite data
 - **`Orbit`**: Represents orbital parameters and provides position calculation methods
 - **`Orbitable`**: Protocol defining requirements for orbital element data
+- **`Observer`**: Represents an Earth-based observer location (latitude, longitude, altitude)
+- **`Topocentric`**: Contains azimuth, elevation, range, and range rate for observer-relative coordinates
+- **`PassWindow`**: Describes a satellite pass with AOS, maximum elevation, and LOS details
+- **`CoordinateTransforms`**: Utility functions for converting between coordinate systems (ECI, ECEF, ENU)
 
 ### Where to Get TLE Data
 
@@ -311,6 +391,7 @@ For typical use cases involving current satellite tracking, this limitation is n
 ### Additional Documentation
 
 - **[Introduction to Orbital Elements](./docs/Introduction-to-Orbital-Elements.md)** - Comprehensive guide to understanding the six Keplerian orbital elements, TLE format, and ensuring prediction accuracy
+- **[Observer Geometry and Pass Prediction](./docs/observer_geometry.md)** - Detailed explanation of coordinate transformations, topocentric calculations, and pass prediction algorithms
 - **[API Reference](./docs/API-Reference.md)** - Complete API documentation for all public types and methods
 
 ## For AI Tools and Developers

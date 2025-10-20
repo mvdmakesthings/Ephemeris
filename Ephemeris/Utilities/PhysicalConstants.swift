@@ -55,6 +55,21 @@ public struct PhysicalConstants {
         /// - Note: For precise calculations, use `radius` (WGS84 equatorial radius)
         public static let meanRadius: Double = 6371.0
         
+        /// WGS-84 semi-major axis (equatorial radius) in kilometers
+        /// This is the same as `radius` but explicitly named for geodetic calculations
+        public static let semiMajorAxis: Double = 6378.137
+        
+        /// WGS-84 semi-minor axis (polar radius) in kilometers
+        public static let semiMinorAxis: Double = 6356.7523142
+        
+        /// WGS-84 flattening factor (f = (a - b) / a)
+        /// Describes the ellipsoidal shape of Earth
+        public static let flattening: Double = 1.0 / 298.257223563
+        
+        /// WGS-84 first eccentricity squared (e² = (a² - b²) / a²)
+        /// Used in geodetic to ECEF coordinate conversions
+        public static let eccentricitySquared: Double = 6.69437999014e-3
+        
         /// Number of rads earth rotates in 1 solar day
         /// - Note: Taken from "Methods of Astrodynamics, A Computer Approach (v3) " by Capt David Vallado, Department of Astronautics, U.S. Air Force Academy https://www.academia.edu/20528856/Methods_of_Astrodynamics_a_Computer_Approach
         public static let radsPerDay: Double = 6.3003809866574

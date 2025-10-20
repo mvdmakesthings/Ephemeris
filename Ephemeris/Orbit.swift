@@ -150,6 +150,62 @@ public struct Orbit: Orbitable {
         }
     }
 
+    /// Calculates the ECI (Earth-Centered Inertial) position and velocity vectors.
+    ///
+    /// This internal method computes the satellite's state vector in the ECI frame,
+    /// which is needed for topocentric calculations and other advanced operations.
+    ///
+    /// - Parameter date: The date and time for which to calculate the state vector
+    /// - Returns: Tuple of (position vector in km, velocity vector in km/s) in ECI frame
+    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    ///
+    /// - Note: Internal method used by calculatePosition and topocentric calculations
+    func calculateECIStateVector(at date: Date) throws -> (position: Vector3D, velocity: Vector3D) {
+        let julianDate = Date.julianDay(from: date)!
+        
+        // Calculate 3 anomalies
+        let currentMeanAnomaly = self.meanAnomalyForJulianDate(julianDate: julianDate)
+        let currentEccentricAnomaly = Orbit.calculateEccentricAnomaly(eccentricity: self.eccentricity, meanAnomaly: currentMeanAnomaly)
+        let currentTrueAnomaly = try Orbit.calculateTrueAnomaly(eccentricity: self.eccentricity, eccentricAnomaly: currentEccentricAnomaly)
+        
+        // Calculate the radius and position in the orbital plane
+        let orbitalRadius = self.semimajorAxis * (1.0 - self.eccentricity * cos(currentEccentricAnomaly.inRadians()))
+        
+        // Position in orbital plane
+        let x_orb = orbitalRadius * cos(currentTrueAnomaly.inRadians())
+        let y_orb = orbitalRadius * sin(currentTrueAnomaly.inRadians())
+        
+        // Velocity in orbital plane (using vis-viva equation)
+        let µ = PhysicalConstants.Earth.µ
+        let h = sqrt(µ * self.semimajorAxis * (1.0 - self.eccentricity * self.eccentricity)) // Specific angular momentum
+        let vx_orb = -µ / h * sin(currentTrueAnomaly.inRadians())
+        let vy_orb = µ / h * (self.eccentricity + cos(currentTrueAnomaly.inRadians()))
+        
+        // Transform from orbital plane to ECI frame
+        let argOfPerigeeRad = self.argumentOfPerigee.inRadians()
+        let inclinationRad = self.inclination.inRadians()
+        let raanRad = self.rightAscensionOfAscendingNode.inRadians()
+        
+        let cosω = cos(argOfPerigeeRad)
+        let sinω = sin(argOfPerigeeRad)
+        let cosΩ = cos(raanRad)
+        let sinΩ = sin(raanRad)
+        let cosi = cos(inclinationRad)
+        let sini = sin(inclinationRad)
+        
+        // Position transformation to ECI
+        let x_eci = (cosΩ * cosω - sinΩ * sinω * cosi) * x_orb + (-cosΩ * sinω - sinΩ * cosω * cosi) * y_orb
+        let y_eci = (sinΩ * cosω + cosΩ * sinω * cosi) * x_orb + (-sinΩ * sinω + cosΩ * cosω * cosi) * y_orb
+        let z_eci = (sinω * sini) * x_orb + (cosω * sini) * y_orb
+        
+        // Velocity transformation to ECI
+        let vx_eci = (cosΩ * cosω - sinΩ * sinω * cosi) * vx_orb + (-cosΩ * sinω - sinΩ * cosω * cosi) * vy_orb
+        let vy_eci = (sinΩ * cosω + cosΩ * sinω * cosi) * vx_orb + (-sinΩ * sinω + cosΩ * cosω * cosi) * vy_orb
+        let vz_eci = (sinω * sini) * vx_orb + (cosω * sini) * vy_orb
+        
+        return (Vector3D(x: x_eci, y: y_eci, z: z_eci), Vector3D(x: vx_eci, y: vy_eci, z: vz_eci))
+    }
+    
     /// Calculates the geographic position of the satellite at a specific time.
     ///
     /// This method performs a complete orbital propagation from the epoch time to the
@@ -225,6 +281,293 @@ public struct Orbit: Orbitable {
         let altitude = orbitalRadius - earthsRadius
 
         return Position(latitude: latitude, longitude: longitude, altitude: altitude)
+    }
+}
+
+// MARK: - Observer-Based Calculations
+
+extension Orbit {
+    /// Calculates topocentric (observer-relative) coordinates for the satellite.
+    ///
+    /// This method computes the satellite's position as seen from a specific observer
+    /// location on Earth, returning azimuth, elevation, range, and range rate.
+    ///
+    /// - Parameters:
+    ///   - date: The date and time for the calculation
+    ///   - observer: The observer's location on Earth
+    ///   - applyRefraction: Whether to apply atmospheric refraction correction (default: false)
+    /// - Returns: Topocentric coordinates (azimuth, elevation, range, range rate)
+    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    ///
+    /// ## Example
+    /// ```swift
+    /// let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
+    /// let topo = try orbit.topocentric(at: Date(), for: observer)
+    /// print("Az: \(topo.azimuthDeg)°, El: \(topo.elevationDeg)°")
+    /// ```
+    ///
+    /// - Note: Coordinate transformations follow Vallado, "Fundamentals of Astrodynamics"
+    public func topocentric(at date: Date, for observer: Observer, applyRefraction: Bool = false) throws -> Topocentric {
+        // Get Julian date and GMST
+        let julianDate = Date.julianDay(from: date)!
+        let gmst = Date.greenwichSideRealTime(from: julianDate)
+        
+        // Calculate satellite position and velocity in ECI frame
+        let (eciPosition, eciVelocity) = try calculateECIStateVector(at: date)
+        
+        // Transform satellite position and velocity to ECEF
+        let satECEF = CoordinateTransforms.eciToECEF(eciPosition: eciPosition, gmst: gmst)
+        let satVelECEF = CoordinateTransforms.eciVelocityToECEF(eciPosition: eciPosition, eciVelocity: eciVelocity, gmst: gmst)
+        
+        // Calculate observer position in ECEF
+        let obsECEF = CoordinateTransforms.geodeticToECEF(
+            latitudeDeg: observer.latitudeDeg,
+            longitudeDeg: observer.longitudeDeg,
+            altitudeMeters: observer.altitudeMeters
+        )
+        
+        // Transform to ENU (local observer frame)
+        let enu = CoordinateTransforms.ecefToENU(
+            ecefPosition: satECEF,
+            observerECEF: obsECEF,
+            observerLatDeg: observer.latitudeDeg,
+            observerLonDeg: observer.longitudeDeg
+        )
+        
+        // Calculate azimuth, elevation, and range
+        let (azimuth, elevation, range) = CoordinateTransforms.enuToAzEl(enu: enu)
+        
+        // Apply refraction correction if requested
+        let correctedElevation = applyRefraction ? CoordinateTransforms.applyRefraction(elevationDeg: elevation) : elevation
+        
+        // Calculate range rate (rate of change of distance)
+        // Project velocity onto the line-of-sight vector
+        let relativePos = satECEF.subtract(obsECEF)
+        let rangeRate = relativePos.dot(satVelECEF) / range
+        
+        return Topocentric(
+            azimuthDeg: azimuth,
+            elevationDeg: correctedElevation,
+            rangeKm: range,
+            rangeRateKmPerSec: rangeRate
+        )
+    }
+    
+    /// Predicts satellite passes over an observer's location within a time window.
+    ///
+    /// This method identifies all satellite passes (periods when the satellite is above
+    /// the specified minimum elevation) within the given time range. For each pass, it
+    /// determines the acquisition of signal (AOS), maximum elevation, and loss of signal (LOS).
+    ///
+    /// - Parameters:
+    ///   - observer: The observer's location on Earth
+    ///   - start: Start of the search window
+    ///   - end: End of the search window
+    ///   - minElevationDeg: Minimum elevation angle in degrees (default: 0°)
+    ///   - stepSeconds: Time step for coarse search in seconds (default: 30s)
+    /// - Returns: Array of PassWindow objects, one for each pass found
+    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    ///
+    /// ## Algorithm
+    /// 1. Coarse search with specified time step to detect elevation sign changes
+    /// 2. Bisection search to refine AOS and LOS times to ±1 second accuracy
+    /// 3. Golden-section search to find precise maximum elevation within the pass
+    ///
+    /// ## Example
+    /// ```swift
+    /// let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
+    /// let now = Date()
+    /// let tomorrow = now.addingTimeInterval(24 * 3600)
+    /// let passes = try orbit.predictPasses(for: observer, from: now, to: tomorrow, minElevationDeg: 10)
+    ///
+    /// for pass in passes {
+    ///     print("AOS: \(pass.aos.time) at \(pass.aos.azimuthDeg)°")
+    ///     print("MAX: \(pass.max.time) at \(pass.max.elevationDeg)° elevation")
+    ///     print("LOS: \(pass.los.time) at \(pass.los.azimuthDeg)°")
+    ///     print("Duration: \(pass.duration) seconds")
+    /// }
+    /// ```
+    ///
+    /// - Note: Algorithm based on Vallado, "Fundamentals of Astrodynamics and Applications"
+    public func predictPasses(
+        for observer: Observer,
+        from start: Date,
+        to end: Date,
+        minElevationDeg: Double = 0,
+        stepSeconds: Double = 30
+    ) throws -> [PassWindow] {
+        var passes: [PassWindow] = []
+        
+        var currentTime = start
+        var previousElevation: Double? = nil
+        var passStartTime: Date? = nil
+        
+        // Coarse search for passes
+        while currentTime <= end {
+            let topo = try topocentric(at: currentTime, for: observer, applyRefraction: false)
+            let currentElevation = topo.elevationDeg
+            
+            if let prevElev = previousElevation {
+                // Detect AOS: crossing from below to above minimum elevation
+                if prevElev < minElevationDeg && currentElevation >= minElevationDeg {
+                    passStartTime = currentTime.addingTimeInterval(-stepSeconds)
+                }
+                
+                // Detect LOS: crossing from above to below minimum elevation
+                if prevElev >= minElevationDeg && currentElevation < minElevationDeg {
+                    if let startTime = passStartTime {
+                        // We found a complete pass, now refine it
+                        let passEndTime = currentTime
+                        
+                        // Refine AOS time
+                        let aosTime = try refineElevationCrossing(
+                            observer: observer,
+                            t1: startTime,
+                            t2: startTime.addingTimeInterval(stepSeconds),
+                            targetElevation: minElevationDeg,
+                            risingEdge: true
+                        )
+                        
+                        // Refine LOS time
+                        let losTime = try refineElevationCrossing(
+                            observer: observer,
+                            t1: passEndTime.addingTimeInterval(-stepSeconds),
+                            t2: passEndTime,
+                            targetElevation: minElevationDeg,
+                            risingEdge: false
+                        )
+                        
+                        // Find maximum elevation within the pass
+                        let maxResult = try findMaxElevation(
+                            observer: observer,
+                            t1: aosTime,
+                            t2: losTime
+                        )
+                        
+                        // Get azimuth at AOS and LOS
+                        let aosAzimuth = try topocentric(at: aosTime, for: observer).azimuthDeg
+                        let losAzimuth = try topocentric(at: losTime, for: observer).azimuthDeg
+                        
+                        let pass = PassWindow(
+                            aos: PassWindow.Point(time: aosTime, azimuthDeg: aosAzimuth),
+                            max: (time: maxResult.time, elevationDeg: maxResult.elevation, azimuthDeg: maxResult.azimuth),
+                            los: PassWindow.Point(time: losTime, azimuthDeg: losAzimuth)
+                        )
+                        
+                        passes.append(pass)
+                        passStartTime = nil
+                    }
+                }
+            }
+            
+            previousElevation = currentElevation
+            currentTime = currentTime.addingTimeInterval(stepSeconds)
+        }
+        
+        return passes
+    }
+    
+    /// Refines the time of an elevation crossing using bisection search.
+    ///
+    /// - Parameters:
+    ///   - observer: The observer's location
+    ///   - t1: Start of search interval
+    ///   - t2: End of search interval
+    ///   - targetElevation: The elevation angle to find
+    ///   - risingEdge: True for AOS (rising), false for LOS (falling)
+    /// - Returns: The refined time of the elevation crossing
+    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    private func refineElevationCrossing(
+        observer: Observer,
+        t1: Date,
+        t2: Date,
+        targetElevation: Double,
+        risingEdge: Bool
+    ) throws -> Date {
+        var left = t1
+        var right = t2
+        let tolerance: TimeInterval = 1.0 // 1 second accuracy
+        
+        while right.timeIntervalSince(left) > tolerance {
+            let mid = left.addingTimeInterval(right.timeIntervalSince(left) / 2.0)
+            let topo = try topocentric(at: mid, for: observer, applyRefraction: false)
+            let midElevation = topo.elevationDeg
+            
+            if risingEdge {
+                // For AOS, we want the time when elevation crosses upward
+                if midElevation < targetElevation {
+                    left = mid
+                } else {
+                    right = mid
+                }
+            } else {
+                // For LOS, we want the time when elevation crosses downward
+                if midElevation > targetElevation {
+                    left = mid
+                } else {
+                    right = mid
+                }
+            }
+        }
+        
+        return left.addingTimeInterval(right.timeIntervalSince(left) / 2.0)
+    }
+    
+    /// Finds the maximum elevation within a pass using golden-section search.
+    ///
+    /// - Parameters:
+    ///   - observer: The observer's location
+    ///   - t1: Start of search interval (AOS time)
+    ///   - t2: End of search interval (LOS time)
+    /// - Returns: Tuple of (time, elevation, azimuth) at maximum
+    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    private func findMaxElevation(
+        observer: Observer,
+        t1: Date,
+        t2: Date
+    ) throws -> (time: Date, elevation: Double, azimuth: Double) {
+        let phi = (1.0 + sqrt(5.0)) / 2.0 // Golden ratio
+        let resphi = 2.0 - phi
+        
+        var a = t1
+        var b = t2
+        let tolerance: TimeInterval = 1.0 // 1 second accuracy
+        
+        // Initial probe points
+        var c = a.addingTimeInterval(b.timeIntervalSince(a) * resphi)
+        var d = a.addingTimeInterval(b.timeIntervalSince(a) * (1.0 - resphi))
+        
+        var topoC = try topocentric(at: c, for: observer, applyRefraction: false)
+        var topoD = try topocentric(at: d, for: observer, applyRefraction: false)
+        var fc = topoC.elevationDeg
+        var fd = topoD.elevationDeg
+        
+        while b.timeIntervalSince(a) > tolerance {
+            if fc > fd {
+                b = d
+                d = c
+                fd = fc
+                topoD = topoC
+                c = a.addingTimeInterval(b.timeIntervalSince(a) * resphi)
+                topoC = try topocentric(at: c, for: observer, applyRefraction: false)
+                fc = topoC.elevationDeg
+            } else {
+                a = c
+                c = d
+                fc = fd
+                topoC = topoD
+                d = a.addingTimeInterval(b.timeIntervalSince(a) * (1.0 - resphi))
+                topoD = try topocentric(at: d, for: observer, applyRefraction: false)
+                fd = topoD.elevationDeg
+            }
+        }
+        
+        // Return the point with higher elevation
+        if fc > fd {
+            return (time: c, elevation: topoC.elevationDeg, azimuth: topoC.azimuthDeg)
+        } else {
+            return (time: d, elevation: topoD.elevationDeg, azimuth: topoD.azimuthDeg)
+        }
     }
 }
 
