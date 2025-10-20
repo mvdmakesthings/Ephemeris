@@ -1,0 +1,57 @@
+Ephemeris: Swift Satellite Tracking Framework
+
+PURPOSE AND SCOPE
+
+Ephemeris is a pure Swift framework for satellite orbital mechanics and tracking. It enables developers to parse Two-Line Element (TLE) satellite data and calculate orbital positions, velocities, and other astrodynamics parameters for Earth-orbiting satellites. The framework implements Keplerian orbital mechanics with academic reference accuracy, making it suitable for educational tools, hobby projects, and non-critical astronomy applications.
+
+CORE COMPONENTS
+
+TwoLineElement: Parses and validates NORAD Two-Line Element format satellite data. This is the standard format used to distribute orbital parameters for satellites tracked by NORAD and Space Force. The parser handles the complex fixed-width format, performs checksum validation, and extracts all orbital elements including epoch time, mean motion, eccentricity, inclination, right ascension of ascending node (RAAN), argument of perigee, and mean anomaly.
+
+Orbit: Represents a satellite's orbital path using the six classical Keplerian orbital elements. This struct provides methods to calculate satellite positions (latitude, longitude, altitude) at any given time. It implements iterative algorithms for solving Kepler's equation to find eccentric anomaly and true anomaly. The Orbit type conforms to the Orbitable protocol, which defines the interface for types that represent orbital element data.
+
+Orbitable: Protocol that defines the requirements for types containing orbital element data. Any type conforming to this protocol must provide the six classical orbital elements: semi-major axis, eccentricity, inclination, right ascension of ascending node, argument of perigee, and mean anomaly.
+
+DESIGN PHILOSOPHY
+
+The framework emphasizes correctness, readability, and maintainability over raw performance. All calculations are based on peer-reviewed academic papers and NASA documentation, with source references included in code comments. The implementation is pure Swift with no dependencies on external C/C++ libraries or command-line tools, making it easy to integrate into Swift projects and Swift Package Manager workflows.
+
+Physical constants use WGS84 values for Earth's radius and gravitational parameter, ensuring accuracy for modern satellite tracking. The codebase follows Apple's Swift API Design Guidelines and includes comprehensive inline documentation.
+
+INTENDED USE CASES
+
+Educational astronomy tools: Teaching orbital mechanics concepts, demonstrating satellite motion, and visualizing orbital parameters.
+
+Ground station planning: Hobbyist satellite tracking applications that predict when satellites will be visible from specific locations on Earth.
+
+Augmented reality sky visualization: AR apps that overlay satellite positions on camera views of the sky in real-time.
+
+AI-integrated astronomy assistants: Chatbots and AI tools that answer questions about satellite positions, orbital characteristics, and pass predictions.
+
+Amateur radio satellite tracking: Applications for ham radio operators tracking communication satellites.
+
+FUTURE ROADMAP
+
+The framework is under active development with planned features including:
+
+Observer: A type representing a ground station or observer location on Earth, with methods to calculate azimuth, elevation, range, and other observer-relative parameters for satellites.
+
+PassWindow: Prediction of satellite pass times including acquisition of signal (AOS), loss of signal (LOS), maximum elevation, and visibility duration for a given observer location.
+
+Visibility estimation: Determining whether a satellite is sunlit and visible to ground observers based on sun position and shadow geometry.
+
+SwiftUI sample apps: Example applications demonstrating framework usage in iOS and macOS apps with interactive visualizations.
+
+NOT INTENDED FOR
+
+Ephemeris is NOT suitable for:
+
+Real-time mission-critical operations: The framework does not implement high-precision propagators like SGP4/SDP4 that account for atmospheric drag perturbations, so accuracy degrades significantly beyond a few days from the TLE epoch.
+
+Deep-space trajectories: Only Earth-orbiting satellites are supported. The framework does not handle interplanetary trajectories, lunar orbits, or other non-Earth-centric scenarios.
+
+Highly specialized orbit types: Unusual orbit types requiring advanced perturbation models (like station-keeping maneuvers, highly elliptical orbits with significant lunar/solar perturbations) are not accurately modeled.
+
+Professional satellite operations: Use dedicated astrodynamics libraries like GMAT, Orekit, or AGI's Systems Tool Kit for operational satellite mission planning and analysis.
+
+Military or regulated applications: This is educational/hobbyist software without formal verification, validation, or certification processes.
