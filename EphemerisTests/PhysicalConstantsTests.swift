@@ -41,7 +41,7 @@ let physicalConstantsTests: ((ContextType) -> Void) = {
                 
                 // Should be slightly more than 2π (difference between solar and sidereal day)
                 try expect(PhysicalConstants.Earth.radsPerDay > 2.0 * .pi)
-                try expect(abs(PhysicalConstants.Earth.radsPerDay - 2.0 * .pi) < 0.02 == true)
+                try expect(abs(PhysicalConstants.Earth.radsPerDay - 2.0 * .pi) < 0.02)
             }
         }
         
