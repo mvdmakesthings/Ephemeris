@@ -32,15 +32,32 @@ The CI workflow runs on:
 
 ### Running Tests Locally
 
-To run the tests locally with Swift Package Manager:
+The Ephemeris test suite uses [Spectre](https://github.com/kylef/Spectre), a BDD-style testing framework for Swift. Tests are run as an executable rather than with the standard XCTest framework.
+
+To run the tests locally:
 
 ```bash
 # Build the package
 swift build
 
-# Run tests
-swift test
+# Run tests using the executable
+swift run EphemerisTests
 ```
+
+The test suite is pure Swift and does not require Xcode or the Xcode toolkit. It can be run on any system with Swift installed (including Linux).
+
+### Test Suite Structure
+
+All tests are located in the `EphemerisTests` directory and use Spectre's `describe`/`context`/`it` and `expect` syntax:
+
+- **DoubleExtensionTests.swift**: Tests for Double extension methods (rounding, angle conversions)
+- **DateTests.swift**: Tests for Date extensions (Julian Day, sidereal time)
+- **PhysicalConstantsTests.swift**: Tests for physical constants validation
+- **TwoLineElementTests.swift**: Tests for TLE parsing
+- **OrbitalElementsTests.swift**: Tests for orbital element calculations
+- **OrbitalCalculationTests.swift**: Tests for orbital calculations
+- **MockTLEs.swift**: Mock TLE data for testing
+- **main.swift**: Test runner that registers all test suites
 
 ### Running SwiftLint Locally
 
