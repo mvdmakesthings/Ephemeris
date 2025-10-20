@@ -8,22 +8,22 @@
 
 import Foundation
 
-/// Two-Line Element Format is data format encoding a list of orbital elements of an Earth-orbiting object for a given point in time (epoch).
+/// Errors that can occur during TLE parsing.
 ///
-/// - Link: https://en.wikipedia.org/wiki/Two-line_element_set
-///
-/// - Note: Example TLE String:
-///     ISS (ZARYA)
-///     1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
-///     2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
-
-/// Errors that can occur during TLE parsing
+/// These errors provide detailed information about what went wrong when
+/// parsing a Two-Line Element string, including field names and expected values.
 public enum TLEParsingError: Error, LocalizedError {
+    /// The TLE format is invalid or malformed
     case invalidFormat(String)
+    /// A field contains an invalid number
     case invalidNumber(field: String, value: String)
+    /// The TLE has the wrong number of lines (expected 3)
     case missingLine(expected: Int, actual: Int)
+    /// String subscripting attempted with invalid range
     case invalidStringRange(field: String, range: String)
+    /// Line checksum validation failed
     case invalidChecksum(line: Int, expected: Int, actual: Int)
+    /// Eccentricity value is out of valid range (must be < 1.0)
     case invalidEccentricity(value: Double)
     
     public var errorDescription: String? {
@@ -44,6 +44,42 @@ public enum TLEParsingError: Error, LocalizedError {
     }
 }
 
+/// Represents a Two-Line Element (TLE) set for an Earth-orbiting satellite.
+///
+/// The Two-Line Element format is a standard data format encoding orbital elements
+/// of an Earth-orbiting object for a given point in time (the epoch). TLE data is
+/// published by NORAD and is used worldwide for satellite tracking.
+///
+/// ## TLE Format
+/// A TLE consists of three lines:
+/// - **Line 0**: Satellite name (common name from catalog)
+/// - **Line 1**: Catalog number, epoch, ballistic coefficient, drag terms
+/// - **Line 2**: Orbital elements (inclination, RAAN, eccentricity, argument of perigee, mean anomaly, mean motion)
+///
+/// ## Example TLE
+/// ```
+/// ISS (ZARYA)
+/// 1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
+/// 2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
+/// ```
+///
+/// ## Usage
+/// ```swift
+/// let tleString = """
+/// ISS (ZARYA)
+/// 1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
+/// 2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
+/// """
+/// let tle = try TwoLineElement(from: tleString)
+/// print("Satellite: \(tle.name)")
+/// print("Inclination: \(tle.inclination)°")
+/// ```
+///
+/// ## Where to Get TLE Data
+/// - [CelesTrak](https://celestrak.com/NORAD/elements/)
+/// - [Space-Track.org](https://www.space-track.org/) (requires registration)
+///
+/// - Note: Reference: https://en.wikipedia.org/wiki/Two-line_element_set
 public struct TwoLineElement {
     // MARK: - Line 0
     /// Object's common name based on information from the satellite catalog.
@@ -89,6 +125,35 @@ public struct TwoLineElement {
     /// Revolution Number at Epoch
     var revolutionsAtEpoch: Int
     
+    /// Creates a TwoLineElement by parsing a TLE string.
+    ///
+    /// Parses a standard three-line TLE format string and extracts all orbital elements.
+    /// The parser validates checksums, line lengths, and data ranges to ensure the TLE
+    /// is well-formed.
+    ///
+    /// - Parameter tle: A three-line string in NORAD TLE format
+    /// - Throws: `TLEParsingError` if the TLE is malformed, has invalid checksums,
+    ///           or contains out-of-range values
+    ///
+    /// ## Example
+    /// ```swift
+    /// let tleString = """
+    /// ISS (ZARYA)
+    /// 1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
+    /// 2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
+    /// """
+    /// let tle = try TwoLineElement(from: tleString)
+    /// ```
+    ///
+    /// ## Validation Performed
+    /// - Line count must be exactly 3
+    /// - Lines 1 and 2 must be at least 69 characters
+    /// - Checksum validation for lines 1 and 2
+    /// - Eccentricity must be less than 1.0
+    /// - All numeric fields must parse correctly
+    ///
+    /// - Note: The parser uses a ±50 year window for 2-digit year interpretation,
+    ///         making it suitable for historical and future TLE data
     public init(from tle: String) throws {
 
         let lines = tle.components(separatedBy: "\n")

@@ -18,14 +18,14 @@ let orbitalElementsTests: ((ContextType) -> Void) = {
             let knownSemimajorAxis = 42165.0 // km
             let meanMotion = 1.00271173 // Revolutions Per Day
             let semimajorAxis = Orbit.calculateSemimajorAxis(meanMotion: meanMotion).rounded() // Rounded to the nearest km
-            try expect(semimajorAxis == knownSemimajorAxis)
+            _ = expect(semimajorAxis == knownSemimajorAxis)
         }
         
         $0.it("calculates eccentric anomaly correctly") {
             // Test with low eccentricity (nearly circular orbit)
             // See numerical example: http://www.csun.edu/~hcmth017/master/node16.html
             let eccentricAnomaly = Orbit.calculateEccentricAnomaly(eccentricity: 0.00001, meanAnomaly: 30, accuracy: 0.0001, maxIterations: 500)
-            try expect(eccentricAnomaly.round(to: 5) == 30.00029)
+            _ = expect(eccentricAnomaly.round(to: 5) == 30.00029)
         }
         
         $0.it("calculates true anomaly correctly") {
@@ -34,13 +34,13 @@ let orbitalElementsTests: ((ContextType) -> Void) = {
             let eccentricity = 0.1
             let eccentricAnomalyAtPeriapsis: Degrees = 0.0
             let trueAnomalyAtPeriapsis = try Orbit.calculateTrueAnomaly(eccentricity: eccentricity, eccentricAnomaly: eccentricAnomalyAtPeriapsis)
-            try expect(abs(trueAnomalyAtPeriapsis - 0.0) < 0.001)
+            _ = try expect(abs(trueAnomalyAtPeriapsis - 0.0) < 0.001)
             
             // Test that function returns valid angles (0-360°)
             let eccentricAnomaly: Degrees = 45.0
             let trueAnomaly = try Orbit.calculateTrueAnomaly(eccentricity: eccentricity, eccentricAnomaly: eccentricAnomaly)
-            try expect(trueAnomaly >= 0.0)
-            try expect(trueAnomaly <= 360.0)
+            _ = expect(trueAnomaly >= 0.0)
+            _ = expect(trueAnomaly <= 360.0)
         }
         
         $0.it("initializes orbit from TLE") {
@@ -49,11 +49,11 @@ let orbitalElementsTests: ((ContextType) -> Void) = {
             let orbit = Orbit(from: tle)
             
             // Verify basic orbital elements are set
-            try expect(orbit.semimajorAxis > 0)
-            try expect(orbit.eccentricity >= 0)
-            try expect(orbit.eccentricity <= 1)
-            try expect(orbit.inclination >= 0)
-            try expect(orbit.inclination <= 180)
+            _ = expect(orbit.semimajorAxis > 0)
+            _ = expect(orbit.eccentricity >= 0)
+            _ = expect(orbit.eccentricity <= 1)
+            _ = expect(orbit.inclination >= 0)
+            _ = expect(orbit.inclination <= 180)
         }
     }
 }

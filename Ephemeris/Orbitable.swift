@@ -8,6 +8,32 @@
 
 import Foundation
 
+/// A protocol that defines the requirements for types representing orbital elements.
+///
+/// Types conforming to `Orbitable` must provide the six classical Keplerian orbital elements
+/// that fully describe an orbit's size, shape, orientation, and the position of the object
+/// within that orbit.
+///
+/// ## Orbital Elements
+/// The protocol requires:
+/// - **Size**: Semi-major axis
+/// - **Shape**: Eccentricity
+/// - **Orientation**: Inclination, Right Ascension of Ascending Node (RAAN), Argument of Perigee
+/// - **Position**: True Anomaly, Mean Anomaly, Mean Motion
+///
+/// ## Example Conformance
+/// ```swift
+/// struct MyOrbit: Orbitable {
+///     let semimajorAxis: Double
+///     let eccentricity: Double
+///     let inclination: Degrees
+///     let rightAscensionOfAscendingNode: Degrees
+///     let argumentOfPerigee: Degrees
+///     let trueAnomaly: Degrees
+///     let meanAnomaly: Degrees
+///     let meanMotion: Double
+/// }
+/// ```
 public protocol Orbitable {
     // MARK: - Size of Orbit
     /// Describes half of the size of the orbit path from Perigee to Apogee.

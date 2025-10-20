@@ -8,6 +8,31 @@
 
 import Foundation
 
+/// Physical and mathematical constants used in orbital calculations.
+///
+/// This structure provides a centralized collection of constants based on the WGS84
+/// (World Geodetic System 1984) standard and other astronomical references. All values
+/// are well-documented with their sources and units.
+///
+/// ## Categories
+/// - **Earth**: Gravitational constant, radius, rotation rate
+/// - **Time**: Conversion factors for days, hours, minutes, seconds
+/// - **Julian**: Reference epochs for date calculations
+/// - **Calculation**: Default parameters for iterative algorithms
+/// - **Angle**: Angular measurement constants
+///
+/// ## Example Usage
+/// ```swift
+/// let radius = PhysicalConstants.Earth.radius
+/// let mu = PhysicalConstants.Earth.µ
+/// let secondsPerDay = PhysicalConstants.Time.secondsPerDay
+/// ```
+///
+/// - Note: WGS 84 is the standard U.S. Department of Defense definition of a global
+///         reference system and is compatible with the International Terrestrial Reference System (ITRS)
+/// - Note: References:
+///   - http://www.unoosa.org/pdf/icg/2012/template/WGS_84.pdf
+///   - https://apps.dtic.mil/dtic/tr/fulltext/u2/a110165.pdf (WGS 72)
 public struct PhysicalConstants {
     
     /// Earth's Physical Constants

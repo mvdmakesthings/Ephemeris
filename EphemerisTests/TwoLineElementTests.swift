@@ -42,22 +42,22 @@ let twoLineElementTests: ((ContextType) -> Void) = {
         $0.it("parses TLE correctly") {
             let ISSTLE = try MockTLEs.ISSSample()
             // Line 0
-            try expect(ISSTLE.name == "ISS (ZARYA)")
+            _ = expect(ISSTLE.name == "ISS (ZARYA)")
             
             // Line 1
-            try expect(ISSTLE.catalogNumber == 25544)
-            try expect(ISSTLE.internationalDesignator == "98067A")
-            try expect(ISSTLE.epochYear == 2020)
-            try expect(ISSTLE.epochDay == 97.82871450)
-            try expect(ISSTLE.elementSetEpochUTC == "20097.82871450")
+            _ = expect(ISSTLE.catalogNumber == 25544)
+            _ = expect(ISSTLE.internationalDesignator == "98067A")
+            _ = expect(ISSTLE.epochYear == 2020)
+            _ = expect(ISSTLE.epochDay == 97.82871450)
+            _ = expect(ISSTLE.elementSetEpochUTC == "20097.82871450")
             
             // Line 2
-            try expect(ISSTLE.inclination == 51.6465)
-            try expect(ISSTLE.rightAscension == 341.5807)
-            try expect(ISSTLE.eccentricity == 0.0003880)
-            try expect(ISSTLE.meanAnomaly == 26.1197)
-            try expect(ISSTLE.meanMotion == 15.48685836)
-            try expect(ISSTLE.revolutionsAtEpoch == 22095)
+            _ = expect(ISSTLE.inclination == 51.6465)
+            _ = expect(ISSTLE.rightAscension == 341.5807)
+            _ = expect(ISSTLE.eccentricity == 0.0003880)
+            _ = expect(ISSTLE.meanAnomaly == 26.1197)
+            _ = expect(ISSTLE.meanMotion == 15.48685836)
+            _ = expect(ISSTLE.revolutionsAtEpoch == 22095)
         }
         
         // MARK: - Year Parsing Tests
@@ -72,7 +72,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
                     """
                 let tle2020 = try TwoLineElement(from: tleString2020)
-                try expect(tle2020.epochYear == 2020)
+                _ = expect(tle2020.epochYear == 2020)
                 
                 // Test year 2000 (parsed from "00")
                 let tleString2000 =
@@ -82,7 +82,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     2 26536  98.7361 186.8634 0009660 233.4374 126.5910 14.13250159306768
                     """
                 let tle2000 = try TwoLineElement(from: tleString2000)
-                try expect(tle2000.epochYear == 2000)
+                _ = expect(tle2000.epochYear == 2000)
             }
             
             $0.it("parses previous century years correctly") {
@@ -95,7 +95,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     2 26536  98.7361 186.8634 0009660 233.4374 126.5910 14.13250159306768
                     """
                 let tle1999 = try TwoLineElement(from: tleString1999)
-                try expect(tle1999.epochYear == 1999)
+                _ = expect(tle1999.epochYear == 1999)
                 
                 // Test year 76-99 range (should parse as 1976-1999)
                 let tleString1980 =
@@ -112,7 +112,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                 if expectedYear80 > currentYear + 50 {
                     expectedYear80 -= 100
                 }
-                try expect(tle1980.epochYear == expectedYear80)
+                _ = expect(tle1980.epochYear == expectedYear80)
             }
             
             $0.it("parses boundary condition years correctly") {
@@ -134,7 +134,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                 if expectedYear > currentYear + 50 {
                     expectedYear -= 100
                 }
-                try expect(tle56.epochYear == expectedYear)
+                _ = expect(tle56.epochYear == expectedYear)
             }
             
             $0.it("parses recent years correctly") {
@@ -151,7 +151,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     \(fixChecksum(for: line2))
                     """
                 let tle = try TwoLineElement(from: tleString)
-                try expect(tle.epochYear == currentYear)
+                _ = expect(tle.epochYear == currentYear)
             }
             
             $0.it("no longer assumes 1957 cutoff") {
@@ -173,10 +173,10 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     2 00001  65.1000 180.0000 0520000 180.0000 180.0000 15.00000000000005
                     """
                 let tle57 = try TwoLineElement(from: tleString57)
-                try expect(tle57.epochYear == expectedYear57)
+                _ = expect(tle57.epochYear == expectedYear57)
                 
                 if currentYear >= 2007 && currentYear <= 2106 {
-                    try expect(expectedYear57 == 2057)
+                    _ = expect(expectedYear57 == 2057)
                 }
             }
         }
@@ -191,8 +191,8 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     throw failure("Should have thrown error")
                 } catch let error as TLEParsingError {
                     if case .missingLine(let expected, let actual) = error {
-                        try expect(expected == 3)
-                        try expect(actual == 1)
+                        _ = expect(expected == 3)
+                        _ = expect(actual == 1)
                     } else {
                         throw failure("Wrong error type")
                     }
@@ -210,8 +210,8 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     throw failure("Should have thrown error")
                 } catch let error as TLEParsingError {
                     if case .missingLine(let expected, let actual) = error {
-                        try expect(expected == 3)
-                        try expect(actual == 2)
+                        _ = expect(expected == 3)
+                        _ = expect(actual == 2)
                     } else {
                         throw failure("Wrong error type")
                     }
@@ -230,7 +230,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     throw failure("Should have thrown error")
                 } catch let error as TLEParsingError {
                     if case .invalidNumber(let field, _) = error {
-                        try expect(field == "catalogNumber")
+                        _ = expect(field == "catalogNumber")
                     } else {
                         throw failure("Wrong error type")
                     }
@@ -250,7 +250,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     throw failure("Should have thrown error")
                 } catch let error as TLEParsingError {
                     if case .invalidNumber(let field, _) = error {
-                        try expect(field == "inclination")
+                        _ = expect(field == "inclination")
                     } else {
                         throw failure("Wrong error type")
                     }
@@ -266,7 +266,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
                     """
                 let tle = try TwoLineElement(from: tleWithShortLine0)
-                try expect(tle.name == "ISS")
+                _ = expect(tle.name == "ISS")
             }
             
             $0.it("throws on short line 1") {
@@ -281,7 +281,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     throw failure("Should have thrown error")
                 } catch let error as TLEParsingError {
                     if case .invalidFormat(let message) = error {
-                        try expect(message.contains("Line 1"))
+                        _ = try expect(message.contains("Line 1"))
                     } else {
                         throw failure("Wrong error type")
                     }
@@ -300,7 +300,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     throw failure("Should have thrown error")
                 } catch let error as TLEParsingError {
                     if case .invalidFormat(let message) = error {
-                        try expect(message.contains("Line 2"))
+                        _ = try expect(message.contains("Line 2"))
                     } else {
                         throw failure("Wrong error type")
                     }
@@ -314,7 +314,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
             $0.it("validates correct checksums") {
                 // The ISS sample has valid checksums
                 let tle = try MockTLEs.ISSSample()
-                try expect(tle.catalogNumber == 25544)
+                _ = expect(tle.catalogNumber == 25544)
             }
             
             $0.it("throws on invalid line 1 checksum") {
@@ -330,9 +330,9 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     throw failure("Should have thrown error")
                 } catch let error as TLEParsingError {
                     if case .invalidChecksum(let line, let expected, let actual) = error {
-                        try expect(line == 1)
-                        try expect(expected == 0)
-                        try expect(actual == 2)
+                        _ = expect(line == 1)
+                        _ = expect(expected == 0)
+                        _ = expect(actual == 2)
                     } else {
                         throw failure("Wrong error type")
                     }
@@ -352,9 +352,9 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     throw failure("Should have thrown error")
                 } catch let error as TLEParsingError {
                     if case .invalidChecksum(let line, let expected, let actual) = error {
-                        try expect(line == 2)
-                        try expect(expected == 8)
-                        try expect(actual == 0)
+                        _ = expect(line == 2)
+                        _ = expect(expected == 8)
+                        _ = expect(actual == 0)
                     } else {
                         throw failure("Wrong error type")
                     }
@@ -369,7 +369,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                 // Test parsing BSTAR drag term in scientific notation
                 // Format: 12345-3 means 0.12345 × 10⁻³ = 0.00012345
                 let tle = try MockTLEs.ISSSample()
-                try expect(abs(tle.bstarDragTerm - 0.000024271) < 1e-9)
+                _ = try expect(abs(tle.bstarDragTerm - 0.000024271) < 1e-9)
             }
             
             $0.it("parses BSTAR with positive exponent") {
@@ -383,7 +383,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     \(line2)
                     """
                 let tle = try TwoLineElement(from: tleString)
-                try expect(abs(tle.bstarDragTerm - 12.345) < 1e-9)
+                _ = try expect(abs(tle.bstarDragTerm - 12.345) < 1e-9)
             }
             
             $0.it("parses BSTAR with zero value") {
@@ -397,13 +397,13 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     \(line2)
                     """
                 let tle = try TwoLineElement(from: tleString)
-                try expect(abs(tle.bstarDragTerm - 0.0) < 1e-12)
+                _ = try expect(abs(tle.bstarDragTerm - 0.0) < 1e-12)
             }
             
             $0.it("parses mean motion second derivative") {
                 // Test parsing second derivative in scientific notation
                 let tle = try MockTLEs.ISSSample()
-                try expect(abs(tle.meanMotionSecondDerivative - 0.0) < 1e-12)
+                _ = try expect(abs(tle.meanMotionSecondDerivative - 0.0) < 1e-12)
             }
             
             $0.it("parses non-zero mean motion second derivative") {
@@ -417,7 +417,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     \(line2)
                     """
                 let tle = try TwoLineElement(from: tleString)
-                try expect(abs(tle.meanMotionSecondDerivative - 0.0000012345) < 1e-12)
+                _ = try expect(abs(tle.meanMotionSecondDerivative - 0.0000012345) < 1e-12)
             }
         }
         
@@ -427,13 +427,13 @@ let twoLineElementTests: ((ContextType) -> Void) = {
             $0.it("parses negative first derivative") {
                 // Test negative first derivative (orbital decay)
                 let tle = try MockTLEs.NOAASample()
-                try expect(abs(tle.meanMotionFirstDerivative - (-0.00000007)) < 1e-12)
+                _ = try expect(abs(tle.meanMotionFirstDerivative - (-0.00000007)) < 1e-12)
             }
             
             $0.it("parses positive first derivative") {
                 // Test positive first derivative
                 let tle = try MockTLEs.ISSSample()
-                try expect(abs(tle.meanMotionFirstDerivative - 0.00000874) < 1e-12)
+                _ = try expect(abs(tle.meanMotionFirstDerivative - 0.00000874) < 1e-12)
             }
             
             $0.it("parses negative second derivative") {
@@ -447,7 +447,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     \(line2)
                     """
                 let tle = try TwoLineElement(from: tleString)
-                try expect(abs(tle.meanMotionSecondDerivative - (-0.0000012345)) < 1e-12)
+                _ = try expect(abs(tle.meanMotionSecondDerivative - (-0.0000012345)) < 1e-12)
             }
             
             $0.it("parses negative BSTAR drag term") {
@@ -461,7 +461,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     \(line2)
                     """
                 let tle = try TwoLineElement(from: tleString)
-                try expect(abs(tle.bstarDragTerm - (-0.00012345)) < 1e-12)
+                _ = try expect(abs(tle.bstarDragTerm - (-0.00012345)) < 1e-12)
             }
         }
         
@@ -471,8 +471,8 @@ let twoLineElementTests: ((ContextType) -> Void) = {
             $0.it("validates normal eccentricity values") {
                 // Test valid eccentricity (less than 1.0)
                 let tle = try MockTLEs.ISSSample()
-                try expect(tle.eccentricity < 1.0)
-                try expect(abs(tle.eccentricity - 0.0003880) < 1e-7)
+                _ = expect(tle.eccentricity < 1.0)
+                _ = try expect(abs(tle.eccentricity - 0.0003880) < 1e-7)
             }
             
             $0.it("validates high eccentricity values") {
@@ -486,8 +486,8 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     \(fixChecksum(for: line2))
                     """
                 let tle = try TwoLineElement(from: tleString)
-                try expect(abs(tle.eccentricity - 0.9000000) < 1e-7)
-                try expect(tle.eccentricity < 1.0)
+                _ = try expect(abs(tle.eccentricity - 0.9000000) < 1e-7)
+                _ = expect(tle.eccentricity < 1.0)
             }
             
             $0.it("validates maximum eccentricity values") {
@@ -504,8 +504,8 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                 
                 // This should succeed as 0.9999999 < 1.0
                 let tle = try? TwoLineElement(from: tleString)
-                try expect(tle != nil)
-                try expect(tle!.eccentricity < 1.0)
+                _ = try expect(tle != nil)
+                _ = expect(tle!.eccentricity < 1.0)
             }
         }
         
@@ -523,7 +523,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     \(fixChecksum(for: line2))
                     """
                 let tle = try TwoLineElement(from: tleString)
-                try expect(tle.catalogNumber == 5544)
+                _ = expect(tle.catalogNumber == 5544)
             }
             
             $0.it("parses fields with trailing spaces") {
@@ -537,7 +537,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     \(line2)
                     """
                 let tle = try TwoLineElement(from: tleString)
-                try expect(tle.catalogNumber == 25544)
+                _ = expect(tle.catalogNumber == 25544)
             }
             
             $0.it("parses small catalog numbers") {
@@ -551,7 +551,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     \(line2)
                     """
                 let tle = try TwoLineElement(from: tleString)
-                try expect(tle.catalogNumber == 1)
+                _ = expect(tle.catalogNumber == 1)
             }
             
             $0.it("parses zero eccentricity") {
@@ -565,7 +565,7 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     \(fixChecksum(for: line2))
                     """
                 let tle = try TwoLineElement(from: tleString)
-                try expect(abs(tle.eccentricity - 0.0) < 1e-12)
+                _ = try expect(abs(tle.eccentricity - 0.0) < 1e-12)
             }
             
             $0.it("parses fields with all zeros") {
@@ -579,14 +579,14 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                     \(fixChecksum(for: line2))
                     """
                 let tle = try TwoLineElement(from: tleString)
-                try expect(tle.catalogNumber == 1)
-                try expect(tle.inclination == 0.0)
-                try expect(tle.rightAscension == 0.0)
-                try expect(tle.eccentricity == 0.0)
-                try expect(tle.argumentOfPerigee == 0.0)
-                try expect(tle.meanAnomaly == 0.0)
-                try expect(tle.bstarDragTerm == 0.0)
-                try expect(tle.meanMotionSecondDerivative == 0.0)
+                _ = expect(tle.catalogNumber == 1)
+                _ = expect(tle.inclination == 0.0)
+                _ = expect(tle.rightAscension == 0.0)
+                _ = expect(tle.eccentricity == 0.0)
+                _ = expect(tle.argumentOfPerigee == 0.0)
+                _ = expect(tle.meanAnomaly == 0.0)
+                _ = expect(tle.bstarDragTerm == 0.0)
+                _ = expect(tle.meanMotionSecondDerivative == 0.0)
             }
         }
     }

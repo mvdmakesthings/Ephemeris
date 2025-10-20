@@ -8,6 +8,29 @@
 
 import Foundation
 
+/// Extensions to `Date` for astronomical time conversions.
+///
+/// These extensions provide methods for converting between standard calendar dates
+/// and astronomical time systems used in orbital mechanics:
+/// - Julian Day Number (JDN)
+/// - Greenwich Sidereal Time (GST)
+/// - J2000 epoch conversions
+///
+/// ## Julian Day
+/// The Julian Day is a continuous count of days since the beginning of the Julian Period
+/// (January 1, 4713 BC). It's widely used in astronomy and orbital mechanics for calculating
+/// time intervals without worrying about calendar complexities.
+///
+/// ## Sidereal Time
+/// Greenwich Sidereal Time is essential for converting between celestial coordinates and
+/// Earth-fixed coordinates, accounting for Earth's rotation.
+///
+/// ## Example Usage
+/// ```swift
+/// let jd = Date.julianDay(from: Date())
+/// let gst = Date.greenwichSideRealTime(from: jd!)
+/// let j2000 = Date.toJ2000(from: jd!)
+/// ```
 extension Date {
     
     // MARK: - Julian Date Conversion
