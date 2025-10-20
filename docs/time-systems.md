@@ -833,14 +833,8 @@ print("Lat: \(position.latitude)°, Lon: \(position.longitude)°")
 
 ### Diagrams
 
-**Image Placeholder**: Sidereal vs Solar Day
-```markdown
-![Sidereal vs Solar Day Diagram](../assets/time-systems/sidereal-solar-day.png)
-*Figure 1: Comparison of sidereal day (23h 56m 04s) and solar day (24h 00m 00s).
-Shows Earth's rotation relative to distant stars vs. rotation relative to the Sun.
-The ~4 minute difference arises from Earth's orbital motion around the Sun.*
-Source: [To be added - educational diagram]
-```
+![Sidereal vs Solar Day](https://upload.wikimedia.org/wikipedia/commons/8/8b/Sidereal_day_%28prograde%29.svg)
+*Figure 1: Comparison of sidereal day and solar day for a prograde planet like Earth. The diagram shows Earth's rotation relative to distant stars (sidereal day = 23h 56m 04s) versus rotation relative to the Sun (solar day = 24h 00m 00s). The ~4 minute difference arises from Earth's orbital motion around the Sun - after one complete rotation relative to the stars, Earth must rotate slightly more to bring the Sun back to the same position. Source: Gdr/Chris828, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Sidereal_day_(prograde).svg), licensed under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).*
 
 ---
 

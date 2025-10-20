@@ -74,27 +74,9 @@ $$
 
 ### Visual Representation
 
-```
-                    Z (North Pole)
-                    ↑
-                    |
-        90°W    ____|____  90°E
-               /    |    \
-              |     |     |
-        180°--|--Earth---|-- 0° (Prime Meridian, X-axis)
-              |     ⊕     |
-               \    |    /
-                \   |   /
-                 \  |  /
-                  \ | / ← Equator
-                   \|/
-                    ↓
-                    Y (90° East)
-```
 
-**Note**: A detailed diagram showing the ECEF coordinate system should be placed here.
-
-**Diagram source**: [To be added from ResearchGate - "Earth-Centered-Earth-Fixed (ECEF) Coordinate System"]
+![ECEF Coordinate System](https://upload.wikimedia.org/wikipedia/commons/6/62/Ecef_coordinates.svg)
+*Figure 1: Earth-Centered Earth-Fixed (ECEF) Coordinate System. The X-axis passes through the prime meridian at the equator, the Y-axis points through 90° East longitude, and the Z-axis points toward the North Pole. The frame rotates with Earth. Source: Chuckage, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Ecef_coordinates.svg), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).*
 
 ### Relationship to ECI
 
@@ -370,9 +352,8 @@ At this latitude, geodetic latitude is about 11.5 arcminutes (0.19°) **larger**
 - GPS and maps use **geodetic** coordinates (latitude/longitude)
 - **Conversion is essential** when displaying satellite positions on maps
 
-**Diagram**: Geodetic vs geocentric latitude visualization
-
-**Diagram source**: [To be added from ResearchGate - "Geodetic versus geocentric latitude"]
+![Geodetic vs Geocentric Latitude](https://upload.wikimedia.org/wikipedia/commons/a/a6/Geocentric_vs_geodetic_latitude.svg)
+*Figure 2: Comparison of geodetic latitude (φ) and geocentric latitude (φ'). Geodetic latitude is measured from the surface normal to the ellipsoid, while geocentric latitude is measured from the radial line through Earth's center. The difference arises from Earth's ellipsoidal shape. Source: SharkD/Datumizer, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Geocentric_vs_geodetic_latitude.svg), public domain.*
 
 ---
 

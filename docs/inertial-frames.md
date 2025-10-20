@@ -199,24 +199,10 @@ $$
 
 ### Visual Representation
 
-```
-                    Z (North Celestial Pole)
-                    ↑
-                    |
-                    |
-        Earth       |
-         ___       |
-        /   \      |
-       |  ⊕  |-----+-------→ X (to Vernal Equinox γ)
-        \___/     /
-                /
-               ↙
-             Y (90° east in equatorial plane)
-```
 
-**Note**: A detailed diagram showing the ECI coordinate system should be placed here.
 
-**Diagram source**: [To be added from ResearchGate - "Earth Centered Inertial (ECI) Coordinate System"]
+![ECI Coordinate System](https://celestrak.org/columns/v02n01/fig-1a.gif)
+*Figure 1: Earth-Centered Inertial (ECI) Coordinate System. The X-axis points toward the vernal equinox (γ), the Z-axis aligns with Earth's rotation axis pointing North, and the Y-axis completes the right-handed system. Source: Dr. T.S. Kelso, "Orbital Coordinate Systems, Part I," Satellite Times, Sept/Oct 1995, [CelesTrak](https://celestrak.org/columns/v02n01/).*
 
 ---
 

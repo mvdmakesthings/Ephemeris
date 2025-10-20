@@ -885,13 +885,33 @@ $$
 
 ### Diagrams
 
-**Image Placeholder**: Transformation Pipeline Flowchart
-```markdown
-![Coordinate Transformation Pipeline](../assets/coordinate-systems/transformation-pipeline.png)
-*Figure 1: Complete transformation pipeline from orbital elements to horizontal coordinates.
-Shows the sequence: Orbital Plane → ECI → ECEF → Geodetic → ENU → Horizontal*
-Source: [To be created - flowchart diagram]
+**Coordinate Transformation Pipeline:**
+
+The complete transformation sequence from orbital elements to observer horizontal coordinates:
+
 ```
+TLE Data
+   ↓
+Orbital Elements (a, e, i, Ω, ω, M₀, n)
+   ↓
+[Kepler's Equation] → Eccentric Anomaly (E) → True Anomaly (ν)
+   ↓
+Position in Orbital Plane (r, ν)
+   ↓
+[R_z(Ω) · R_x(i) · R_z(ω)] → ECI Coordinates (X_ECI, Y_ECI, Z_ECI)
+   ↓
+[R_z(GMST)] → ECEF Coordinates (X_ECEF, Y_ECEF, Z_ECEF)
+   ↓
+[Iterative Algorithm] → Geodetic Coordinates (φ, λ, h)
+   ├─→ Display on map (latitude, longitude, altitude)
+   └─→ [R_ECEF→ENU(φ_obs, λ_obs)] → ENU Coordinates (E, N, U)
+        ↓
+   [Spherical Conversion] → Horizontal Coordinates (Az, El, Range)
+        ↓
+   Antenna pointing / Pass prediction
+```
+
+*Each transformation step uses the mathematical formulas detailed in the sections above. See [Observer Geometry](observer-geometry.md) for the Swift implementation of this complete pipeline.*
 
 ---
 

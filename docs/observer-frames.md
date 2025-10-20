@@ -100,28 +100,9 @@ The **East-North-Up (ENU)** coordinate system is a Cartesian coordinate frame ce
 
 ### Visual Representation
 
-```
-                     U (Up/Zenith)
-                     ↑
-                     |
-                     |
-                     |
-                Observer
-                   / |
-                  /  |
-                 /   |
-               E ←   |
-         (East)      N (North)
-                     →
-```
 
-**Image Placeholder**:
-```markdown
-![ENU Coordinate System](../assets/coordinate-systems/enu-coordinate-system.png)
-*Figure 1: East-North-Up (ENU) coordinate system at observer location.
-The E-axis points east, N-axis points north, and U-axis points toward zenith.
-Source: [To be added - ENU diagram from academic source]*
-```
+![ENU Coordinate System](https://upload.wikimedia.org/wikipedia/commons/7/73/ECEF_ENU_Longitude_Latitude_relationships.svg)
+*Figure 1: East-North-Up (ENU) local coordinate system and its relationship to ECEF, longitude, and latitude. The E-axis points east along the local horizon, N-axis points north, and U-axis points toward zenith. Source: Mike1024, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:ECEF_ENU_Longitude_Latitude_relationships.svg), public domain.*
 
 ### ENU Unit Vectors in ECEF
 
@@ -263,13 +244,8 @@ $$
 
 These are **spherical coordinates** derived from the ENU Cartesian coordinates.
 
-**Image Placeholder**:
-```markdown
-![Horizontal Coordinate System](../assets/coordinate-systems/horizontal-coordinates.png)
-*Figure 2: Horizontal coordinate system showing azimuth, elevation, and range.
-Azimuth is measured clockwise from north, elevation is angle above horizon.
-Source: [To be added - Horizontal coordinates diagram]*
-```
+![Horizontal Coordinate System](https://upload.wikimedia.org/wikipedia/commons/f/f7/Azimuth-Altitude_schematic.svg)
+*Figure 2: Horizontal coordinate system (also called alt-azimuth system) showing azimuth and elevation (altitude). Azimuth is measured clockwise from north along the horizon, elevation is the angle above the horizon toward zenith. Source: TWCarlson, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Azimuth-Altitude_schematic.svg), licensed under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/).*
 
 ---
 
@@ -519,14 +495,16 @@ elevationMotor.setAngle(El)
 - **Radial axis**: Zenith angle $z$ (0° at center = overhead)
 - **Angular axis**: Azimuth (0° = North at top)
 
-**Image Placeholder**:
-```markdown
-![Sky Track Polar Plot](../assets/coordinate-systems/sky-track-polar.png)
-*Figure 3: Example sky track showing satellite path across observer's sky.
-Center represents zenith, outer circle represents horizon. Azimuth is measured
-clockwise from north (top of diagram).
-Source: [To be added - Polar sky track example]*
-```
+**Sky Track Polar Plot Example:**
+
+A polar plot visualization of a satellite pass would show:
+- **Center**: Zenith (90° elevation, directly overhead)
+- **Outer circle**: Horizon (0° elevation)
+- **Concentric circles**: Elevation angle increments (typically 10°, 20°, 30°, etc.)
+- **Radial lines**: Azimuth directions (N, E, S, W marked)
+- **Satellite track**: Curved line showing the satellite's path across the sky from AOS to LOS
+
+*Note: Sky track polar plots can be generated using tools like MATLAB's `skyplot()` function, Python satellite tracking libraries (e.g., Skyfield, pyorbital), or online satellite tracking services. See the [Visualization](visualization.md) guide for SwiftUI implementation examples.*
 
 For SwiftUI implementation, see [Visualization](visualization.md).
 
