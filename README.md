@@ -166,17 +166,27 @@ For typical use cases involving current satellite tracking, this limitation is n
 ### Additional Documentation
 
 - **[Introduction to Orbital Elements](./docs/Introduction-to-Orbital-Elements.md)** - Comprehensive guide to understanding the six Keplerian orbital elements, TLE format, and ensuring prediction accuracy
-- [CI/CD Configuration](./CI_CD.md) - Details about the build, test, and linting workflows
-- [Acknowledgements](./ACKNOWLEDGEMENTS.md) - Credits and references
 
 ## CI/CD
 
 This project uses GitHub Actions for continuous integration:
 
-- **Build and Test**: Automatically builds the framework and runs all tests on every push and pull request
+- **Build and Test**: Automatically builds the framework and runs all tests on every push and pull request using Swift Package Manager
 - **SwiftLint**: Enforces Swift style and conventions
 
-For more details, see [CI_CD.md](./CI_CD.md).
+### Running Tests Locally
+
+The Ephemeris test suite uses [Spectre](https://github.com/kylef/Spectre), a BDD-style testing framework for Swift. Tests are run as an executable rather than with the standard XCTest framework.
+
+```bash
+# Build the package
+swift build
+
+# Run tests using the executable
+swift run EphemerisTests
+```
+
+The test suite is pure Swift and does not require Xcode. It can be run on any system with Swift installed (including Linux).
 
 ## Contributing
 
@@ -221,5 +231,9 @@ Copyright © 2020 Michael VanDyke
 
 ## Acknowledgements
 
-Special thanks to all the researchers, institutions, and open source projects that made this work possible. See [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md) for a complete list of references and credits.
+Special thanks to all the researchers, institutions, and open source projects that made this work possible.
+
+### Open Source Projects
+
+- **[ZeiSatTrack](https://github.com/dhmspector/ZeitSatTrack)** [Apache 2.0] - Reference for rotation math and Julian date conversion calculations
 
