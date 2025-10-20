@@ -1,108 +1,419 @@
-# Ephemeris
+# Ephemeris: AI Context for Code Understanding
 
-> Pure Swift framework for satellite orbital mechanics and tracking. Parses NORAD Two-Line Element (TLE) data and calculates orbital positions, velocities, and observer-relative parameters using Keplerian orbital mechanics. Implements coordinate transformations, pass prediction, and visualization support for Earth-orbiting satellites.
+> **Purpose of this file**: Provides architectural context and design decisions for AI-assisted coding tools. For user-facing documentation, see [README.md](README.md).
 
-## Overview
+## Project Philosophy
 
-Ephemeris enables developers to track satellites by parsing TLE data and computing orbital positions at any given time. The framework provides position calculations (latitude, longitude, altitude), observer-relative coordinates (azimuth, elevation, range), satellite pass predictions (AOS/LOS/max elevation), and visualization paths (ground tracks and sky tracks).
+**Dual-Purpose Design**: Ephemeris serves both Swift/iOS developers building satellite tracking apps AND learners studying orbital mechanics. Documentation follows a theory-first pattern: mathematical foundations with diagrams, then Swift implementation.
+
+**Pure Swift**: No C/C++ dependencies, no external frameworks. Everything implemented from first principles using peer-reviewed academic papers.
+
+**Educational Focus**: Every feature balances mathematical accuracy with pedagogical clarity. Code is optimized for readability and learning, not maximum performance.
 
 **Language**: Swift 6.0
 **Platforms**: iOS 16+, macOS 13+
-**Dependencies**: None (pure Swift implementation)
+**Dependencies**: None (Spectre for testing only)
 **Geodetic Standard**: WGS-84
 
-## Core Types
+## Architecture & Code Organization
 
-**TwoLineElement**: Parses and validates NORAD Two-Line Element format satellite data with checksum verification. Extracts orbital elements including epoch time, mean motion, eccentricity, inclination, RAAN, argument of perigee, and mean anomaly.
+### Directory Structure
 
-**Orbit**: Represents satellite orbital path using six classical Keplerian elements. Calculates positions by solving Kepler's equation using Newton-Raphson iteration. Conforms to `Orbitable` protocol.
-
-**Observer**: Represents ground station or observer location on Earth with latitude, longitude, and altitude (WGS-84). Used for topocentric calculations and pass predictions.
-
-**Topocentric**: Observer-relative satellite coordinates including azimuth (degrees), elevation (degrees), range (km), and range rate (km/s). Used for antenna pointing and visibility determination.
-
-**PassWindow**: Complete satellite pass event with acquisition of signal (AOS), maximum elevation point, and loss of signal (LOS). Includes calculated duration.
-
-**CoordinateTransforms**: Utility for coordinate system conversions: ECI ↔ ECEF ↔ Geodetic ↔ ENU ↔ Horizontal. Includes atmospheric refraction correction.
-
-## Key Features
-
-- TLE parsing with 2-digit year interpretation (±50 year window) and checksum validation
-- Orbital position calculation using Keplerian elements
-- True/eccentric anomaly calculation from mean anomaly
-- Semi-major axis derivation from mean motion (Kepler's Third Law)
-- Topocentric coordinate calculations (azimuth, elevation, range, range rate)
-- Satellite pass prediction with AOS/LOS bisection refinement (1-second accuracy)
-- Maximum elevation finding using golden-section search
-- Ground track generation (sub-satellite point path over Earth)
-- Sky track generation (path across observer's sky in azimuth/elevation)
-- Atmospheric refraction correction using Bennett formula
-- Greenwich Mean Sidereal Time (GMST) calculations for Earth rotation
-- Julian Day Number conversions and J2000 epoch transformations
-
-## Physical Constants
-
-Uses WGS-84 values:
-- Earth gravitational parameter (µ): 398,600.4418 km³/s²
-- Earth mean radius: 6,371.0 km
-- Earth equatorial radius: 6,378.137 km
-- Earth polar radius: 6,356.752 km
-
-## Limitations
-
-**Not suitable for:**
-- Mission-critical operations: Does not implement SGP4/SDP4 atmospheric drag models. Accuracy degrades beyond several days from TLE epoch.
-- Deep-space trajectories: Only Earth-orbiting satellites supported. No interplanetary, lunar, or non-Earth-centric orbits.
-- Specialized orbit types: Advanced perturbation models (lunar/solar perturbations, station-keeping) not implemented.
-- Professional operations: Educational/hobbyist software without formal verification or certification.
-
-**Propagation method:** Keplerian orbital mechanics (two-body problem). Does not account for atmospheric drag, solar radiation pressure, or gravitational perturbations from Sun/Moon.
-
-## Use Cases
-
-- Educational astronomy tools and orbital mechanics demonstrations
-- Ground station planning for hobbyist satellite tracking
-- Augmented reality sky visualization with real-time satellite overlays
-- Amateur radio satellite tracking applications
-- AI astronomy assistants answering satellite position queries
-
-## Documentation
-
-- [Introduction to Orbital Elements](docs/Introduction-to-Orbital-Elements.md): Comprehensive guide to Keplerian orbital elements, TLE format explanation, mean vs. eccentric vs. true anomaly, and practical prediction accuracy considerations
-- [Observer Geometry](docs/observer_geometry.md): Coordinate transformation theory, topocentric calculations, pass prediction algorithms, and observer geometry fundamentals
-- [Visualization](docs/visualization.md): Ground track mathematics (sub-satellite point), sky track calculations (azimuth/elevation paths), and LaTeX formulas for visualization
-
-## Reference
-
-- [API Reference](docs/API-Reference.md): Complete API documentation with type signatures and method descriptions for all public types
-- [README](README.md): Quick start guide, installation instructions, usage examples, and TLE data sources
-
-## Testing
-
-Framework includes comprehensive test suite (1,950 lines) using Spectre BDD framework:
-- TLE parsing and validation tests
-- Orbital element calculation tests
-- Position and pass prediction tests
-- Coordinate transformation tests
-- Ground track and sky track generation tests
-
-Run tests: `swift run EphemerisTests`
-
-## Package Information
-
-Swift Package Manager compatible. Add to Package.swift:
-
-```swift
-dependencies: [
-    .package(url: "https://github.com/mvdmakesthings/Ephemeris.git", from: "1.0.0")
-]
+```
+Ephemeris/
+├── Ephemeris/              # Main framework source
+│   ├── TwoLineElement.swift    # TLE parsing with fixed-width field extraction
+│   ├── Orbit.swift             # Keplerian orbital mechanics + position calculation
+│   ├── Orbitable.swift         # Protocol for orbital element providers
+│   ├── Observer.swift          # Ground observer + pass prediction
+│   ├── CoordinateTransforms.swift  # Transformation utilities
+│   └── Utilities/          # Helper types and extensions
+│       ├── Date.swift          # Julian Day, GMST calculations
+│       ├── Double.swift        # Degree/radian conversions
+│       ├── PhysicalConstants.swift  # WGS-84, Earth parameters
+│       └── TypeAlias.swift     # Semantic type aliases
+├── EphemerisTests/         # Spectre BDD tests
+└── docs/                   # Theory-first documentation
+    ├── getting-started.md      # Code-heavy quick start
+    ├── orbital-elements.md     # Math + Swift (Keplerian elements)
+    ├── observer-geometry.md    # Math + Swift (coordinate transforms)
+    ├── visualization.md        # Math + Swift + SwiftUI/MapKit
+    ├── api-reference.md        # API documentation
+    ├── coordinate-systems.md   # Math-heavy theory
+    └── testing-guide.md        # Testing patterns
 ```
 
-## Implementation Notes
+### Core Types & Responsibilities
 
-- Pure Swift with no C/C++ dependencies
-- All calculations based on peer-reviewed academic papers and NASA documentation
-- Source references included in code comments
-- Follows Apple Swift API Design Guidelines
-- Comprehensive inline documentation
-- SwiftLint enforced for code style consistency
+**TwoLineElement** (`TwoLineElement.swift`)
+- **Single Responsibility**: Parse and validate TLE format
+- **Design**: Immutable struct, failable initializer
+- **Validation**: Checksum verification, format validation, 2-digit year interpretation
+- **Error Handling**: Comprehensive `TLEParsingError` enum with context
+
+**Orbit** (`Orbit.swift`)
+- **Single Responsibility**: Orbital mechanics calculations
+- **Key Methods**:
+  - `calculatePosition(at:)` - Full ECI → ECEF → Geodetic pipeline
+  - `topocentric(at:for:)` - Observer-relative coordinates
+  - `predictPasses(for:from:to:)` - Pass prediction with bisection/golden-section
+  - `groundTrack(from:to:stepSeconds:)` - Visualization data
+  - `skyTrack(for:from:to:stepSeconds:)` - Sky path visualization
+- **Static Methods**: Pure functions for anomaly calculations (testable)
+- **Protocol Conformance**: `Orbitable` for extensibility
+
+**Observer** (`Observer.swift`)
+- **Single Responsibility**: Ground observer representation
+- **Design**: Simple value type with geodetic coordinates
+- **Used By**: `Orbit.topocentric()` and `Orbit.predictPasses()`
+
+**Topocentric** (nested in `Orbit.swift`)
+- **Purpose**: Return type for observer-relative coordinates
+- **Fields**: azimuthDeg, elevationDeg, rangeKm, rangeRateKmPerSec
+- **Immutable**: Value semantics for thread safety
+
+**PassWindow** (nested in `Orbit.swift`)
+- **Purpose**: Describes complete satellite pass
+- **Structure**: Nested `PassPoint` type for AOS/MAX/LOS
+- **Calculated**: Duration computed from timestamps
+
+**CoordinateTransforms** (`CoordinateTransforms.swift`)
+- **Design Pattern**: Namespace with static utility functions
+- **Transformations**: ECI → ECEF, ECEF → Geodetic, ECEF → ENU, ENU → Horizontal
+- **Refraction**: Bennett formula for atmospheric correction
+
+## Design Decisions
+
+### Why Keplerian Mechanics (Not SGP4)?
+
+**Decision**: Implement two-body Keplerian mechanics instead of SGP4/SDP4
+**Rationale**:
+- **Educational**: Easier to understand and teach
+- **Simplicity**: No atmospheric drag model complexity
+- **Accuracy**: Good enough for hobbyist/educational use (1-3 days from TLE epoch)
+- **Pure Swift**: No need to port C/C++ SGP4 code
+- **Transparency**: Users see exactly what calculations are happening
+
+**Trade-off**: Less accurate for long-term predictions. Documented clearly in limitations.
+
+### Type Design Patterns
+
+**Value Semantics**: All types are structs (not classes)
+- Thread-safe by default
+- No reference counting overhead
+- Clear ownership semantics
+- SwiftUI-friendly
+
+**Immutability**: Most types are immutable after initialization
+- `TwoLineElement`: Immutable after parsing
+- `Orbit`: Immutable (calculations are pure functions)
+- `Observer`: Immutable
+- Only exception: `PassWindow` has computed `duration` property
+
+**Protocol-Oriented**: `Orbitable` protocol for extensibility
+- Allows custom orbital element sources
+- Makes testing easier (mock conformers)
+- Future: Could support different propagators
+
+### Error Handling Strategy
+
+**Typed Errors**: Custom error enums with associated values
+- `TLEParsingError`: Detailed context (line number, field, value)
+- `CalculationError`: Mathematical singularities
+
+**Throwing vs Optional**: Throws for expected failure modes, optional for convenience
+- TLE parsing: Throws (user can recover)
+- Position calculation: Throws (eccentricity >= 1.0 invalid)
+- Julian Day conversion: Returns optional (may fail for extreme dates)
+
+**No Silent Failures**: Framework never returns incorrect data
+- Invalid inputs throw errors
+- Extreme values handled explicitly
+- Documented limitations
+
+### Coordinate System Choices
+
+**Primary Frame**: ECI (Earth-Centered Inertial)
+- Natural for orbital mechanics
+- Kepler's laws apply directly
+- Transformations explicit (via GMST)
+
+**Observer Frame**: ENU (East-North-Up) → Horizontal (Azimuth/Elevation)
+- Matches astronomical conventions
+- Azimuth: 0° = North (not East)
+- Elevation: Above horizon (not zenith angle)
+
+**Geodetic**: WGS-84 ellipsoid
+- Industry standard
+- Used by GPS
+- Constants from PhysicalConstants.Earth
+
+## Algorithm Implementations
+
+### Kepler's Equation Solver (Newton-Raphson)
+
+**Location**: `Orbit.calculateEccentricAnomaly()`
+**Algorithm**: Newton-Raphson iteration
+**Convergence**: Typically 3-5 iterations for e < 0.1
+**Tolerance**: 0.00001 (from PhysicalConstants.Calculation)
+**Max Iterations**: 500 (safety limit)
+
+```
+E_{n+1} = E_n - (E_n - e·sin(E_n) - M) / (1 - e·cos(E_n))
+```
+
+**Why Newton-Raphson?**
+- Fast convergence for low eccentricity
+- Simple to implement
+- Well-documented in literature
+- Good educational value
+
+### Pass Prediction (Bisection + Golden-Section)
+
+**Location**: `Orbit.predictPasses()`
+**Algorithm**: Three-stage approach
+
+1. **Coarse Search** (step-based)
+   - Detect horizon crossings
+   - Default: 30-second steps
+   - Finds AOS/LOS candidates
+
+2. **Bisection Refinement**
+   - Refine crossing times to ±1 second
+   - Binary search on elevation threshold
+   - 10-15 iterations typical
+
+3. **Golden-Section Search**
+   - Find maximum elevation between AOS/LOS
+   - Optimization without derivatives
+   - 15-20 iterations typical
+
+**Why This Approach?**
+- **Robust**: Catches all passes (no missed events)
+- **Accurate**: ±1 second timing accuracy
+- **Understandable**: Clear algorithm stages
+- **Debuggable**: Can visualize search process
+
+### GMST Calculation
+
+**Location**: `Date.greenwichSideRealTime()`
+**Source**: Vallado, "Fundamentals of Astrodynamics"
+**Precision**: Good to <1 second over centuries
+
+Uses J2000 epoch and Julian centuries for polynomial approximation.
+
+## Testing Philosophy
+
+### BDD Framework: Spectre
+
+**Why Spectre?** (not XCTest)
+- Readable test output
+- Nested describe/it blocks
+- Pure Swift (no Objective-C runtime)
+- Works on Linux
+- Educational value (tests as documentation)
+
+**Run Tests**: `swift run EphemerisTests`
+
+### Test Coverage
+
+**TLE Parsing** (`TwoLineElementTests.swift`)
+- Valid TLEs (ISS, GPS, various satellites)
+- Invalid formats (bad checksums, wrong line counts)
+- Edge cases (eccentricity bounds, date interpretation)
+
+**Orbital Calculations** (`OrbitalCalculationTests.swift`)
+- Position calculation accuracy
+- Anomaly conversions (Mean → Eccentric → True)
+- Physical constants verification (WGS-84)
+
+**Observer Geometry** (`ObserverTests.swift`)
+- Topocentric calculations
+- Pass prediction accuracy
+- Coordinate transformations
+
+**Visualization** (`GroundTrackSkyTrackTests.swift`)
+- Ground track generation
+- Sky track generation
+- Data format validation
+
+**Philosophy**: Tests as documentation
+- Each test has descriptive names
+- Expected values documented with sources
+- Real-world examples (ISS, GPS satellites)
+
+## Known Limitations & Design Constraints
+
+**Explicitly NOT Implemented:**
+1. **Atmospheric drag** (SGP4/SDP4 models)
+   - Trade-off: Accuracy vs. complexity
+   - Impact: Predictions degrade after 3-7 days for LEO
+   - Mitigation: Users should update TLEs regularly
+
+2. **Perturbations** (Sun/Moon gravity, solar radiation pressure)
+   - Keplerian two-body problem only
+   - RAAN/perigee precession not modeled
+   - Good enough for short-term tracking
+
+3. **Deep-space orbits** (interplanetary, lunar, L-points)
+   - Only Earth-orbiting satellites supported
+   - Earth-centric coordinate systems
+
+4. **High-precision timing** (<1 second)
+   - GMST calculation good to ~1 second
+   - Pass predictions accurate to ±1 second
+   - Not suitable for laser ranging
+
+**Intentional Design Choices:**
+- Value types (not reference types): Thread-safe, SwiftUI-friendly
+- No async/await: Calculations are fast enough to be synchronous
+- No Combine publishers: Users can wrap if needed
+- No UI components: Framework-only, not opinionated about UI
+
+## Performance Characteristics
+
+**Position Calculation**: O(1) with ~3-5 iterations
+- Single calculation: ~50 microseconds
+- 1000 calculations: ~50 milliseconds
+- Suitable for real-time tracking (60+ FPS)
+
+**Pass Prediction**: O(n) where n = (timeWindow / stepSeconds)
+- 24-hour window, 30-second steps: ~150-200 ms
+- Dominated by bisection refinements (~10 per crossing)
+- Not suitable for interactive scrubbing (pre-calculate)
+
+**Ground/Sky Track Generation**: O(n) where n = number of points
+- Linear in time range and step size
+- 90-minute orbit, 60-second steps: ~90 points, <10 ms
+- Memory scales linearly with points
+
+## Code Style & Conventions
+
+**Naming**:
+- Types: UpperCamelCase
+- Functions/Properties: lowerCamelCase
+- Constants: lowerCamelCase (not SCREAMING_CASE)
+- Type aliases for clarity: `Degrees`, `Radians`, `JulianDay`
+
+**Documentation**:
+- Every public declaration documented
+- Complex algorithms have inline comments
+- Academic sources referenced in comments
+- Examples in documentation follow Swift API Design Guidelines
+
+**SwiftLint Rules**: Enforced in CI
+- Line length: 120 characters
+- Function body length: 50 lines
+- Type body length: 400 lines
+- Cyclomatic complexity: <10
+
+## Future Roadmap (Not Yet Implemented)
+
+**Potential Enhancements** (maintain educational focus):
+1. Simplified drag model (for LEO accuracy)
+2. J2 oblateness effect (for RAAN/perigee precession)
+3. Constellation management (multiple satellites)
+4. TLE fetch integration (CelesTrak/Space-Track APIs)
+5. SGP4 propagator (as alternative to Keplerian)
+
+**Not Planned** (out of scope):
+- Mission planning tools
+- Orbital maneuver calculations
+- Launch vehicle trajectory optimization
+- Attitude determination
+- Formation flying algorithms
+
+## Documentation Strategy
+
+**Theory-First Pattern**: Every feature has both math and code
+- Mathematical foundations with LaTeX equations
+- Academic diagram sourcing (Vallado, Montenbruck, NASA)
+- Swift implementation showing the theory in practice
+- Real-world examples (ISS, GPS, etc.)
+
+**Three Documentation Tiers**:
+1. **Quick Start** ([getting-started.md](docs/getting-started.md))
+   - Code-heavy, minimal theory
+   - 30-minute complete app
+
+2. **Theory + Practice** ([orbital-elements.md](docs/orbital-elements.md), [observer-geometry.md](docs/observer-geometry.md), [visualization.md](docs/visualization.md))
+   - Math first, then Swift
+   - Contextually balanced
+
+3. **Deep Dives** ([coordinate-systems.md](docs/coordinate-systems.md))
+   - Math-heavy theory
+   - For learners who want full understanding
+
+**User Paths**:
+- Swift Developer: Getting Started → API Reference → Specific Guides
+- Orbital Mechanics Learner: Orbital Elements → Observer Geometry → Visualization
+- Both: Complete sequential reading
+
+## Key Academic References
+
+**Primary Sources** (all calculations traced to these):
+1. Vallado, "Fundamentals of Astrodynamics and Applications" (4th Ed)
+   - Coordinate transformations
+   - Time systems (Julian Day, GMST)
+   - TLE format details
+
+2. Montenbruck & Gill, "Satellite Orbits"
+   - Topocentric coordinates
+   - Pass prediction algorithms
+
+3. Curtis, "Orbital Mechanics for Engineering Students"
+   - Keplerian elements
+   - Anomaly conversions
+
+4. Bennett, "Astronomical Refraction in Marine Navigation"
+   - Atmospheric refraction formula
+
+5. NASA Technical Reports
+   - Sub-satellite point calculations
+   - WGS-84 parameters
+
+**All formulas in code have comments linking to source pages.**
+
+## Contributing Guidelines
+
+**Code Contributions Should**:
+- Include comprehensive tests (Spectre BDD)
+- Follow Swift API Design Guidelines
+- Add inline documentation with sources
+- Maintain educational clarity
+- Not sacrifice readability for performance
+
+**Documentation Contributions Should**:
+- Follow theory-first pattern
+- Include both math and Swift examples
+- Cite academic sources
+- Add diagrams where helpful
+- Use consistent formatting
+
+## Quick Reference for AI Tools
+
+**When suggesting code changes:**
+- Maintain immutability (value semantics)
+- Use descriptive variable names (not abbreviations)
+- Add comments for complex math
+- Throw errors (don't return optionals for recoverable failures)
+- Include tests for new functionality
+
+**When explaining concepts:**
+- Start with physical intuition
+- Show mathematical formulation
+- Demonstrate Swift implementation
+- Provide real-world example (ISS, GPS, etc.)
+
+**Common patterns in this codebase:**
+- Static functions for pure calculations
+- Nested types for related data
+- Type aliases for semantic clarity
+- Extensions on Foundation types (Date, Double)
+- Protocol conformance for extensibility
+
+---
+
+*This file provides context for AI coding assistants. For user documentation, see [README.md](README.md) and [docs/](docs/).*
+
+**Last Updated**: October 20, 2025

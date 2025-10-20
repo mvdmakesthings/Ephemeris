@@ -7,6 +7,8 @@
 
 A Swift framework for satellite tracking and orbital mechanics calculations. Ephemeris provides tools to parse Two-Line Element (TLE) data and calculate orbital positions for Earth-orbiting satellites.
 
+**Dual-Purpose Design**: Ephemeris serves both as a practical Swift framework for iOS developers building satellite tracking apps and as an educational tool for learning orbital mechanics through hands-on implementation. Each feature is documented with both mathematical foundations and Swift code examples.
+
 ## Table of Contents
 
 - [Features](#features)
@@ -360,11 +362,45 @@ analyzeOrbit(orbit)
 
 ## Documentation
 
+Ephemeris documentation is designed to teach orbital mechanics through practical Swift implementation. Choose your learning path:
+
+### 📚 Choose Your Path
+
+#### 🚀 Quick Start: "I want to build an app NOW"
+1. **[Getting Started Guide](./docs/getting-started.md)** - Build your first satellite tracker in 30 minutes
+2. **[API Reference](./docs/api-reference.md)** - Complete API documentation
+3. Jump to specific guides as needed
+
+#### 🎓 Deep Dive: "I want to understand orbital mechanics"
+1. **[Orbital Elements](./docs/orbital-elements.md)** - The six Keplerian elements with math and Swift
+2. **[Observer Geometry](./docs/observer-geometry.md)** - Coordinate transformations and pass prediction
+3. **[Visualization](./docs/visualization.md)** - Ground tracks, sky tracks, and iOS integration
+4. **[Coordinate Systems](./docs/coordinate-systems.md)** - Deep dive into ECI, ECEF, and transformations
+
+#### 🔍 Reference: "I need specific information"
+- **[API Reference](./docs/api-reference.md)** - All types, methods, and properties
+- **[Testing Guide](./docs/testing-guide.md)** - Testing patterns with Spectre
+- **[LLM.txt](./LLM.txt)** - Project context for AI tools
+
+### 📖 Documentation Overview
+
+**Theory + Practice Documents** (Math → Swift implementation):
+- **[Orbital Elements](./docs/orbital-elements.md)** - Keplerian elements, TLE format, Kepler's equation, accuracy considerations
+- **[Observer Geometry](./docs/observer-geometry.md)** - Coordinate transformations, topocentric calculations, pass prediction algorithms
+- **[Visualization](./docs/visualization.md)** - Ground tracks, sky tracks, SwiftUI Charts, and MapKit integration
+
+**Practical Guides** (Code-focused):
+- **[Getting Started](./docs/getting-started.md)** - Quick-start tutorial with complete examples
+- **[Testing Guide](./docs/testing-guide.md)** - Unit testing patterns for orbital mechanics
+
+**Reference**:
+- **[API Reference](./docs/api-reference.md)** - Complete API documentation
+- **[Coordinate Systems](./docs/coordinate-systems.md)** - Mathematical foundations of coordinate transformations
+
 ### Core Types
 
-- **`TwoLineElement`**: Represents and parses NORAD TLE format satellite data
+- **`TwoLineElement`**: Parses and represents NORAD TLE format satellite data
 - **`Orbit`**: Represents orbital parameters and provides position calculation methods
-- **`Orbitable`**: Protocol defining requirements for orbital element data
 - **`Observer`**: Represents an Earth-based observer location (latitude, longitude, altitude)
 - **`Topocentric`**: Contains azimuth, elevation, range, and range rate for observer-relative coordinates
 - **`PassWindow`**: Describes a satellite pass with AOS, maximum elevation, and LOS details
@@ -373,26 +409,17 @@ analyzeOrbit(orbit)
 ### Where to Get TLE Data
 
 TLE data for satellites can be obtained from:
-- [CelesTrak](https://celestrak.com/NORAD/elements/)
-- [Space-Track.org](https://www.space-track.org/) (requires free registration)
-- [N2YO.com](https://www.n2yo.com/)
+- [CelesTrak](https://celestrak.com/NORAD/elements/) - Free, updated frequently
+- [Space-Track.org](https://www.space-track.org/) - Official source (free registration required)
+- [N2YO.com](https://www.n2yo.com/) - Real-time tracking and TLE data
 
-### TLE Format Limitations
+### Key Concepts
 
-The TLE format uses 2-digit years, which requires interpretation logic. Ephemeris uses a **±50 year window** relative to the current date:
+**TLE Format**: Uses 2-digit years with ±50 year window. Ephemeris automatically handles date interpretation for current satellite tracking (designed for recent TLE data).
 
-- **Supported Range**: TLE data from approximately 50 years in the past to 50 years in the future is supported
-- **Recent Data**: The framework is designed for current/recent satellite tracking data
-- **Historical Data**: Very old TLE data (>50 years old) may be parsed incorrectly
-- **Future-Proof**: The Y2K-style date handling automatically adjusts as time progresses, preventing issues through at least 2107
+**Accuracy**: Best within 1-3 days of TLE epoch. Update TLEs regularly for mission-critical applications (every 1-3 days for LEO satellites).
 
-For typical use cases involving current satellite tracking, this limitation is not a concern.
-
-### Additional Documentation
-
-- **[Introduction to Orbital Elements](./docs/Introduction-to-Orbital-Elements.md)** - Comprehensive guide to understanding the six Keplerian orbital elements, TLE format, and ensuring prediction accuracy
-- **[Observer Geometry and Pass Prediction](./docs/observer_geometry.md)** - Detailed explanation of coordinate transformations, topocentric calculations, and pass prediction algorithms
-- **[API Reference](./docs/API-Reference.md)** - Complete API documentation for all public types and methods
+**Propagation**: Uses Keplerian orbital mechanics (two-body problem). Does not include atmospheric drag, solar radiation pressure, or perturbations. See [Orbital Elements](./docs/orbital-elements.md) for detailed accuracy discussion.
 
 ## For AI Tools and Developers
 
