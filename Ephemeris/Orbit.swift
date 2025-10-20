@@ -89,13 +89,29 @@ public struct Orbit: Orbitable {
     }
     
     // MARK: - Functions
+    
+    /// Represents a geographic position with latitude, longitude, and altitude.
+    public struct Position {
+        /// Latitude in degrees (-90 to 90)
+        public let latitude: Double
+        /// Longitude in degrees (-180 to 180)
+        public let longitude: Double
+        /// Altitude in kilometers above Earth's surface
+        public let altitude: Double
+        
+        public init(latitude: Double, longitude: Double, altitude: Double) {
+            self.latitude = latitude
+            self.longitude = longitude
+            self.altitude = altitude
+        }
+    }
 
     /// Calculates the position of the orbiting object relative to earth.
     ///
     /// - Note:
     ///     Transform math used from https://www.csun.edu/~hcmth017/master/node20.html
     ///     Heavily inspired by ZeitSatTrack https://github.com/dhmspector/ZeitSatTrack Apache 2.0
-    public func calculatePosition(at date: Date?) throws -> (Double, Double, Double) {
+    public func calculatePosition(at date: Date?) throws -> Position {
         
         // Current parameters at this specific time.
         let julianDate = Date.julianDay(from: date ?? Date())!
@@ -142,7 +158,7 @@ public struct Orbit: Orbitable {
         let longitude = atan2(yFinal, xFinal).inDegrees()
         let altitude = orbitalRadius - earthsRadius
 
-        return (latitude, longitude, altitude)
+        return Position(latitude: latitude, longitude: longitude, altitude: altitude)
     }
 }
 
