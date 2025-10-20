@@ -353,8 +353,8 @@ let twoLineElementTests: ((ContextType) -> Void) = {
                 } catch let error as TLEParsingError {
                     if case .invalidChecksum(let line, let expected, let actual) = error {
                         try expect(line == 2)
-                        try expect(expected == 0)
-                        try expect(actual == 8)
+                        try expect(expected == 8)
+                        try expect(actual == 0)
                     } else {
                         throw failure("Wrong error type")
                     }
