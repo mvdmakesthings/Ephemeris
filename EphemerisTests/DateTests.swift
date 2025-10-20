@@ -24,7 +24,7 @@ let dateTests: ((ContextType) -> Void) = {
                 guard let julianDay = Date.julianDay(from: date) else {
                     throw failure("Failed to calculate Julian Day")
                 }
-                try expect(abs(julianDay - knownJulianDay) < 0.000001)
+                _ = try expect(abs(julianDay - knownJulianDay) < 0.000001)
             }
             
             $0.it("converts date with time to Julian Day") {
@@ -36,7 +36,7 @@ let dateTests: ((ContextType) -> Void) = {
                 guard let julianDay = Date.julianDay(from: date) else {
                     throw failure("Failed to calculate Julian Day")
                 }
-                try expect(abs(julianDay - knownJulianDay) < 0.000001)
+                _ = try expect(abs(julianDay - knownJulianDay) < 0.000001)
             }
             
             $0.it("converts epoch to Julian Day") {
@@ -48,7 +48,7 @@ let dateTests: ((ContextType) -> Void) = {
                 let knownJulianDay = 2451544.5
                 
                 let julianDay = Date.julianDayFromEpoch(epochYear: epochYear, epochDayFraction: epochDayFraction)
-                try expect(abs(julianDay - knownJulianDay) < 0.000001)
+                _ = try expect(abs(julianDay - knownJulianDay) < 0.000001)
             }
             
             $0.it("converts epoch with fraction to Julian Day") {
@@ -61,7 +61,7 @@ let dateTests: ((ContextType) -> Void) = {
                 let knownJulianDay = 2451545.0
                 
                 let julianDay = Date.julianDayFromEpoch(epochYear: epochYear, epochDayFraction: epochDayFraction)
-                try expect(abs(julianDay - knownJulianDay) < 0.000001)
+                _ = try expect(abs(julianDay - knownJulianDay) < 0.000001)
             }
             
             $0.it("converts historical date to Julian Day") {
@@ -86,7 +86,7 @@ let dateTests: ((ContextType) -> Void) = {
                 }
                 // Known JD for Oct 15, 1582 00:00:00 UTC
                 let knownJulianDay = 2299160.5
-                try expect(abs(julianDay - knownJulianDay) < 0.5) // Allow small tolerance for historical dates
+                _ = try expect(abs(julianDay - knownJulianDay) < 0.5) // Allow small tolerance for historical dates
             }
             
             $0.it("converts future date to Julian Day") {
@@ -111,7 +111,7 @@ let dateTests: ((ContextType) -> Void) = {
                 }
                 // Known JD for Jan 1, 2100 00:00:00 UTC
                 let knownJulianDay = 2488069.5
-                try expect(abs(julianDay - knownJulianDay) < 0.000001)
+                _ = try expect(abs(julianDay - knownJulianDay) < 0.000001)
             }
         }
         
@@ -122,14 +122,14 @@ let dateTests: ((ContextType) -> Void) = {
                 let jd = 2440587.5 // Jan 1, 1970 00:00:00 UTC
                 let knownGSTrads = 1.7493372337513193
                 let gst = Date.greenwichSideRealTime(from: jd)
-                try expect(abs(gst - knownGSTrads) < 0.000001)
+                _ = try expect(abs(gst - knownGSTrads) < 0.000001)
             }
             
             $0.it("calculates GST for J2000 epoch") {
                 let jd = 2451545.0 // Jan 1, 2000 12:00:00 TT (J2000.0 epoch)
                 let gst = Date.greenwichSideRealTime(from: jd)
                 // GST at J2000.0 epoch should be approximately 1.753368559 radians
-                try expect(abs(gst - 1.753368559) < 0.001)
+                _ = try expect(abs(gst - 1.753368559) < 0.001)
             }
         }
         
@@ -140,14 +140,14 @@ let dateTests: ((ContextType) -> Void) = {
                 // Test conversion at J2000.0 epoch
                 let jd = 2451545.0
                 let j2000 = Date.toJ2000(from: jd)
-                try expect(abs(j2000 - 0.0) < 0.000001)
+                _ = try expect(abs(j2000 - 0.0) < 0.000001)
             }
             
             $0.it("converts to J2000 one hundred years later") {
                 // Test conversion 100 years (1 century) after J2000.0
                 let jd = 2451545.0 + 36525.0 // One Julian century
                 let j2000 = Date.toJ2000(from: jd)
-                try expect(abs(j2000 - 1.0) < 0.000001)
+                _ = try expect(abs(j2000 - 1.0) < 0.000001)
             }
         }
     }

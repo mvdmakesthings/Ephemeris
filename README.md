@@ -77,7 +77,7 @@ Or in Xcode:
 
 ## Usage
 
-### Basic Example
+### Quick Start
 
 ```swift
 import Ephemeris
@@ -99,9 +99,9 @@ do {
     
     // Calculate current position
     let position = try orbit.calculatePosition(at: Date())
-    print("Latitude: \(position.x)°")
-    print("Longitude: \(position.y)°")
-    print("Altitude: \(position.z) km")
+    print("Latitude: \(position.latitude)°")
+    print("Longitude: \(position.longitude)°")
+    print("Altitude: \(position.altitude) km")
 } catch {
     print("Error: \(error)")
 }
@@ -133,8 +133,152 @@ let specificDate = calendar.date(from: components)
 // Calculate position at that time
 if let date = specificDate {
     let position = try? orbit.calculatePosition(at: date)
-    // Use position...
+    if let pos = position {
+        print("At \(date):")
+        print("  Latitude: \(pos.latitude)°")
+        print("  Longitude: \(pos.longitude)°")
+        print("  Altitude: \(pos.altitude) km")
+    }
 }
+```
+
+### Track Satellite Over Time
+
+```swift
+import Foundation
+
+// Track satellite position every minute for an hour
+let startTime = Date()
+let timeInterval: TimeInterval = 60 // seconds
+
+for i in 0..<60 {
+    let time = startTime.addingTimeInterval(Double(i) * timeInterval)
+    
+    do {
+        let position = try orbit.calculatePosition(at: time)
+        print("T+\(i) min: \(position.latitude)°, \(position.longitude)°, \(position.altitude) km")
+    } catch {
+        print("Error calculating position: \(error)")
+    }
+}
+```
+
+### Multiple Satellites
+
+```swift
+// Track multiple satellites
+let satellites = [
+    ("ISS", issТleString),
+    ("GOES-16", goes16TleString),
+    ("GPS BIIF-1", gpsTleString)
+]
+
+for (name, tleString) in satellites {
+    do {
+        let tle = try TwoLineElement(from: tleString)
+        let orbit = Orbit(from: tle)
+        let position = try orbit.calculatePosition(at: Date())
+        
+        print("\(name):")
+        print("  Position: \(position.latitude)°, \(position.longitude)°")
+        print("  Altitude: \(position.altitude) km")
+        print()
+    } catch {
+        print("Error processing \(name): \(error)")
+    }
+}
+```
+
+### Error Handling
+
+```swift
+// Comprehensive error handling
+let tleString = """
+SATELLITE NAME
+1 12345U 20001A   20100.50000000  .00001234  00000-0  12345-4 0  9999
+2 12345  51.6400  90.0000 0001000  45.0000  90.0000 15.50000000123456
+"""
+
+do {
+    let tle = try TwoLineElement(from: tleString)
+    let orbit = Orbit(from: tle)
+    let position = try orbit.calculatePosition(at: Date())
+    
+    print("Successfully calculated position: \(position.latitude)°, \(position.longitude)°")
+    
+} catch TLEParsingError.invalidFormat(let message) {
+    print("Invalid TLE format: \(message)")
+} catch TLEParsingError.invalidChecksum(let line, let expected, let actual) {
+    print("Checksum error on line \(line): expected \(expected), got \(actual)")
+} catch TLEParsingError.invalidNumber(let field, let value) {
+    print("Invalid number in field '\(field)': \(value)")
+} catch CalculationError.reachedSingularity {
+    print("Cannot calculate orbit: eccentricity >= 1.0 (not an elliptical orbit)")
+} catch {
+    print("Unexpected error: \(error)")
+}
+```
+
+### Working with Julian Dates and Sidereal Time
+
+```swift
+import Foundation
+
+// Convert current date to Julian Day
+if let julianDay = Date.julianDay(from: Date()) {
+    print("Current Julian Day: \(julianDay)")
+    
+    // Calculate Greenwich Sidereal Time
+    let gst = Date.greenwichSideRealTime(from: julianDay)
+    print("Greenwich Sidereal Time: \(gst) radians")
+    
+    // Convert to J2000 epoch
+    let j2000 = Date.toJ2000(from: julianDay)
+    print("Julian centuries since J2000: \(j2000)")
+}
+
+// Convert TLE epoch to Julian Day
+let epochJD = Date.julianDayFromEpoch(epochYear: 2020, epochDayFraction: 97.82871450)
+print("TLE Epoch as Julian Day: \(epochJD)")
+```
+
+### Custom Satellite Analysis
+
+```swift
+// Analyze orbital characteristics
+func analyzeOrbit(_ orbit: Orbit) {
+    let earthRadius = PhysicalConstants.Earth.radius
+    
+    // Calculate apogee and perigee
+    let apogee = orbit.semimajorAxis * (1 + orbit.eccentricity) - earthRadius
+    let perigee = orbit.semimajorAxis * (1 - orbit.eccentricity) - earthRadius
+    
+    print("Orbital Analysis:")
+    print("  Semi-major axis: \(orbit.semimajorAxis) km")
+    print("  Eccentricity: \(orbit.eccentricity)")
+    print("  Apogee altitude: \(apogee) km")
+    print("  Perigee altitude: \(perigee) km")
+    print("  Inclination: \(orbit.inclination)°")
+    
+    // Determine orbit type
+    if orbit.inclination < 10 {
+        print("  Type: Equatorial orbit")
+    } else if orbit.inclination > 80 && orbit.inclination < 100 {
+        print("  Type: Polar orbit")
+    } else {
+        print("  Type: Inclined orbit")
+    }
+    
+    // Calculate orbital period
+    let mu = PhysicalConstants.Earth.µ
+    let period = 2 * .pi * sqrt(pow(orbit.semimajorAxis, 3) / mu)
+    print("  Orbital period: \(period / 60) minutes")
+}
+
+// Use the analyzer
+let tle = try TwoLineElement(from: tleString)
+let orbit = Orbit(from: tle)
+analyzeOrbit(orbit)
 ```
 
 ## Documentation
@@ -166,6 +310,7 @@ For typical use cases involving current satellite tracking, this limitation is n
 ### Additional Documentation
 
 - **[Introduction to Orbital Elements](./docs/Introduction-to-Orbital-Elements.md)** - Comprehensive guide to understanding the six Keplerian orbital elements, TLE format, and ensuring prediction accuracy
+- **[API Reference](./docs/API-Reference.md)** - Complete API documentation for all public types and methods
 
 ## CI/CD
 

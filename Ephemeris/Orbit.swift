@@ -8,6 +8,28 @@
 
 import Foundation
 
+/// Represents an orbital path using Keplerian orbital elements.
+///
+/// `Orbit` encapsulates the six classical orbital elements that describe
+/// the shape, size, and orientation of a satellite's orbit around Earth.
+/// It conforms to the `Orbitable` protocol and provides methods to calculate
+/// satellite positions at any given time.
+///
+/// ## Example Usage
+/// ```swift
+/// let tleString = """
+/// ISS (ZARYA)
+/// 1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
+/// 2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
+/// """
+/// let tle = try TwoLineElement(from: tleString)
+/// let orbit = Orbit(from: tle)
+/// let position = try orbit.calculatePosition(at: Date())
+/// print("Latitude: \(position.latitude)°")
+/// ```
+///
+/// - Note: Orbital calculations are based on Keplerian orbital mechanics and use
+///         WGS84 physical constants for accuracy.
 public struct Orbit: Orbitable {
     
     // MARK: - Size of Orbit
@@ -77,6 +99,19 @@ public struct Orbit: Orbitable {
     private let twoLineElement: TwoLineElement
     
     // MARK: - Initializers
+    
+    /// Creates an orbit from Two-Line Element (TLE) data.
+    ///
+    /// This initializer extracts orbital elements from a parsed TLE and calculates
+    /// the semi-major axis from the mean motion value.
+    ///
+    /// - Parameter twoLineElement: A parsed Two-Line Element containing orbital data
+    ///
+    /// ## Example
+    /// ```swift
+    /// let tle = try TwoLineElement(from: tleString)
+    /// let orbit = Orbit(from: tle)
+    /// ```
     public init(from twoLineElement: TwoLineElement) {
         self.semimajorAxis = Orbit.calculateSemimajorAxis(meanMotion: twoLineElement.meanMotion)
         self.eccentricity = twoLineElement.eccentricity
@@ -91,14 +126,23 @@ public struct Orbit: Orbitable {
     // MARK: - Functions
     
     /// Represents a geographic position with latitude, longitude, and altitude.
+    ///
+    /// This structure holds the calculated position of a satellite at a specific time,
+    /// expressed in geographic coordinates relative to Earth's surface.
     public struct Position {
-        /// Latitude in degrees (-90 to 90)
+        /// Latitude in degrees (-90 to 90), where positive values indicate north
         public let latitude: Double
-        /// Longitude in degrees (-180 to 180)
+        /// Longitude in degrees (-180 to 180), where positive values indicate east
         public let longitude: Double
         /// Altitude in kilometers above Earth's surface
         public let altitude: Double
         
+        /// Creates a position with the specified coordinates.
+        ///
+        /// - Parameters:
+        ///   - latitude: Latitude in degrees (-90 to 90)
+        ///   - longitude: Longitude in degrees (-180 to 180)
+        ///   - altitude: Altitude in kilometers above Earth's surface
         public init(latitude: Double, longitude: Double, altitude: Double) {
             self.latitude = latitude
             self.longitude = longitude
@@ -106,11 +150,33 @@ public struct Orbit: Orbitable {
         }
     }
 
-    /// Calculates the position of the orbiting object relative to earth.
+    /// Calculates the geographic position of the satellite at a specific time.
     ///
-    /// - Note:
-    ///     Transform math used from https://www.csun.edu/~hcmth017/master/node20.html
-    ///     Heavily inspired by ZeitSatTrack https://github.com/dhmspector/ZeitSatTrack Apache 2.0
+    /// This method performs a complete orbital propagation from the epoch time to the
+    /// specified date, calculating the satellite's position in Earth-centered, Earth-fixed
+    /// (ECEF) coordinates and converting them to latitude, longitude, and altitude.
+    ///
+    /// The calculation involves:
+    /// 1. Computing the current mean anomaly from the mean motion
+    /// 2. Solving for eccentric anomaly using Newton-Raphson iteration
+    /// 3. Calculating the true anomaly
+    /// 4. Transforming from orbital plane to Earth-fixed coordinates
+    /// 5. Accounting for Earth's rotation (sidereal time)
+    ///
+    /// - Parameter date: The date and time for which to calculate the position.
+    ///                   If `nil`, uses the current date and time.
+    /// - Returns: A `Position` object containing latitude, longitude, and altitude
+    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    ///
+    /// ## Example
+    /// ```swift
+    /// let position = try orbit.calculatePosition(at: Date())
+    /// print("Satellite is at \(position.latitude)°N, \(position.longitude)°E")
+    /// print("Altitude: \(position.altitude) km")
+    /// ```
+    ///
+    /// - Note: Transform math based on https://www.csun.edu/~hcmth017/master/node20.html
+    ///         Implementation inspired by ZeitSatTrack (Apache 2.0)
     public func calculatePosition(at date: Date?) throws -> Position {
         
         // Current parameters at this specific time.
@@ -204,10 +270,27 @@ extension Orbit {
 // MARK: - Static Functions
 
 extension Orbit {
-    /// Used to describe the "size" of the orbit path which is half the distance between the perigee and apogee in km
+    /// Calculates the semi-major axis from mean motion.
+    ///
+    /// Uses Kepler's Third Law to derive the semi-major axis (the "size" of the orbit)
+    /// from the satellite's mean motion. The semi-major axis is half the distance between
+    /// perigee (closest point) and apogee (farthest point).
+    ///
     /// - Parameter meanMotion: Mean motion in revolutions per day
     /// - Returns: Semi-major axis in kilometers
-    /// - Note: Uses Kepler's Third Law: a³ = µ/(n²), where n is mean motion in radians/second
+    ///
+    /// ## Formula
+    /// Based on Kepler's Third Law: `a³ = µ/(n²)`
+    /// - `a` = semi-major axis
+    /// - `µ` = Earth's gravitational constant (398600.4418 km³/s²)
+    /// - `n` = mean motion in radians/second
+    ///
+    /// ## Example
+    /// ```swift
+    /// let meanMotion = 15.5 // revolutions per day
+    /// let semiMajorAxis = Orbit.calculateSemimajorAxis(meanMotion: meanMotion)
+    /// print("Semi-major axis: \(semiMajorAxis) km")
+    /// ```
     static func calculateSemimajorAxis(meanMotion: Double) -> Double {
         let earthsGravitationalConstant = PhysicalConstants.Earth.µ // km^3/s^2
         // Convert mean motion from revolutions/day to radians/second
@@ -217,11 +300,28 @@ extension Orbit {
         return semimajorAxis // km
     }
     
-    /// A helper variable that bridges the gap between the true anomaly (or the true position of an object from perigee)
-    /// to the mean anomaly.
+    /// Calculates the eccentric anomaly using Newton-Raphson iteration.
     ///
-    /// https://www.sciencedirect.com/topics/engineering/eccentric-anomaly
+    /// The eccentric anomaly is an intermediate angular parameter that bridges the gap
+    /// between mean anomaly (time-based position) and true anomaly (actual position).
+    /// This method uses an iterative numerical method to solve Kepler's equation.
     ///
+    /// - Parameters:
+    ///   - eccentricity: Orbital eccentricity (0 for circular, approaching 1 for highly elliptical)
+    ///   - meanAnomaly: Mean anomaly in degrees
+    ///   - accuracy: Convergence accuracy (default: 0.00001). Iteration stops when change is less than this value
+    ///   - maxIterations: Maximum number of iterations to prevent infinite loops (default: 500)
+    /// - Returns: Eccentric anomaly in degrees
+    ///
+    /// ## Algorithm
+    /// Solves Kepler's equation: `E - e·sin(E) = M` using Newton-Raphson method
+    ///
+    /// ## Example
+    /// ```swift
+    /// let E = Orbit.calculateEccentricAnomaly(eccentricity: 0.0167, meanAnomaly: 45.0)
+    /// ```
+    ///
+    /// - Note: Reference: https://www.sciencedirect.com/topics/engineering/eccentric-anomaly
     static func calculateEccentricAnomaly(eccentricity: Double, meanAnomaly: Degrees, accuracy: Double = PhysicalConstants.Calculation.defaultAccuracy, maxIterations: Int = PhysicalConstants.Calculation.maxIterations) -> Degrees {
         // Always convert degrees to radians before doing calculations
         let meanAnomaly: Radians = meanAnomaly.inRadians()
@@ -247,8 +347,28 @@ extension Orbit {
         return eccentricAnomaly.inDegrees()
     }
     
-    /// The true angle relative to perigee and the position of the object along its orbit path
-    /// 
+    /// Calculates the true anomaly from the eccentric anomaly.
+    ///
+    /// The true anomaly is the actual angular position of the satellite in its orbit,
+    /// measured from perigee (the closest point to Earth). This method converts from
+    /// eccentric anomaly to true anomaly using the relationship between orbital geometry
+    /// and eccentricity.
+    ///
+    /// - Parameters:
+    ///   - eccentricity: Orbital eccentricity (must be < 1.0)
+    ///   - eccentricAnomaly: Eccentric anomaly in degrees
+    /// - Returns: True anomaly in degrees (0-360°)
+    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    ///
+    /// ## Example
+    /// ```swift
+    /// let trueAnomaly = try Orbit.calculateTrueAnomaly(
+    ///     eccentricity: 0.0167,
+    ///     eccentricAnomaly: 45.0
+    /// )
+    /// ```
+    ///
+    /// - Note: Formula uses `atan2` for proper quadrant handling
     static func calculateTrueAnomaly(eccentricity: Double, eccentricAnomaly: Degrees) throws -> Degrees {
         if eccentricity >= 1 { throw CalculationError.reachedSingularity }
         let E = eccentricAnomaly.inRadians()
@@ -257,7 +377,9 @@ extension Orbit {
     }
 }
 
+/// Errors that can occur during orbital calculations.
 public enum CalculationError: Int, Error {
+    /// Indicates that a singularity was reached in the calculation, typically when eccentricity >= 1.0
     case reachedSingularity = 1
 }
 

@@ -1,0 +1,62 @@
+# Jazzy configuration for Ephemeris API documentation
+# https://github.com/realm/jazzy
+
+module: Ephemeris
+author: Michael VanDyke
+author_url: https://github.com/mvdmakesthings
+github_url: https://github.com/mvdmakesthings/Ephemeris
+copyright: '© 2020-2025 Michael VanDyke. Apache 2.0 License.'
+
+# Documentation output
+output: docs/api
+clean: true
+theme: fullwidth
+
+# Swift build settings
+swift_build_tool: spm
+build_tool_arguments:
+  - -Xswiftc
+  - -suppress-warnings
+
+# Documentation coverage
+min_acl: public
+skip_undocumented: false
+hide_documentation_coverage: false
+
+# Custom categories for better organization
+custom_categories:
+  - name: Orbital Mechanics
+    children:
+      - Orbit
+      - Orbitable
+      - TwoLineElement
+      - CalculationError
+      - TLEParsingError
+      
+  - name: Position Calculation
+    children:
+      - Position
+      
+  - name: Physical Constants
+    children:
+      - PhysicalConstants
+      - Earth
+      - Time
+      - Julian
+      - Calculation
+      - Angle
+      
+  - name: Date & Time Utilities
+    children:
+      - Date
+      
+  - name: Mathematical Utilities
+    children:
+      - Double
+      
+  - name: Type Definitions
+    children:
+      - Degrees
+      - Radians
+      - JulianDay
+      - J2000
