@@ -11,20 +11,31 @@ let package = Package(
         .library(
             name: "Ephemeris",
             targets: ["Ephemeris"]
+        ),
+        .executable(
+            name: "EphemerisTests",
+            targets: ["EphemerisTests"]
         )
     ],
     dependencies: [
-        // Add package dependencies here, if any.
+        .package(url: "https://github.com/kylef/Spectre.git", from: "0.10.1")
     ],
     targets: [
         .target(
             name: "Ephemeris",
             path: "Ephemeris"
         ),
-        .testTarget(
+        .executableTarget(
             name: "EphemerisTests",
-            dependencies: ["Ephemeris"],
-            path: "EphemerisTests"
+            dependencies: [
+                "Ephemeris",
+                .product(name: "Spectre", package: "Spectre")
+            ],
+            path: "EphemerisTests",
+            swiftSettings: [
+                .unsafeFlags(["-Xfrontend", "-disable-availability-checking"]),
+                .swiftLanguageMode(.v5)
+            ]
         )
     ]
 )
