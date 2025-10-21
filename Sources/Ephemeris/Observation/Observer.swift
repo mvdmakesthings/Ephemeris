@@ -25,9 +25,11 @@ import Foundation
 /// )
 /// ```
 ///
+/// - Note: This type is frozen for ABI stability. New functionality will be added
+///         through extension methods rather than new stored properties.
 /// - Note: Coordinates use the WGS-84 geodetic system, which is the standard
 ///         for GPS and satellite tracking applications.
-public struct Observer {
+@frozen public struct Observer {
     // MARK: - Properties
 
     /// Geodetic latitude in degrees (-90 to 90).
@@ -61,3 +63,11 @@ public struct Observer {
         self.altitudeMeters = altitudeMeters
     }
 }
+
+// MARK: - Codable Conformance
+
+extension Observer: Codable {}
+
+// MARK: - Equatable and Hashable Conformance
+
+extension Observer: Equatable, Hashable {}

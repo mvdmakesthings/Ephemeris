@@ -14,7 +14,10 @@ import Foundation
 /// - ECI (Earth-Centered Inertial)
 /// - ECEF (Earth-Centered, Earth-Fixed)
 /// - ENU (East-North-Up, local tangent plane)
-public struct Vector3D {
+///
+/// - Note: This type is frozen for ABI stability. Vector operations are marked
+///         `@inlinable` for performance in orbital calculations.
+@frozen public struct Vector3D {
     /// X component
     public let x: Double
     
@@ -39,22 +42,25 @@ public struct Vector3D {
     /// Calculates the magnitude (length) of the vector.
     ///
     /// - Returns: The magnitude of the vector
+    @inlinable
     public var magnitude: Double {
         return sqrt(x * x + y * y + z * z)
     }
-    
+
     /// Subtracts another vector from this vector.
     ///
     /// - Parameter other: The vector to subtract
     /// - Returns: The resulting vector
+    @inlinable
     public func subtract(_ other: Vector3D) -> Vector3D {
         return Vector3D(x: x - other.x, y: y - other.y, z: z - other.z)
     }
-    
+
     /// Calculates the dot product with another vector.
     ///
     /// - Parameter other: The other vector
     /// - Returns: The dot product
+    @inlinable
     public func dot(_ other: Vector3D) -> Double {
         return x * other.x + y * other.y + z * other.z
     }
@@ -298,6 +304,7 @@ public struct CoordinateTransforms {
     /// ```
     ///
     /// - Note: Azimuth is measured clockwise from north (0° = North, 90° = East, 180° = South, 270° = West)
+    @inlinable
     public static func enuToAzEl(enu: Vector3D) -> (azimuthDeg: Double, elevationDeg: Double, rangeKm: Double) {
         let range = enu.magnitude
         let horizontalDistance = sqrt(enu.x * enu.x + enu.y * enu.y)
@@ -343,6 +350,7 @@ public struct CoordinateTransforms {
     ///         (temperature 10°C, pressure 1010 mbar). For precise work, use
     ///         actual weather data.
     /// - Note: Reference: Bennett, "The Calculation of Astronomical Refraction in Marine Navigation"
+    @inlinable
     public static func applyRefraction(elevationDeg: Double) -> Double {
         // Don't apply refraction if satellite is significantly below horizon
         guard elevationDeg > -1.0 else {

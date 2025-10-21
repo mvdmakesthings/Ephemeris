@@ -22,8 +22,10 @@ import Foundation
 /// print("Altitude: \(position.altitude) km")
 /// ```
 ///
+/// - Note: This type is frozen for ABI stability. New functionality will be added
+///         through extension methods rather than new stored properties.
 /// - Note: All coordinates use the WGS-84 geodetic reference system
-public struct GeodeticPosition {
+@frozen public struct GeodeticPosition {
     // MARK: - Properties
 
     /// Latitude in degrees (-90 to 90), where positive values indicate north
@@ -49,3 +51,11 @@ public struct GeodeticPosition {
         self.altitude = altitude
     }
 }
+
+// MARK: - Codable Conformance
+
+extension GeodeticPosition: Codable {}
+
+// MARK: - Equatable Conformance
+
+extension GeodeticPosition: Equatable {}

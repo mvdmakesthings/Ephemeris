@@ -32,11 +32,12 @@ extension Double {
     /// print(pi.round(to: 2))  // 3.14
     /// print(pi.round(to: 4))  // 3.1416
     /// ```
+    @inlinable
     func round(to places: Int) -> Double {
         let divisor = pow(10.0, Double(places))
         return (self * divisor).rounded() / divisor
     }
-    
+
     /// Converts degrees to radians.
     ///
     /// - Returns: The angle in radians
@@ -46,10 +47,14 @@ extension Double {
     /// let degrees = 180.0
     /// let radians = degrees.inRadians()  // π
     /// ```
+    ///
+    /// - Note: Marked as `@inlinable` for performance in hot paths such as
+    ///         coordinate transformations and orbital calculations.
+    @inlinable
     func inRadians() -> Radians {
         return self * .pi / 180
     }
-    
+
     /// Converts radians to degrees.
     ///
     /// - Returns: The angle in degrees
@@ -59,6 +64,10 @@ extension Double {
     /// let radians = Double.pi
     /// let degrees = radians.inDegrees()  // 180.0
     /// ```
+    ///
+    /// - Note: Marked as `@inlinable` for performance in hot paths such as
+    ///         coordinate transformations and orbital calculations.
+    @inlinable
     func inDegrees() -> Degrees {
         return self * 180 / .pi
     }

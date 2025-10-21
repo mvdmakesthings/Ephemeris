@@ -26,7 +26,10 @@ import Foundation
 /// print("Az: \(topo.azimuthDeg)°, El: \(topo.elevationDeg)°")
 /// print("Range: \(topo.rangeKm) km, Rate: \(topo.rangeRateKmPerSec) km/s")
 /// ```
-public struct Topocentric {
+///
+/// - Note: This type is frozen for ABI stability. New functionality will be added
+///         through extension methods rather than new stored properties.
+@frozen public struct Topocentric {
     // MARK: - Properties
 
     /// Azimuth angle in degrees (0-360).
@@ -61,3 +64,11 @@ public struct Topocentric {
         self.rangeRateKmPerSec = rangeRateKmPerSec
     }
 }
+
+// MARK: - Codable Conformance
+
+extension Topocentric: Codable {}
+
+// MARK: - Equatable Conformance
+
+extension Topocentric: Equatable {}

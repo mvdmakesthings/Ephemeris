@@ -97,6 +97,87 @@ public struct Orbit: Orbitable {
     ///     Mean Motion (n) = sqrt( M / a^3 )
     public let meanMotion: Double
 
+    // MARK: - Computed Properties
+
+    /// Apogee altitude in kilometers above Earth's surface.
+    ///
+    /// Apogee is the point in the orbit where the satellite is farthest from Earth's center.
+    /// This property calculates the altitude at apogee above Earth's surface by subtracting
+    /// Earth's mean radius from the apogee distance.
+    ///
+    /// - Returns: Altitude at apogee in kilometers
+    ///
+    /// ## Formula
+    /// ```
+    /// apogee_altitude = a(1 + e) - R_earth
+    /// ```
+    /// where:
+    /// - `a` is the semimajor axis
+    /// - `e` is the eccentricity
+    /// - `R_earth` is Earth's mean radius (6371.0 km)
+    ///
+    /// ## Example
+    /// ```swift
+    /// let orbit = Orbit(from: tle)
+    /// print("Apogee altitude: \(orbit.apogeeAltitude) km")
+    /// ```
+    public var apogeeAltitude: Double {
+        return semimajorAxis * (1 + eccentricity) - PhysicalConstants.Earth.radius
+    }
+
+    /// Perigee altitude in kilometers above Earth's surface.
+    ///
+    /// Perigee is the point in the orbit where the satellite is closest to Earth's center.
+    /// This property calculates the altitude at perigee above Earth's surface by subtracting
+    /// Earth's mean radius from the perigee distance.
+    ///
+    /// - Returns: Altitude at perigee in kilometers
+    ///
+    /// ## Formula
+    /// ```
+    /// perigee_altitude = a(1 - e) - R_earth
+    /// ```
+    /// where:
+    /// - `a` is the semimajor axis
+    /// - `e` is the eccentricity
+    /// - `R_earth` is Earth's mean radius (6371.0 km)
+    ///
+    /// ## Example
+    /// ```swift
+    /// let orbit = Orbit(from: tle)
+    /// print("Perigee altitude: \(orbit.perigeeAltitude) km")
+    /// ```
+    public var perigeeAltitude: Double {
+        return semimajorAxis * (1 - eccentricity) - PhysicalConstants.Earth.radius
+    }
+
+    /// Orbital period in seconds.
+    ///
+    /// The orbital period is the time it takes for the satellite to complete one full orbit
+    /// around Earth. This is calculated using Kepler's third law.
+    ///
+    /// - Returns: Orbital period in seconds
+    ///
+    /// ## Formula
+    /// ```
+    /// T = 2π√(a³/μ)
+    /// ```
+    /// where:
+    /// - `a` is the semimajor axis in km
+    /// - `μ` is Earth's gravitational parameter (398600.4418 km³/s²)
+    ///
+    /// ## Example
+    /// ```swift
+    /// let orbit = Orbit(from: tle)
+    /// let periodMinutes = orbit.orbitalPeriod / 60.0
+    /// print("Orbital period: \(periodMinutes) minutes")
+    /// ```
+    ///
+    /// - Note: For the ISS, this is approximately 92 minutes (5520 seconds)
+    public var orbitalPeriod: Double {
+        return 2 * .pi * sqrt(pow(semimajorAxis, 3) / PhysicalConstants.Earth.µ)
+    }
+
     // MARK: - Private Properties
 
     private let twoLineElement: TwoLineElement
