@@ -48,42 +48,119 @@ swiftlint lint --strict
 
 **Static Utility Functions**: Mathematical calculations are often implemented as static methods on types or in utility namespaces (e.g., `CoordinateTransforms`) for testability and reusability.
 
+### Directory Structure
+
+The codebase is organized into logical modules following Swift Package Manager conventions:
+
+```
+Sources/Ephemeris/
+├── Core/                      # Core orbital mechanics
+│   ├── Orbit.swift           # Main orbital calculations (~550 lines)
+│   ├── Position.swift        # GeodeticPosition type
+│   └── Orbitable.swift       # Protocol for orbital elements
+├── Tracking/                  # Satellite tracking features
+│   ├── GroundTrack.swift     # Ground track generation
+│   ├── SkyTrack.swift        # Sky track generation
+│   └── PassPrediction.swift  # Pass prediction and PassWindow
+├── Observation/               # Observer-related types
+│   ├── Observer.swift        # Ground observer location
+│   └── Topocentric.swift     # Observer-relative coordinates
+├── Parsing/                   # Data parsing
+│   └── TwoLineElement.swift  # TLE parser (~440 lines)
+├── Transforms/                # Coordinate transformations
+│   └── CoordinateTransforms.swift
+└── Utilities/
+    ├── Extensions/
+    │   ├── Date+Julian.swift
+    │   ├── Double+Angles.swift
+    │   └── String+Subscript.swift
+    └── Constants/
+        ├── PhysicalConstants.swift
+        └── TypeAliases.swift
+```
+
 ### Key Components and Responsibilities
 
-**TwoLineElement** (`TwoLineElement.swift`)
+#### Core Module (`Sources/Ephemeris/Core/`)
+
+**Orbit** (`Core/Orbit.swift` - refactored, ~550 lines)
+- Central hub for orbital mechanics calculations
+- Converts TLE data to Keplerian orbital elements
+- Core capabilities:
+  - `calculatePosition(at:)` - Full ECI → ECEF → Geodetic pipeline
+  - `calculateECIStateVector(at:)` - Position and velocity vectors in ECI frame
+  - `topocentric(at:for:)` - Observer-relative coordinates
+  - `predictPasses(for:from:to:)` - Satellite pass prediction
+  - `groundTrack(from:to:stepSeconds:)` - Ground track generation
+  - `skyTrack(for:from:to:stepSeconds:)` - Sky track generation
+- Uses Kepler's equation with iterative Newton-Raphson solver
+- Static helper methods for orbital calculations
+
+**GeodeticPosition** (`Core/Position.swift`)
+- Represents geographic position (latitude, longitude, altitude)
+- Top-level type (formerly nested as `Orbit.Position`)
+- Used as return type for position calculations
+
+**Orbitable** (`Core/Orbitable.swift`)
+- Protocol for types that provide orbital elements
+- Enables extensibility for different orbital element sources
+
+#### Tracking Module (`Sources/Ephemeris/Tracking/`)
+
+**GroundTrackPoint** (`Tracking/GroundTrack.swift`)
+- Represents a point on the satellite's ground track
+- Top-level type (formerly nested as `Orbit.GroundTrackPoint`)
+- Used for visualizing satellite coverage on maps
+
+**SkyTrackPoint** (`Tracking/SkyTrack.swift`)
+- Represents a point in the satellite's sky path
+- Top-level type (formerly nested as `Orbit.SkyTrackPoint`)
+- Used for visualizing satellite passes in the observer's sky
+
+**PassWindow** (`Tracking/PassPrediction.swift`)
+- Represents a complete satellite pass
+- Contains AOS (acquisition of signal), maximum elevation, and LOS (loss of signal)
+- Includes nested `Point` type for AOS/LOS events
+- Used by pass prediction algorithms
+
+#### Observation Module (`Sources/Ephemeris/Observation/`)
+
+**Observer** (`Observation/Observer.swift`)
+- Represents a ground observer location (latitude, longitude, altitude)
+- Simple value type used by topocentric calculations and pass prediction
+- Uses WGS-84 geodetic coordinate system
+
+**Topocentric** (`Observation/Topocentric.swift`)
+- Observer-relative coordinates (azimuth, elevation, range, range rate)
+- Top-level type (formerly nested in Observer.swift)
+- Used for antenna pointing and visibility calculations
+
+#### Parsing Module (`Sources/Ephemeris/Parsing/`)
+
+**TwoLineElement** (`Parsing/TwoLineElement.swift` - ~440 lines)
 - Parses and validates NORAD Two-Line Element format satellite data
 - Implements fixed-width field extraction with checksum verification
 - Handles 2-digit year interpretation (±50 year window)
 - Throws comprehensive `TLEParsingError` with context
 
-**Orbit** (`Orbit.swift` - 935 lines, largest file)
-- Central hub for orbital mechanics calculations
-- Converts TLE data to Keplerian orbital elements
-- Key capabilities:
-  - `calculatePosition(at:)` - Full ECI → ECEF → Geodetic pipeline
-  - `topocentric(at:for:)` - Observer-relative coordinates (azimuth, elevation, range)
-  - `predictPasses(for:from:to:)` - Satellite pass prediction with bisection/golden-section search
-  - `groundTrack(from:to:stepSeconds:)` - Ground track visualization data
-  - `skyTrack(for:from:to:stepSeconds:)` - Sky path visualization data
-- Contains nested types: `Position`, `GroundTrackPoint`, `SkyTrackPoint`, `PassWindow`, `Topocentric`
-- Uses Kepler's equation with iterative Newton-Raphson solver
+#### Transforms Module (`Sources/Ephemeris/Transforms/`)
 
-**Observer** (`Observer.swift`)
-- Represents a ground observer location (latitude, longitude, altitude)
-- Simple value type used by `Orbit.topocentric()` and pass prediction
-
-**CoordinateTransforms** (`CoordinateTransforms.swift`)
+**CoordinateTransforms** (`Transforms/CoordinateTransforms.swift`)
 - Static utility namespace for coordinate system conversions
 - Supports: ECI (Earth-Centered Inertial) ↔ ECEF (Earth-Centered Earth-Fixed) ↔ ENU (East-North-Up) ↔ Horizontal (Az/El)
 - Implements Bennett formula for atmospheric refraction correction
 - All methods are pure functions
 
-**Utilities Directory** (`Sources/Ephemeris/Utilities/`)
-- `Date.swift`: Julian Day and Greenwich Mean Sidereal Time (GMST) calculations
-- `Double.swift`: Degree/radian conversions and angle utilities
+#### Utilities Module (`Sources/Ephemeris/Utilities/`)
+
+**Extensions:**
+- `Date+Julian.swift`: Julian Day and Greenwich Mean Sidereal Time (GMST) calculations
+- `Double+Angles.swift`: Degree/radian conversions and angle utilities
+- `String+Subscript.swift`: Safe string subscripting helpers
+
+**Constants:**
 - `PhysicalConstants.swift`: WGS-84 Earth parameters, gravitational constants (with sources documented)
-- `StringProtocol+subscript.swift`: Safe string subscripting helpers
-- `TypeAlias.swift`: Semantic type aliases (e.g., `Degrees`, `Radians`)
+- `TypeAliases.swift`: Semantic type aliases (e.g., `Degrees`, `Radians`)
 
 ## Important Implementation Details
 

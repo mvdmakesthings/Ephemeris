@@ -393,7 +393,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         let longitude = -85.7594
 
         // When
-        let point = Orbit.GroundTrackPoint(time: time, latitudeDeg: latitude, longitudeDeg: longitude)
+        let point = GroundTrackPoint(time: time, latitudeDeg: latitude, longitudeDeg: longitude)
 
         // Then
         XCTAssertEqual(point.time, time)
@@ -408,7 +408,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         let elevation = 45.0
 
         // When
-        let point = Orbit.SkyTrackPoint(time: time, azimuthDeg: azimuth, elevationDeg: elevation)
+        let point = SkyTrackPoint(time: time, azimuthDeg: azimuth, elevationDeg: elevation)
 
         // Then
         XCTAssertEqual(point.time, time)
