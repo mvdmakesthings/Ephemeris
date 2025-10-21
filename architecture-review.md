@@ -19,18 +19,358 @@ Ephemeris is a **well-crafted educational satellite tracking library** with exce
 - Clean separation between data structures and calculations
 
 ### Critical Improvements Needed
-1. **Package structure** doesn't follow modern SPM conventions
-2. **Test infrastructure** uses unconventional executable approach
-3. **Swift version inconsistency** (tools 6.0, language mode 5.0)
-4. **Module organization** is monolithic (single module)
+1. **🚨 DISTRIBUTION BLOCKER: Unsafe compiler flags** prevent package from being used as a dependency
+2. **🚨 DISTRIBUTION BLOCKER: Test infrastructure** uses executable target with unsafe flags, breaking `swift test`
+3. **Package structure** doesn't follow modern SPM conventions (non-standard paths)
+4. **Swift version inconsistency** (tools 6.0, language mode 5.0)
+5. **External test dependency** (Spectre) adds complexity and forces non-standard testing approach
 
 ### Overall Rating
 **Architecture Maturity: 7.5/10**
-- Production Readiness: 7/10
+- Production Readiness: **4/10** ⚠️ (blocked by distribution issues)
 - Maintainability: 8/10
 - Onboarding Experience: 7/10
 - Organization: 7/10
 - Documentation: 9.5/10
+- **Distributability: 2/10** ⚠️ (cannot be used as SPM dependency)
+
+---
+
+## 0. Critical Distribution Blockers (Priority 0 - MUST FIX FIRST)
+
+**⚠️ WARNING: The package currently CANNOT be used as a dependency by other Swift packages due to the issues below. These must be fixed before any other architectural improvements.**
+
+---
+
+### 0.1 Remove Unsafe Compiler Flags
+
+**Current State:**
+```swift
+// Package.swift:35-37
+swiftSettings: [
+    .unsafeFlags(["-Xfrontend", "-disable-availability-checking"]),
+    .swiftLanguageMode(.v5)
+]
+```
+
+**Critical Issue:** According to Swift Package Manager documentation:
+
+> "Packages using unsafe compiler flags become 'ineligible for use by other packages'"
+
+**Impact:**
+- ❌ **Package cannot be added as a dependency** by other Swift projects
+- ❌ Users attempting to add Ephemeris will encounter build errors
+- ❌ Blocks all distribution as a library
+- ❌ Makes the package effectively unusable for its intended purpose
+- ❌ Likely causing GitHub Actions CI failures
+
+**Root Cause:** The unsafe flags are present to support the Spectre BDD testing framework running in an executable target, which requires disabling availability checking.
+
+**Why This Exists:**
+- Spectre requires executable test target (not `.testTarget`)
+- Executable targets need availability checking disabled for test utilities
+- This workaround has severe consequences for library distribution
+
+**Solution:** Remove unsafe flags by migrating to standard XCTest infrastructure (see Section 0.2)
+
+**Effort:** Part of XCTest migration (6-8 hours total)
+**Impact:** CRITICAL - Blocks all distribution
+
+---
+
+### 0.2 Migrate Testing to XCTest (REQUIRED, Not Optional)
+
+**Current State:**
+- Uses Spectre BDD framework (external dependency)
+- Tests run as executable target: `swift run EphemerisTests`
+- Cannot use standard `swift test` command
+- Requires unsafe compiler flags (see 0.1)
+
+**Xcode Build Targets Confusion:**
+
+When opening the package in Xcode, you'll see three schemes/targets:
+1. **Ephemeris-Package** (package icon) - ✅ Normal, auto-generated for the entire package
+2. **Ephemeris** (library icon) - ✅ Normal, your library target
+3. **EphemerisTests** (executable/terminal icon) - ⚠️ **Wrong type**, shows as executable
+
+The third target appearing as an executable (with terminal icon) instead of a test bundle indicates the problem. Looking at Package.swift:
+
+```swift
+products: [
+    .library(name: "Ephemeris", targets: ["Ephemeris"]),
+    .executable(name: "EphemerisTests", targets: ["EphemerisTests"])  // ⚠️ WRONG
+],
+targets: [
+    .target(name: "Ephemeris", path: "Ephemeris"),
+    .executableTarget(name: "EphemerisTests", ...)  // ⚠️ WRONG
+]
+```
+
+**Issues:**
+1. Tests are declared as a **product** (`.executable`) - tests should never be products
+2. Tests use **`.executableTarget`** instead of **`.testTarget`**
+3. This forces you to run tests via `swift run EphemerisTests` instead of `swift test`
+4. Cannot use Xcode's test navigator or CMD+U to run tests
+
+**After Migration:**
+
+The corrected Package.swift will look like:
+```swift
+products: [
+    .library(name: "Ephemeris", targets: ["Ephemeris"])
+    // ✅ No EphemerisTests product - tests aren't distributed
+],
+targets: [
+    .target(name: "Ephemeris"),
+    .testTarget(name: "EphemerisTests", dependencies: ["Ephemeris"])  // ✅ Proper test target
+]
+```
+
+Xcode will still show three schemes:
+1. **Ephemeris-Package** - Package scheme (unchanged)
+2. **Ephemeris** - Library scheme (unchanged)
+3. **EphemerisTests** - Now appears as test bundle with test icon (fixed)
+
+And you'll be able to:
+- Run tests with `swift test` from command line
+- Use Xcode's test navigator (diamond icon in left sidebar)
+- Press CMD+U to run tests in Xcode
+- See individual test results in Xcode UI
+- Get code coverage reports
+
+**Why This Is Critical:**
+
+Previously treated as an "option" in Section 1.2, but further analysis reveals this is **required for distribution**:
+
+1. **Distribution Blocker**: Executable test target forces unsafe flags
+2. **Standard Compliance**: `swift test` is expected by all CI/CD systems
+3. **Tooling Integration**: IDE test runners, coverage tools, and GitHub Actions all expect XCTest
+4. **Dependency Reduction**: Eliminates external dependency (Spectre)
+5. **Platform Compatibility**: XCTest is native across all Apple platforms
+
+**Impact of Current Approach:**
+- ❌ Package cannot be distributed (unsafe flags)
+- ❌ GitHub Actions issues (non-standard test execution)
+- ❌ No Xcode test navigator integration
+- ❌ No standard code coverage reporting
+- ❌ Cannot run `swift test`
+- ❌ Extra dependency to maintain
+
+**Recommendation: Full XCTest Migration**
+
+```swift
+import XCTest
+@testable import Ephemeris
+
+final class TwoLineElementTests: XCTestCase {
+    func testValidTLEParsing_withISS_shouldExtractCorrectValues() throws {
+        // Given
+        let tleString = """
+        ISS (ZARYA)
+        1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
+        2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
+        """
+
+        // When
+        let tle = try TwoLineElement(from: tleString)
+
+        // Then
+        XCTAssertEqual(tle.name, "ISS (ZARYA)")
+        XCTAssertEqual(tle.satelliteNumber, 25544)
+        XCTAssertEqual(tle.inclination, 51.6465, accuracy: 0.0001)
+    }
+
+    func testInvalidTLE_withMissingLines_shouldThrowError() {
+        // Given
+        let invalidTLE = "ISS (ZARYA)"
+
+        // When/Then
+        XCTAssertThrowsError(try TwoLineElement(from: invalidTLE)) { error in
+            guard case TLEParsingError.invalidFormat = error else {
+                XCTFail("Expected TLEParsingError.invalidFormat")
+                return
+            }
+        }
+    }
+}
+```
+
+**Updated Package.swift:**
+```swift
+// swift-tools-version:6.0
+import PackageDescription
+
+let package = Package(
+    name: "Ephemeris",
+    platforms: [
+        .iOS(.v16),           // Current minus two policy
+        .macOS(.v13),         // Current minus two policy
+        .watchOS(.v9),        // Current minus two policy
+        .tvOS(.v16),          // Current minus two policy
+        .visionOS(.v1)        // All visionOS versions supported
+    ],
+    products: [
+        .library(
+            name: "Ephemeris",
+            targets: ["Ephemeris"]
+        )
+    ],
+    dependencies: [],  // ✅ No external dependencies
+    targets: [
+        .target(
+            name: "Ephemeris"
+            // ✅ No path parameter - uses Sources/Ephemeris
+        ),
+        .testTarget(
+            name: "EphemerisTests",
+            dependencies: ["Ephemeris"]
+            // ✅ No path parameter - uses Tests/EphemerisTests
+            // ✅ No unsafe flags
+            // ✅ Standard test target
+        )
+    ]
+)
+```
+
+**Test Naming Convention for Readability:**
+
+To maintain the educational clarity of BDD-style tests, use descriptive method names:
+
+```swift
+// Pattern: test[Feature]_[Scenario]_[ExpectedBehavior]
+
+func testTLEParsing_withValidISS_shouldExtractCorrectOrbitalElements()
+func testTLEParsing_withInvalidChecksum_shouldThrowError()
+func testOrbitCalculation_atEpoch_shouldReturnExpectedPosition()
+func testPassPrediction_forLowEarthOrbit_shouldFindVisiblePasses()
+```
+
+**Maintaining Educational Value:**
+
+XCTest doesn't mean sacrificing clarity. Use:
+- Clear test method names that read like sentences
+- Given-When-Then comments in test body
+- Grouped tests using `// MARK:` sections
+- Helper methods for common setup (e.g., `createISSOrbit()`)
+
+**Migration Strategy:**
+
+1. **Create parallel XCTest files** (don't delete Spectre tests yet)
+2. **Start with core types** (TwoLineElement, Orbit)
+3. **Test both frameworks** in CI temporarily
+4. **Complete migration** systematically
+5. **Remove Spectre dependency** and executable test target
+6. **Remove unsafe flags**
+
+**Effort:** 6-8 hours (rewriting ~1,950 lines of tests)
+**Impact:** CRITICAL - Unblocks distribution, fixes CI, enables standard tooling
+
+---
+
+### 0.3 Adopt Standard Directory Structure (REQUIRED)
+
+**Current State:**
+```
+Ephemeris/
+├── Ephemeris/          # Custom path
+├── EphemerisTests/     # Custom path
+└── Package.swift
+```
+
+```swift
+// Package.swift:26, 34
+.target(name: "Ephemeris", path: "Ephemeris")
+.executableTarget(name: "EphemerisTests", path: "EphemerisTests")
+```
+
+**Issue:** While SPM allows custom paths, this creates friction and is **required to change** for standard library distribution:
+
+1. **Developer Expectations**: Every Swift developer expects `Sources/` and `Tests/`
+2. **Tooling Compatibility**: IDEs, linters, and documentation generators expect standard layout
+3. **CI/CD Templates**: Standard GitHub Actions workflows assume default paths
+4. **Documentation**: All SPM tutorials and guides use standard structure
+5. **Best Practice**: Apple and community libraries universally use standard structure
+
+**Required Structure:**
+```
+Ephemeris/
+├── Sources/
+│   └── Ephemeris/
+│       ├── Orbit.swift
+│       ├── TwoLineElement.swift
+│       ├── CoordinateTransforms.swift
+│       ├── Observer.swift
+│       ├── Orbitable.swift
+│       └── Utilities/
+│           ├── Extensions/
+│           │   ├── Date+Julian.swift
+│           │   ├── Double+Angles.swift
+│           │   └── StringProtocol+Subscript.swift
+│           ├── PhysicalConstants.swift
+│           └── TypeAliases.swift
+├── Tests/
+│   └── EphemerisTests/
+│       ├── TwoLineElementTests.swift
+│       ├── OrbitTests.swift
+│       └── [other test files]
+├── Package.swift
+└── README.md
+```
+
+**Updated Package.swift:**
+```swift
+targets: [
+    .target(
+        name: "Ephemeris"
+        // ✅ No path parameter needed
+    ),
+    .testTarget(
+        name: "EphemerisTests",
+        dependencies: ["Ephemeris"]
+        // ✅ No path parameter needed
+    )
+]
+```
+
+**Migration Steps:**
+1. Create `Sources/Ephemeris/` directory
+2. Move all files from `Ephemeris/` to `Sources/Ephemeris/`
+3. Create `Tests/EphemerisTests/` directory
+4. Move all test files from `EphemerisTests/` to `Tests/EphemerisTests/`
+5. Update `Package.swift` to remove `path:` parameters
+6. Update `.github/workflows/swift.yml` if needed
+7. Test: `swift build && swift test`
+8. Update `CLAUDE.md` with new structure
+
+**Effort:** 1-2 hours
+**Impact:** HIGH - Required for professional library distribution
+
+---
+
+### 0.4 Summary: Path to Distribution
+
+**Current State:** Package is NOT distributable
+- ❌ Cannot be added as dependency (unsafe flags)
+- ❌ Non-standard structure and testing
+- ❌ External dependency for core functionality (testing)
+
+**After Phase 0 Fixes:** Package becomes distributable
+- ✅ Can be added as dependency to any Swift project
+- ✅ Standard `swift test` works
+- ✅ Compatible with all CI/CD systems
+- ✅ No external dependencies
+- ✅ Follows all SPM best practices
+- ✅ Works with Xcode test navigator
+- ✅ Enables code coverage reporting
+
+**Priority Order:**
+1. Migrate to XCTest (fixes unsafe flags + testing)
+2. Adopt Sources/Tests structure (fixes non-standard layout)
+3. Remove Spectre dependency (cleanup)
+4. Update CI/CD workflow (validation)
+
+**Total Effort:** 8-10 hours
+**Impact:** Makes library actually usable by others - **CRITICAL**
 
 ---
 
@@ -92,10 +432,13 @@ Ephemeris/
 
 ### 1.2 Standardize Testing Infrastructure
 
+**⚠️ NOTE: This is now documented as REQUIRED in Section 0.2 (Priority 0). The analysis below explains why this moved from "optional" to "critical".**
+
 **Current State:**
 - Uses Spectre BDD framework with executable target
 - Tests run via `swift run EphemerisTests` (not `swift test`)
 - Custom test runner in `main.swift`
+- **CRITICAL: Requires unsafe compiler flags that block distribution** (see Section 0.1)
 
 ```swift
 // Package.swift:18
@@ -105,66 +448,46 @@ Ephemeris/
 )
 ```
 
-**Issue:** While Spectre is a fine testing framework, using an executable test target is unconventional for Swift packages. This breaks compatibility with:
-- `swift test` command
-- Xcode's test navigator and UI
-- CI/CD test reporting tools
-- Code coverage tools
-- Test result parsing
+**Why This Was Originally Considered "Optional":**
 
-**Impact on Onboarding:**
-- Developers expect `swift test` to work
-- No visual test runner in Xcode
-- Harder to run individual tests during development
-- Cannot use `CMD+U` in Xcode
+The initial review treated this as a quality-of-life improvement for tooling integration. However, deeper analysis revealed this is a **distribution blocker**:
 
-**Recommendation:** Migrate to XCTest while maintaining test quality
+1. **Unsafe Flags Requirement**: Executable test targets require `.unsafeFlags(["-Xfrontend", "-disable-availability-checking"])` in Package.swift
+2. **SPM Distribution Rule**: Packages with unsafe flags cannot be used as dependencies
+3. **Consequence**: The package cannot be integrated into other projects
 
-**Option A: Full XCTest Migration** (Recommended)
-```swift
-import XCTest
-@testable import Ephemeris
+**Updated Assessment: REQUIRED, Not Optional**
 
-final class TwoLineElementTests: XCTestCase {
-    func testValidTLEParsing() throws {
-        let tleString = """
-        ISS (ZARYA)
-        1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
-        2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
-        """
+This is no longer about convenience—it's about whether the package can be distributed at all.
 
-        let tle = try TwoLineElement(from: tleString)
-        XCTAssertEqual(tle.name, "ISS (ZARYA)")
-        XCTAssertEqual(tle.satelliteNumber, 25544)
-    }
-}
-```
+**Impact:**
+- ❌ **BLOCKS DISTRIBUTION**: Package cannot be added as dependency (unsafe flags)
+- ❌ `swift test` doesn't work
+- ❌ Xcode's test navigator unavailable
+- ❌ CI/CD test reporting tools incompatible
+- ❌ No code coverage tools
+- ❌ GitHub Actions issues
+- ❌ External dependency (Spectre) adds maintenance burden
 
-**Option B: Hybrid Approach** (Keep Spectre for readability, add XCTest wrapper)
-- Maintain Spectre tests for their BDD readability
-- Add XCTest target that wraps Spectre
-- Get best of both worlds
+**Recommendation: Full XCTest Migration (REQUIRED)**
 
-**Migration Effort:**
-- Option A: 4-6 hours (rewrite ~1,950 lines of tests)
-- Option B: 2-3 hours (create XCTest wrapper)
+See **Section 0.2** for complete migration guide, including:
+- Example XCTest code with educational clarity
+- Test naming conventions for readability
+- Updated Package.swift
+- Migration strategy
+- Effort estimate: 6-8 hours
 
-**Recommendation:** Start with Option B for quick wins, consider Option A for long-term
+**Benefits of XCTest:**
+- ✅ **Removes unsafe flags** - enables distribution
+- ✅ Native to Swift/Xcode - no external dependencies
+- ✅ Standard `swift test` works
+- ✅ Full IDE integration
+- ✅ All CI/CD systems compatible
+- ✅ Code coverage reporting available
+- ✅ Better debugging support
 
-**Updated Package.swift:**
-```swift
-.testTarget(
-    name: "EphemerisTests",
-    dependencies: ["Ephemeris"]
-)
-```
-
-**Benefits:**
-- Standard `swift test` works
-- Xcode test navigator integration
-- CI/CD compatibility
-- Code coverage reporting
-- Better IDE support
+**Status:** Originally listed as Priority 1 (Optional), **now Priority 0 (REQUIRED)** - see Section 0.2
 
 ---
 
@@ -222,6 +545,351 @@ platforms: [
 
 **Effort:** 1 hour to standardize, 4-8 hours for full Swift 6 migration
 **Impact:** Medium (removes confusion, enables future features)
+
+---
+
+### 1.4 Package Distribution Checklist
+
+**Purpose:** Once Phase 0 fixes are complete, follow this checklist to properly distribute Ephemeris as a Swift package.
+
+---
+
+#### 1.4.1 Semantic Versioning with Git Tags
+
+**Importance:** Git tags enable SPM to resolve package versions automatically. Without tags, users must specify exact commits, which is not recommended.
+
+**Best Practice:**
+```bash
+# Follow Semantic Versioning (SemVer)
+# MAJOR.MINOR.PATCH
+# - MAJOR: Breaking API changes
+# - MINOR: New features, backward compatible
+# - PATCH: Bug fixes, backward compatible
+
+# First stable release
+git tag -a 1.0.0 -m "First stable release with Keplerian orbital mechanics"
+git push origin 1.0.0
+
+# Future updates
+git tag -a 1.1.0 -m "Add ground station visibility calculations"
+git push origin 1.1.0
+
+git tag -a 1.0.1 -m "Fix TLE parsing edge case for expired elements"
+git push origin 1.0.1
+```
+
+**Package Usage by Consumers:**
+```swift
+// In consumer's Package.swift
+dependencies: [
+    .package(url: "https://github.com/mvdmakesthings/Ephemeris.git", from: "1.0.0")
+]
+```
+
+**Version Range Options:**
+- `from: "1.0.0"` - Accept 1.0.0 and any higher version (recommended)
+- `.upToNextMajor(from: "1.0.0")` - Accept 1.x.x but not 2.0.0
+- `.upToNextMinor(from: "1.0.0")` - Accept 1.0.x but not 1.1.0
+- `exact: "1.0.0"` - Only this specific version (not recommended)
+
+---
+
+#### 1.4.2 GitHub Releases
+
+**Create Release Notes for Each Tag:**
+
+1. Go to GitHub repository → Releases → "Draft a new release"
+2. Select the tag created above
+3. Write release notes following this template:
+
+```markdown
+# Ephemeris 1.0.0
+
+First stable release of Ephemeris, a Swift framework for satellite tracking and orbital mechanics.
+
+## Features
+
+- TLE (Two-Line Element) parsing with comprehensive validation
+- Keplerian orbital mechanics calculations
+- Position calculations (ECI → ECEF → Geodetic)
+- Pass prediction for ground observers
+- Ground track generation
+- Sky track visualization data
+- Topocentric coordinates (azimuth, elevation, range)
+
+## Platform Support
+
+- iOS 16+ (Current minus two policy)
+- macOS 13+ (Current minus two policy)
+- watchOS 9+ (Current minus two policy)
+- tvOS 16+ (Current minus two policy)
+- visionOS 1+ (All versions supported)
+
+## Installation
+
+### Swift Package Manager
+
+Add Ephemeris to your `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/mvdmakesthings/Ephemeris.git", from: "1.0.0")
+]
+```
+
+Or in Xcode: File → Add Package Dependencies → Enter repository URL
+
+## Documentation
+
+See the [README](https://github.com/mvdmakesthings/Ephemeris/blob/main/README.md) for usage examples and the `docs/` directory for detailed guides.
+
+## Known Limitations
+
+- Uses simplified two-body Keplerian mechanics (not SGP4)
+- Best accuracy within 1-3 days of TLE epoch
+- Update TLEs regularly for LEO satellites
+
+## What's Changed
+
+- Initial public release
+
+**Full Changelog**: https://github.com/mvdmakesthings/Ephemeris/commits/1.0.0
+```
+
+---
+
+#### 1.4.3 Create CHANGELOG.md
+
+Add to repository root:
+
+```markdown
+# Changelog
+
+All notable changes to Ephemeris will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- Nothing yet
+
+## [1.0.0] - 2024-XX-XX
+
+### Added
+- TLE parsing and validation
+- Keplerian orbital calculations
+- Position calculations (ECI, ECEF, Geodetic)
+- Pass prediction for ground observers
+- Ground track generation
+- Sky track visualization
+- Topocentric coordinate transformations
+- Comprehensive documentation suite
+- Full test coverage with XCTest
+- Swift 6 tools support
+- Multi-platform support (iOS 16+, macOS 13+, watchOS 9+, tvOS 16+, visionOS 1+)
+- "Current minus two" platform support policy for broad compatibility
+
+### Changed
+- Migrated from Spectre to XCTest for testing
+- Adopted standard Sources/Tests directory structure
+- Removed external dependencies
+
+[Unreleased]: https://github.com/mvdmakesthings/Ephemeris/compare/1.0.0...HEAD
+[1.0.0]: https://github.com/mvdmakesthings/Ephemeris/releases/tag/1.0.0
+```
+
+Update this file with each release.
+
+---
+
+#### 1.4.4 Test Package Integration
+
+**Before releasing, validate that the package can be consumed:**
+
+**Test 1: Local Package Integration**
+```bash
+# Create a test project
+mkdir EphemerisTestApp
+cd EphemerisTestApp
+swift package init --type executable
+
+# Edit Package.swift to add local dependency
+```
+
+```swift
+// Package.swift
+dependencies: [
+    .package(path: "../Ephemeris")  // Local path for testing
+],
+targets: [
+    .executableTarget(
+        name: "EphemerisTestApp",
+        dependencies: ["Ephemeris"]
+    )
+]
+```
+
+```swift
+// Sources/main.swift
+import Ephemeris
+import Foundation
+
+let tleString = """
+ISS (ZARYA)
+1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
+2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
+"""
+
+do {
+    let tle = try TwoLineElement(from: tleString)
+    let orbit = Orbit(from: tle)
+    let position = try orbit.calculatePosition(at: Date())
+    print("ISS Position: \(position.latitude)°, \(position.longitude)°")
+} catch {
+    print("Error: \(error)")
+}
+```
+
+```bash
+swift run
+# Should compile and run successfully
+```
+
+**Test 2: GitHub Integration (After Tagging)**
+```swift
+// Use URL instead of path
+dependencies: [
+    .package(url: "https://github.com/mvdmakesthings/Ephemeris.git", from: "1.0.0")
+]
+```
+
+**Test 3: Xcode Integration**
+1. Create new Xcode project
+2. File → Add Package Dependencies
+3. Enter: `https://github.com/mvdmakesthings/Ephemeris.git`
+4. Verify it resolves and builds
+
+---
+
+#### 1.4.5 Update README with Installation Instructions
+
+Ensure README.md has clear SPM installation section:
+
+```markdown
+## Installation
+
+### Swift Package Manager (Recommended)
+
+Add Ephemeris to your project using Swift Package Manager:
+
+#### Option 1: Xcode
+1. In Xcode, select **File → Add Package Dependencies**
+2. Enter the repository URL: `https://github.com/mvdmakesthings/Ephemeris.git`
+3. Select version: **From: 1.0.0** (or latest)
+4. Click **Add Package**
+
+#### Option 2: Package.swift
+Add Ephemeris as a dependency in your `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/mvdmakesthings/Ephemeris.git", from: "1.0.0")
+]
+```
+
+Then add it to your target:
+
+```swift
+targets: [
+    .target(
+        name: "YourTarget",
+        dependencies: ["Ephemeris"]
+    )
+]
+```
+
+### Supported Platforms
+
+Following a "current minus two" support policy:
+
+- iOS 16.0+
+- macOS 13.0+
+- watchOS 9.0+
+- tvOS 16.0+
+- visionOS 1.0+
+```
+
+---
+
+#### 1.4.6 Add Package Metadata
+
+Consider adding these optional files:
+
+**FUNDING.yml** (in `.github/` directory)
+```yaml
+# Optional: GitHub Sponsors
+github: [yourusername]
+```
+
+**SECURITY.md**
+```markdown
+# Security Policy
+
+## Supported Versions
+
+| Version | Supported          |
+| ------- | ------------------ |
+| 1.x.x   | :white_check_mark: |
+
+## Reporting a Vulnerability
+
+Please report security vulnerabilities by emailing security@example.com.
+Do not open public issues for security vulnerabilities.
+```
+
+**CITATION.cff** (for academic use)
+```yaml
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Ephemeris: Swift Satellite Tracking Framework"
+authors:
+  - family-names: "Your Name"
+    given-names: "Your"
+version: 1.0.0
+date-released: 2024-XX-XX
+url: "https://github.com/mvdmakesthings/Ephemeris"
+```
+
+---
+
+#### 1.4.7 Package Distribution Checklist Summary
+
+Before marking 1.0.0 release:
+
+- [ ] All Phase 0 fixes complete (XCTest, Sources/Tests, no unsafe flags)
+- [ ] `swift build` succeeds
+- [ ] `swift test` succeeds with all tests passing
+- [ ] SwiftLint passes (strict mode)
+- [ ] CHANGELOG.md created and up to date
+- [ ] Git tag created: `git tag -a 1.0.0 -m "..."`
+- [ ] Tag pushed: `git push origin 1.0.0`
+- [ ] GitHub Release created with notes
+- [ ] README.md has installation instructions
+- [ ] Package integration tested locally (`path:` dependency)
+- [ ] Package integration tested from GitHub (after push)
+- [ ] Xcode package resolution tested
+- [ ] Platform support tested (at least iOS and macOS)
+- [ ] Documentation is complete and accurate
+- [ ] LICENSE file present (✅ already Apache 2.0)
+- [ ] All public APIs documented
+- [ ] Examples in README verified working
+
+**After Release:**
+- Monitor GitHub issues for integration problems
+- Update documentation based on user feedback
+- Plan next version features
 
 ---
 
@@ -401,38 +1069,60 @@ platforms: [
 ]
 ```
 
-**Issue:** Library uses Foundation and basic Swift only, could support more platforms
+**Issue:** Library uses Foundation and basic Swift only, could support more platforms. Current platform support is limited to iOS and macOS.
 
-**Recommendation:**
+**Recommendation (Current Minus Two Policy):**
+
+Support the current OS version minus two for broader compatibility while maintaining modern features:
+
 ```swift
 platforms: [
-    .iOS(.v13),           // Support older iOS (back to iOS 13)
-    .macOS(.v10_15),      // macOS Catalina and later
-    .watchOS(.v6),        // Add watchOS support
-    .tvOS(.v13),          // Add tvOS support
-    .visionOS(.v1)        // Add visionOS support
+    .iOS(.v16),           // Current: iOS 18 → Support iOS 16+
+    .macOS(.v13),         // Current: macOS 15 → Support macOS 13+
+    .watchOS(.v9),        // Current: watchOS 11 → Support watchOS 9+
+    .tvOS(.v16),          // Current: tvOS 18 → Support tvOS 16+
+    .visionOS(.v1)        // Current: visionOS 2 → Support visionOS 1+ (all versions)
 ]
 ```
+
+**Platform Support Policy:**
+- **Strategy**: Support current OS version minus two releases
+- **Rationale**: Balances broad compatibility with access to modern APIs
+- **Coverage**: Typically covers ~95% of active devices
+- **Updates**: Review platform minimums annually or with major releases
 
 **Analysis of Dependencies:**
 - ✅ Foundation: Available on all platforms
 - ✅ Swift Standard Library: Available on all platforms
 - ❌ No UIKit/AppKit dependencies
 - ❌ No platform-specific code
+- ✅ Pure Swift math and coordinate calculations
+- ✅ No platform-exclusive features required
 
 **Benefits:**
-- Broader adoption (watchOS for satellite watch apps)
-- Future-proof (visionOS for AR satellite visualization)
-- Demonstrates library purity
+- **Broader adoption**: watchOS for satellite watch apps, visionOS for AR satellite visualization
+- **Apple Watch integration**: Satellite pass alerts and current position on wrist
+- **Apple TV support**: Ground track visualization on large screens
+- **Vision Pro support**: Immersive 3D satellite visualization in AR
+- **Demonstrates library purity**: Cross-platform Swift without platform dependencies
+- **Wide device coverage**: Supports vast majority of active Apple devices
 
 **Action Items:**
-1. Lower iOS minimum to iOS 13 (no breaking features used)
-2. Add watchOS, tvOS, visionOS support
-3. Test on each platform
-4. Update README with platform badges
+1. Add watchOS, tvOS, visionOS platform declarations
+2. Update Package.swift with minimum versions
+3. Test on each platform (at least build verification)
+4. Update README with platform badges showing supported versions
+5. Document "current minus two" policy in README
 
-**Effort:** 2-3 hours (mostly testing)
-**Impact:** Medium (expands user base)
+**Testing Requirements:**
+- iOS: Simulator + physical device test
+- macOS: Native build test
+- watchOS: Simulator build verification
+- tvOS: Simulator build verification
+- visionOS: Simulator build verification
+
+**Effort:** 2-3 hours (platform declaration + build testing)
+**Impact:** Medium-High (significantly expands potential user base and use cases)
 
 ---
 
@@ -863,15 +1553,7 @@ swift test  # After standardization
 open Package.swift
 ```
 
-2. **Add Architecture Decision Records (ADR):**
-```
-docs/architecture/
-├── 0001-use-spectre-for-testing.md
-├── 0002-protocol-oriented-design.md
-└── 0003-educational-focus.md
-```
-
-3. **Add Code Tour:**
+1. **Add Code Tour:**
 ```markdown
 ## Code Tour
 
@@ -1124,17 +1806,79 @@ public struct Earth {
 
 ## 8. Action Plan
 
-### Phase 1: Foundation (1-2 weeks)
+### Phase 0: Critical Distribution Fixes (1-2 days) ⚠️ MUST DO FIRST
+
+**⚠️ WARNING: The package is currently NOT distributable. These fixes must be completed before the library can be used by others.**
 
 **Critical Path:**
-1. ✅ Migrate to Sources/ and Tests/ structure (2 hours)
-2. ✅ Standardize Swift version (1 hour)
-3. ✅ Add CONTRIBUTING.md and CHANGELOG.md (2 hours)
-4. ✅ Migrate to XCTest or add XCTest wrapper (4 hours)
+1. ❌ Migrate to XCTest (6-8 hours)
+   - Rewrite tests from Spectre BDD to XCTest
+   - Use descriptive test method names for readability
+   - Convert ~1,950 lines of tests
+   - See Section 0.2 for migration guide
+2. ❌ Migrate to Sources/Tests structure (1-2 hours)
+   - Move `Ephemeris/` → `Sources/Ephemeris/`
+   - Move `EphemerisTests/` → `Tests/EphemerisTests/`
+   - Update `.github/workflows/swift.yml` to use `swift test`
+   - See Section 0.3 for steps
+3. ❌ Remove unsafe flags and Spectre dependency (included in #1)
+   - Update Package.swift to remove `.unsafeFlags()`
+   - Remove `.swiftLanguageMode(.v5)` from tests
+   - Remove Spectre from dependencies
+   - Change `.executableTarget` to `.testTarget`
+4. ❌ Validate distribution (1 hour)
+   - Test: `swift build && swift test`
+   - Create test consumer project with `path:` dependency
+   - Verify no unsafe flags warnings
+   - Test Xcode integration
 
 **Expected Outcome:**
-- Standard SPM structure
-- `swift test` works
+- ✅ Package CAN be added as dependency by other projects
+- ✅ Standard `swift test` works
+- ✅ No unsafe compiler flags
+- ✅ No external dependencies
+- ✅ Compatible with all CI/CD systems
+- ✅ GitHub Actions build and test succeed
+- ✅ **Library is actually distributable**
+
+**Blockers Removed:**
+- Unsafe flags that prevent package distribution
+- Non-standard testing that breaks tooling
+- External dependency (Spectre)
+
+**Total Effort:** 8-11 hours
+**Impact:** CRITICAL - Makes library usable by others
+
+---
+
+### Phase 1: Foundation (1-2 weeks)
+
+**Prerequisites:** Phase 0 must be complete first
+
+**Critical Path:**
+1. ❌ Standardize Swift version (1 hour)
+   - Decide: Swift 5.10 or Swift 6.0
+   - Remove language mode inconsistencies
+   - See Section 1.3
+2. ❌ Add CONTRIBUTING.md and CHANGELOG.md (2 hours)
+   - Document contribution process
+   - Set up version history tracking
+   - See Section 1.4.3 for CHANGELOG template
+3. ❌ Tag first release (1 hour)
+   - Create git tag 1.0.0
+   - Create GitHub release with notes
+   - See Section 1.4 for full checklist
+4. ❌ Expand platform support (2 hours)
+   - Add watchOS 9+, tvOS 16+, visionOS 1+
+   - Implement "current minus two" support policy
+   - Test on multiple platforms
+   - See Section 2.3
+
+**Expected Outcome:**
+- Standard SPM structure ✅ (from Phase 0)
+- `swift test` works ✅ (from Phase 0)
+- First stable release published
+- Broader platform support
 - Better contributor onboarding
 
 ### Phase 2: Organization (2-3 weeks)
@@ -1153,7 +1897,7 @@ public struct Earth {
 ### Phase 3: Enhancement (3-4 weeks)
 
 **Quality Improvements:**
-1. ✅ Add platform support (watchOS, tvOS, visionOS) (3 hours)
+1. ✅ Add platform support (watchOS 9+, tvOS 16+, visionOS 1+) with "current minus two" policy (3 hours)
 2. ✅ Add @frozen and @inlinable (3 hours)
 3. ✅ Add Codable, Equatable, Hashable (2 hours)
 4. ✅ Add computed properties for common calculations (2 hours)
@@ -1183,14 +1927,23 @@ public struct Earth {
 
 ### 9.1 Overall Assessment
 
-Ephemeris is a **well-architected library with exceptional documentation**. The code demonstrates strong software engineering principles and orbital mechanics expertise. The primary improvements needed are **structural** rather than fundamental:
+Ephemeris is a **well-architected library with exceptional documentation**. The code demonstrates strong software engineering principles and orbital mechanics expertise. However, critical analysis reveals **distribution blockers** that must be addressed:
 
-1. Adopt standard SPM conventions
-2. Use standard testing infrastructure
-3. Improve file organization
-4. Expand platform support
+**Current State:**
+The library has excellent code quality and documentation but is **NOT production-ready for distribution** due to:
+1. **Unsafe compiler flags** that prevent the package from being used as a dependency
+2. **Non-standard testing infrastructure** using executable targets instead of test targets
+3. **External test dependency** (Spectre) that forces the above compromises
 
-The library is **production-ready** for its intended use case with minor adjustments.
+**After Phase 0 Fixes:**
+Once critical distribution blockers are resolved (8-11 hours of work), the library will become production-ready. The remaining improvements are **structural** rather than fundamental:
+
+1. ~~Adopt standard SPM conventions~~ ✅ (Phase 0)
+2. ~~Use standard testing infrastructure~~ ✅ (Phase 0)
+3. Improve file organization (Phase 2)
+4. Expand platform support (Phase 1)
+
+**Verdict:** The library has a **solid foundation** but requires critical fixes before it can be distributed. With Phase 0 complete, it will be ready for public release as a Swift package.
 
 ### 9.2 Strengths to Preserve
 
@@ -1205,20 +1958,26 @@ The library is **production-ready** for its intended use case with minor adjustm
 ### 9.3 Priority Matrix
 
 ```
+🚨 CRITICAL (Blocks Distribution):
+├─ Remove unsafe compiler flags
+├─ Migrate to XCTest
+└─ Adopt Sources/Tests structure
+   → Without these, package CANNOT be used by others
+
 High Impact, Low Effort:
-├─ Standardize directory structure
 ├─ Add CONTRIBUTING.md
 ├─ Expand platform support
 └─ Add @frozen/@inlinable
 
 High Impact, Medium Effort:
 ├─ Split Orbit.swift
-├─ Migrate to XCTest
-└─ Reorganize utilities
+├─ Reorganize utilities
+└─ Tag first release
 
 Medium Impact, Low Effort:
 ├─ Rename files consistently
 ├─ Add CHANGELOG.md
+├─ Standardize Swift version
 └─ Add Codable conformance
 
 Low Impact, High Effort:
@@ -1228,20 +1987,49 @@ Low Impact, High Effort:
 
 ### 9.4 Final Recommendation
 
-**Immediate Actions (Do This Week):**
-1. Migrate to Sources/Tests structure
-2. Add CONTRIBUTING.md
-3. Standardize Swift version
+**🚨 CRITICAL Actions (Do Before Anything Else - 1-2 days):**
+
+**The package currently CANNOT be distributed or used by others. These fixes are mandatory:**
+
+1. **Migrate to XCTest** (6-8 hours)
+   - Removes unsafe flags that block distribution
+   - Enables standard `swift test` command
+   - See Section 0.2 for complete migration guide
+
+2. **Adopt Sources/Tests structure** (1-2 hours)
+   - Move to standard SPM directory layout
+   - Update Package.swift to remove custom paths
+   - See Section 0.3 for migration steps
+
+3. **Validate distribution** (1 hour)
+   - Test package integration locally
+   - Verify GitHub Actions CI passes
+   - Ensure no unsafe flags remain
+
+**Without completing Phase 0, the library cannot:**
+- Be added as a dependency to other projects
+- Be published on Swift Package Index
+- Function properly in CI/CD environments
+- Be considered production-ready
+
+---
+
+**Immediate Actions (Do This Week - After Phase 0):**
+1. Tag first release (1.0.0)
+2. Add CONTRIBUTING.md and CHANGELOG.md
+3. Expand platform support (watchOS 9+, tvOS 16+, visionOS 1+) using "current minus two" policy
+4. Standardize Swift version
 
 **Next Sprint (Do This Month):**
-1. Split Orbit.swift
-2. Migrate to XCTest
-3. Add platform support
+1. Split Orbit.swift into focused files
+2. Reorganize Utilities/ directory
+3. Add @frozen and @inlinable attributes
+4. Improve file naming consistency
 
 **Long-term (Do When Growing):**
-1. Consider modularization
-2. Add example projects
-3. Enhanced tooling
+1. Consider modularization (if library grows beyond 5,000 lines)
+2. Add example projects (iOS app, CLI tool)
+3. Enhanced tooling (performance tests, documentation generation)
 
 ---
 
@@ -1266,6 +2054,26 @@ Low Impact, High Effort:
 ---
 
 **Review Completed:** October 20, 2025
-**Next Review Recommended:** After Phase 1 completion
+**Next Review Recommended:** After Phase 0 completion (critical distribution fixes)
 
 *This review reflects industry best practices as of 2025 and Swift 6.0 standards.*
+
+---
+
+## Summary of Key Findings
+
+### Critical Discovery
+Research into Swift Package Manager distribution standards revealed that **unsafe compiler flags make packages ineligible for use as dependencies**. This was not initially apparent but is explicitly documented in SPM best practices. The Ephemeris package currently uses unsafe flags to support its Spectre-based testing approach, which completely blocks distribution.
+
+### Required Actions
+1. Remove unsafe flags by migrating to XCTest
+2. Adopt standard Sources/Tests structure
+3. Remove external test dependency (Spectre)
+
+### Timeline
+- **Phase 0 (Critical):** 8-11 hours - Makes library distributable
+- **Phase 1:** 1-2 weeks - Completes professional setup
+- **Phase 2-4:** As needed for ongoing improvements
+
+### Impact
+After Phase 0 completion, Ephemeris will transform from an un-distributable package to a production-ready Swift library that can be integrated into any iOS/macOS/watchOS/tvOS/visionOS project via Swift Package Manager. The framework will support iOS 16+, macOS 13+, watchOS 9+, tvOS 16+, and visionOS 1+, following a "current minus two" platform support policy that balances broad device coverage with modern API access.

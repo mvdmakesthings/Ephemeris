@@ -5,37 +5,25 @@ let package = Package(
     name: "Ephemeris",
     platforms: [
         .iOS(.v16),
-        .macOS(.v13)
+        .macOS(.v13),
+        .watchOS(.v9),
+        .tvOS(.v16),
+        .visionOS(.v1)
     ],
     products: [
         .library(
             name: "Ephemeris",
             targets: ["Ephemeris"]
-        ),
-        .executable(
-            name: "EphemerisTests",
-            targets: ["EphemerisTests"]
         )
     ],
-    dependencies: [
-        .package(url: "https://github.com/kylef/Spectre.git", from: "0.10.1")
-    ],
+    dependencies: [],
     targets: [
         .target(
-            name: "Ephemeris",
-            path: "Ephemeris"
+            name: "Ephemeris"
         ),
-        .executableTarget(
+        .testTarget(
             name: "EphemerisTests",
-            dependencies: [
-                "Ephemeris",
-                .product(name: "Spectre", package: "Spectre")
-            ],
-            path: "EphemerisTests",
-            swiftSettings: [
-                .unsafeFlags(["-Xfrontend", "-disable-availability-checking"]),
-                .swiftLanguageMode(.v5)
-            ]
+            dependencies: ["Ephemeris"]
         )
     ]
 )
