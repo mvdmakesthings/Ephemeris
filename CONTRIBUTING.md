@@ -165,6 +165,39 @@ swift test
 - Edge cases and error paths should be tested
 - Complex algorithms should have validation tests with known values
 
+### Generating Code Coverage Reports
+
+Ephemeris includes tooling to generate code coverage reports for local development and CI.
+
+**Run coverage locally:**
+```bash
+./scripts/coverage.sh
+```
+
+This will:
+1. Run all tests with code coverage enabled
+2. Generate an HTML coverage report in the `coverage/` directory
+3. Print a coverage summary to the console
+
+**View the coverage report:**
+```bash
+open coverage/index.html
+```
+
+The coverage report shows line-by-line coverage for all source files, making it easy to identify untested code paths.
+
+**Coverage in CI:**
+- GitHub Actions automatically generates coverage reports for all pull requests
+- Coverage summaries appear in the workflow output
+- Full HTML reports are available as downloadable artifacts (retained for 30 days)
+
+**Coverage Expectations:**
+- Core orbital mechanics: Aim for >90% coverage
+- TLE parsing and validation: Aim for >85% coverage
+- Coordinate transformations: Aim for >90% coverage
+- Utility functions: Aim for >80% coverage
+- Error handling paths should be tested
+
 ## Documentation
 
 ### Inline Documentation
