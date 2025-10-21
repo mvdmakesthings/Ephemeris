@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/mvdmakesthings/Ephemeris/workflows/CI/badge.svg)](https://github.com/mvdmakesthings/Ephemeris/actions)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.md)
-[![Platform](https://img.shields.io/badge/platform-iOS-lightgrey.svg)](https://developer.apple.com/ios/)
-[![Swift](https://img.shields.io/badge/Swift-5.0+-orange.svg)](https://swift.org)
+[![Platform](https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20watchOS%20%7C%20tvOS%20%7C%20visionOS-lightgrey.svg)](https://developer.apple.com/)
+[![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org)
 
 A Swift framework for satellite tracking and orbital mechanics calculations. Ephemeris provides tools to parse Two-Line Element (TLE) data and calculate orbital positions for Earth-orbiting satellites.
 
@@ -44,8 +44,10 @@ A Swift framework for satellite tracking and orbital mechanics calculations. Eph
 
 ## Requirements
 
-- iOS 13.0+ / macOS 10.15+
-- Swift 5.5+
+- iOS 16.0+ / macOS 13.0+ / watchOS 9.0+ / tvOS 16.0+ / visionOS 1.0+
+- Swift 6.0+
+
+**Platform Support Policy:** Ephemeris follows a "current minus two" support policy, supporting the current OS version minus two releases for broad compatibility while maintaining access to modern APIs.
 
 ## Installation
 
@@ -439,37 +441,66 @@ This context-aware documentation improves the accuracy of AI-generated code and 
 This project uses GitHub Actions for continuous integration:
 
 - **Build and Test**: Automatically builds the framework and runs all tests on every push and pull request using Swift Package Manager
-- **SwiftLint**: Enforces Swift style and conventions
+- **SwiftLint**: Enforces Swift style and conventions in strict mode
 
 ### Running Tests Locally
 
-The Ephemeris test suite uses [Spectre](https://github.com/kylef/Spectre), a BDD-style testing framework for Swift. Tests are run as an executable rather than with the standard XCTest framework.
+Ephemeris uses **XCTest** (Apple's standard testing framework) for all tests.
 
 ```bash
 # Build the package
 swift build
 
-# Run tests using the executable
-swift run EphemerisTests
+# Run tests
+swift test
+
+# Run tests with verbose output
+swift test --verbose
 ```
 
-The test suite is pure Swift and does not require Xcode. It can be run on any system with Swift installed (including Linux).
+The test suite includes 122 tests covering:
+- TLE parsing and validation
+- Orbital calculations and Kepler's equation
+- Coordinate transformations (ECI, ECEF, Geodetic, ENU)
+- Observer-relative calculations (topocentric coordinates)
+- Pass prediction algorithms
+- Ground track and sky track generation
+
+**All tests must pass before submitting a pull request.**
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
 
-### Development Setup
+- Development setup
+- Code style and conventions
+- Testing requirements
+- Documentation standards
+- Pull request process
 
-1. Fork the repository
-2. Clone your fork
-3. Create a feature branch (`git checkout -b feature/amazing-feature`)
-4. Make your changes
-5. Run SwiftLint: `swiftlint lint`
-6. Run tests if possible
-7. Commit your changes (`git commit -m 'Add amazing feature'`)
-8. Push to the branch (`git push origin feature/amazing-feature`)
-9. Open a Pull Request
+### Quick Start for Contributors
+
+```bash
+# Fork and clone
+git clone https://github.com/YOUR_USERNAME/Ephemeris.git
+cd Ephemeris
+
+# Create a feature branch
+git checkout -b feature/amazing-feature
+
+# Build and test
+swift build
+swift test
+
+# Run SwiftLint
+swiftlint lint --strict
+
+# Make changes, commit, and push
+git commit -m 'Add amazing feature'
+git push origin feature/amazing-feature
+```
+
+For major changes, please open an issue first to discuss what you would like to change.
 
 ## References
 

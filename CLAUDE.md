@@ -16,8 +16,8 @@ Ephemeris is a Swift framework for satellite tracking and orbital mechanics calc
 # Build the framework
 swift build
 
-# Run tests (uses Spectre BDD framework via executable)
-swift run EphemerisTests
+# Run tests (uses XCTest)
+swift test
 
 # Build in release mode
 swift build -c release
@@ -31,11 +31,12 @@ swiftlint lint --strict
 
 ### Important Testing Notes
 
-- This project uses **Spectre** (BDD-style testing framework), NOT XCTest
-- Tests run via `swift run EphemerisTests`, NOT `swift test`
-- Tests are defined as an executable target in Package.swift
-- Test structure uses `describe`, `context`, and `it` blocks (BDD style)
-- Assertions use `try expect(condition)` instead of XCTAssert
+- This project uses **XCTest** (Apple's standard testing framework)
+- Tests run via `swift test` (standard SPM command)
+- Tests are defined as a `.testTarget` in Package.swift
+- Test structure uses descriptive test method names following the pattern: `test[Feature]_[Scenario]_[ExpectedBehavior]`
+- Tests use Given-When-Then comments for clarity
+- Assertions use `XCTAssert*` methods (e.g., `XCTAssertEqual`, `XCTAssertTrue`)
 
 ## Architecture Overview
 
@@ -47,42 +48,119 @@ swiftlint lint --strict
 
 **Static Utility Functions**: Mathematical calculations are often implemented as static methods on types or in utility namespaces (e.g., `CoordinateTransforms`) for testability and reusability.
 
+### Directory Structure
+
+The codebase is organized into logical modules following Swift Package Manager conventions:
+
+```
+Sources/Ephemeris/
+├── Core/                      # Core orbital mechanics
+│   ├── Orbit.swift           # Main orbital calculations (~550 lines)
+│   ├── Position.swift        # GeodeticPosition type
+│   └── Orbitable.swift       # Protocol for orbital elements
+├── Tracking/                  # Satellite tracking features
+│   ├── GroundTrack.swift     # Ground track generation
+│   ├── SkyTrack.swift        # Sky track generation
+│   └── PassPrediction.swift  # Pass prediction and PassWindow
+├── Observation/               # Observer-related types
+│   ├── Observer.swift        # Ground observer location
+│   └── Topocentric.swift     # Observer-relative coordinates
+├── Parsing/                   # Data parsing
+│   └── TwoLineElement.swift  # TLE parser (~440 lines)
+├── Transforms/                # Coordinate transformations
+│   └── CoordinateTransforms.swift
+└── Utilities/
+    ├── Extensions/
+    │   ├── Date+Julian.swift
+    │   ├── Double+Angles.swift
+    │   └── String+Subscript.swift
+    └── Constants/
+        ├── PhysicalConstants.swift
+        └── TypeAliases.swift
+```
+
 ### Key Components and Responsibilities
 
-**TwoLineElement** (`TwoLineElement.swift`)
+#### Core Module (`Sources/Ephemeris/Core/`)
+
+**Orbit** (`Core/Orbit.swift` - refactored, ~550 lines)
+- Central hub for orbital mechanics calculations
+- Converts TLE data to Keplerian orbital elements
+- Core capabilities:
+  - `calculatePosition(at:)` - Full ECI → ECEF → Geodetic pipeline
+  - `calculateECIStateVector(at:)` - Position and velocity vectors in ECI frame
+  - `topocentric(at:for:)` - Observer-relative coordinates
+  - `predictPasses(for:from:to:)` - Satellite pass prediction
+  - `groundTrack(from:to:stepSeconds:)` - Ground track generation
+  - `skyTrack(for:from:to:stepSeconds:)` - Sky track generation
+- Uses Kepler's equation with iterative Newton-Raphson solver
+- Static helper methods for orbital calculations
+
+**GeodeticPosition** (`Core/Position.swift`)
+- Represents geographic position (latitude, longitude, altitude)
+- Top-level type (formerly nested as `Orbit.Position`)
+- Used as return type for position calculations
+
+**Orbitable** (`Core/Orbitable.swift`)
+- Protocol for types that provide orbital elements
+- Enables extensibility for different orbital element sources
+
+#### Tracking Module (`Sources/Ephemeris/Tracking/`)
+
+**GroundTrackPoint** (`Tracking/GroundTrack.swift`)
+- Represents a point on the satellite's ground track
+- Top-level type (formerly nested as `Orbit.GroundTrackPoint`)
+- Used for visualizing satellite coverage on maps
+
+**SkyTrackPoint** (`Tracking/SkyTrack.swift`)
+- Represents a point in the satellite's sky path
+- Top-level type (formerly nested as `Orbit.SkyTrackPoint`)
+- Used for visualizing satellite passes in the observer's sky
+
+**PassWindow** (`Tracking/PassPrediction.swift`)
+- Represents a complete satellite pass
+- Contains AOS (acquisition of signal), maximum elevation, and LOS (loss of signal)
+- Includes nested `Point` type for AOS/LOS events
+- Used by pass prediction algorithms
+
+#### Observation Module (`Sources/Ephemeris/Observation/`)
+
+**Observer** (`Observation/Observer.swift`)
+- Represents a ground observer location (latitude, longitude, altitude)
+- Simple value type used by topocentric calculations and pass prediction
+- Uses WGS-84 geodetic coordinate system
+
+**Topocentric** (`Observation/Topocentric.swift`)
+- Observer-relative coordinates (azimuth, elevation, range, range rate)
+- Top-level type (formerly nested in Observer.swift)
+- Used for antenna pointing and visibility calculations
+
+#### Parsing Module (`Sources/Ephemeris/Parsing/`)
+
+**TwoLineElement** (`Parsing/TwoLineElement.swift` - ~440 lines)
 - Parses and validates NORAD Two-Line Element format satellite data
 - Implements fixed-width field extraction with checksum verification
 - Handles 2-digit year interpretation (±50 year window)
 - Throws comprehensive `TLEParsingError` with context
 
-**Orbit** (`Orbit.swift` - 935 lines, largest file)
-- Central hub for orbital mechanics calculations
-- Converts TLE data to Keplerian orbital elements
-- Key capabilities:
-  - `calculatePosition(at:)` - Full ECI → ECEF → Geodetic pipeline
-  - `topocentric(at:for:)` - Observer-relative coordinates (azimuth, elevation, range)
-  - `predictPasses(for:from:to:)` - Satellite pass prediction with bisection/golden-section search
-  - `groundTrack(from:to:stepSeconds:)` - Ground track visualization data
-  - `skyTrack(for:from:to:stepSeconds:)` - Sky path visualization data
-- Contains nested types: `Position`, `GroundTrackPoint`, `SkyTrackPoint`, `PassWindow`, `Topocentric`
-- Uses Kepler's equation with iterative Newton-Raphson solver
+#### Transforms Module (`Sources/Ephemeris/Transforms/`)
 
-**Observer** (`Observer.swift`)
-- Represents a ground observer location (latitude, longitude, altitude)
-- Simple value type used by `Orbit.topocentric()` and pass prediction
-
-**CoordinateTransforms** (`CoordinateTransforms.swift`)
+**CoordinateTransforms** (`Transforms/CoordinateTransforms.swift`)
 - Static utility namespace for coordinate system conversions
 - Supports: ECI (Earth-Centered Inertial) ↔ ECEF (Earth-Centered Earth-Fixed) ↔ ENU (East-North-Up) ↔ Horizontal (Az/El)
 - Implements Bennett formula for atmospheric refraction correction
 - All methods are pure functions
 
-**Utilities Directory** (`Ephemeris/Utilities/`)
-- `Date.swift`: Julian Day and Greenwich Mean Sidereal Time (GMST) calculations
-- `Double.swift`: Degree/radian conversions and angle utilities
+#### Utilities Module (`Sources/Ephemeris/Utilities/`)
+
+**Extensions:**
+- `Date+Julian.swift`: Julian Day and Greenwich Mean Sidereal Time (GMST) calculations
+- `Double+Angles.swift`: Degree/radian conversions and angle utilities
+- `String+Subscript.swift`: Safe string subscripting helpers
+
+**Constants:**
 - `PhysicalConstants.swift`: WGS-84 Earth parameters, gravitational constants (with sources documented)
-- `StringProtocol+subscript.swift`: Safe string subscripting helpers
-- `TypeAlias.swift`: Semantic type aliases (e.g., `Degrees`, `Radians`)
+- `TypeAliases.swift`: Semantic type aliases (e.g., `Degrees`, `Radians`)
 
 ## Important Implementation Details
 
@@ -143,37 +221,51 @@ Position calculation pipeline: Keplerian elements → ECI coordinates → ECEF c
 
 ## Testing Guidelines
 
-### Spectre BDD Test Structure
+### XCTest Structure
 
 ```swift
-import Spectre
+import XCTest
 @testable import Ephemeris
 
-let myTests: ((ContextType) -> Void) = {
-    $0.describe("Feature Name") {
-        $0.context("specific scenario") {
-            $0.it("does something specific") {
-                let result = calculateSomething()
-                try expect(result == expectedValue)
-            }
-        }
+final class MyFeatureTests: XCTestCase {
+
+    // MARK: - Specific Feature Tests
+
+    func testFeature_withScenario_shouldHaveExpectedBehavior() throws {
+        // Given
+        let input = setupInput()
+
+        // When
+        let result = calculateSomething(input)
+
+        // Then
+        XCTAssertEqual(result, expectedValue)
     }
 }
-
-// Register in main.swift:
-describe("Feature Name", myTests)
 ```
+
+### Test Naming Convention
+
+Follow the pattern: `test[Feature]_[Scenario]_[ExpectedBehavior]`
+
+Examples:
+- `testTLEParsing_withValidISS_shouldExtractCorrectOrbitalElements()`
+- `testPassPrediction_forLowEarthOrbit_shouldFindVisiblePasses()`
+- `testGroundTrack_forEquatorialOrbit_shouldStayNearEquator()`
 
 ### Test Data
 
 - Use real satellite data for validation (ISS, GOES-16, GPS satellites)
 - Mock TLE data lives in `MockTLEs.swift`
-- Round floating-point comparisons using `.round(to: 5)`
+- Use accuracy parameter for floating-point comparisons: `XCTAssertEqual(value, expected, accuracy: 0.00001)`
 - Include comments with known values and their sources
 
-### Test Registration
+### Test Organization
 
-All test suites must be registered in `EphemerisTests/main.swift` to be executed.
+- XCTest automatically discovers test classes (no registration needed)
+- Use `// MARK: -` comments to organize tests into logical sections
+- Keep Given-When-Then structure in test bodies for clarity
+- Use helper methods for common setup (private methods in test class)
 
 ## Common Patterns and Idioms
 
@@ -208,16 +300,16 @@ All coordinate transformations preserve intermediate results for debugging and t
 
 ## Platform and Dependencies
 
-- **Swift**: 6.0 tools (with Swift 5.0 language mode for tests)
-- **Platforms**: iOS 16+, macOS 13+
-- **Dependencies**: Spectre 0.10.1+ (testing only)
+- **Swift**: 6.0 tools
+- **Platforms**: iOS 16+, macOS 13+, watchOS 9+, tvOS 16+, visionOS 1+
+- **Dependencies**: None (XCTest is built into Swift)
 - **External Frameworks**: None (only Foundation)
 
 ## CI/CD
 
 The GitHub Actions workflow (`.github/workflows/swift.yml`) runs:
 1. Build check with `swift build -v`
-2. Test execution with `swift run EphemerisTests`
+2. Test execution with `swift test`
 3. SwiftLint with strict mode: `swiftlint lint --strict`
 
 All PRs must pass CI checks.

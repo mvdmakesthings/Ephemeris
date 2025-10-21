@@ -12,7 +12,7 @@ jobs:
   build:
     name: Build and Test
     runs-on: macos-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -20,19 +20,52 @@ jobs:
       - name: Build
         run: swift build -v
 
-      - name: Run tests
-        run: swift run EphemerisTests
-      
+      - name: Run tests with coverage
+        run: swift test --enable-code-coverage
+
+      - name: Generate coverage report
+        run: |
+          # Find test binary and profdata (use ls -d for macOS bundles)
+          TEST_BINARY=$(ls -d .build/debug/*.xctest 2>/dev/null | head -1)
+          TEST_EXECUTABLE="$TEST_BINARY/Contents/MacOS/EphemerisPackageTests"
+          PROFDATA=$(find .build/debug/codecov -name "*.profdata" | head -1)
+
+          # Generate coverage report
+          echo "### Code Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          xcrun llvm-cov report \
+            "$TEST_EXECUTABLE" \
+            -instr-profile="$PROFDATA" \
+            -ignore-filename-regex='Tests/' \
+            | tee -a $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          # Generate HTML report
+          mkdir -p coverage
+          xcrun llvm-cov show \
+            "$TEST_EXECUTABLE" \
+            -instr-profile="$PROFDATA" \
+            -ignore-filename-regex='Tests/' \
+            -format=html \
+            -output-dir=coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
+
   lint:
     name: SwiftLint
     runs-on: macos-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
       - name: Install SwiftLint
         run: brew install swiftlint
-        
+
       - name: Run SwiftLint
         run: swiftlint lint --strict
