@@ -434,3 +434,7 @@ public struct TwoLineElement {
         }
     }
 }
+
+// MARK: - Codable Conformance
+
+extension TwoLineElement: Codable {}
