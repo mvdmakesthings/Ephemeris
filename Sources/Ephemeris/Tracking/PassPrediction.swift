@@ -25,11 +25,17 @@ import Foundation
 ///     print("Duration: \(pass.duration) seconds")
 /// }
 /// ```
-public struct PassWindow {
+///
+/// - Note: This type is frozen for ABI stability. New functionality will be added
+///         through extension methods rather than new stored properties.
+@frozen public struct PassWindow {
     // MARK: - Nested Types
 
     /// Represents a point during a satellite pass with time and azimuth.
-    public struct Point {
+    ///
+    /// - Note: This type is frozen for ABI stability. New functionality will be added
+    ///         through extension methods rather than new stored properties.
+    @frozen public struct Point {
         /// The time of this point in the pass.
         public let time: Date
 
@@ -41,6 +47,10 @@ public struct PassWindow {
         /// - Parameters:
         ///   - time: The time of this point
         ///   - azimuthDeg: The azimuth angle in degrees
+        ///
+        /// - Note: Marked as `@inlinable` for performance in hot paths such as
+        ///         pass prediction algorithms.
+        @inlinable
         public init(time: Date, azimuthDeg: Double) {
             self.time = time
             self.azimuthDeg = azimuthDeg
@@ -71,9 +81,54 @@ public struct PassWindow {
     ///   - aos: Acquisition of signal point
     ///   - max: Maximum elevation tuple (time, elevation, azimuth)
     ///   - los: Loss of signal point
+    ///
+    /// - Note: Marked as `@inlinable` for performance in hot paths such as
+    ///         pass prediction algorithms.
+    @inlinable
     public init(aos: Point, max: (time: Date, elevationDeg: Double, azimuthDeg: Double), los: Point) {
         self.aos = aos
         self.max = max
         self.los = los
+    }
+}
+
+// MARK: - Codable Conformance
+
+extension PassWindow.Point: Codable {}
+
+extension PassWindow: Codable {
+    /// Coding keys for PassWindow
+    private enum CodingKeys: String, CodingKey {
+        case aos
+        case maxTime
+        case maxElevationDeg
+        case maxAzimuthDeg
+        case los
+    }
+
+    /// Encodes the PassWindow to an encoder
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(aos, forKey: .aos)
+        try container.encode(max.time, forKey: .maxTime)
+        try container.encode(max.elevationDeg, forKey: .maxElevationDeg)
+        try container.encode(max.azimuthDeg, forKey: .maxAzimuthDeg)
+        try container.encode(los, forKey: .los)
+    }
+
+    /// Decodes a PassWindow from a decoder
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let aos = try container.decode(Point.self, forKey: .aos)
+        let maxTime = try container.decode(Date.self, forKey: .maxTime)
+        let maxElevationDeg = try container.decode(Double.self, forKey: .maxElevationDeg)
+        let maxAzimuthDeg = try container.decode(Double.self, forKey: .maxAzimuthDeg)
+        let los = try container.decode(Point.self, forKey: .los)
+
+        self.init(
+            aos: aos,
+            max: (time: maxTime, elevationDeg: maxElevationDeg, azimuthDeg: maxAzimuthDeg),
+            los: los
+        )
     }
 }

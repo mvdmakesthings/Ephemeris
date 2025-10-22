@@ -21,7 +21,10 @@ import Foundation
 ///     print("\(point.time): Az \(point.azimuthDeg)°, El \(point.elevationDeg)°")
 /// }
 /// ```
-public struct SkyTrackPoint {
+///
+/// - Note: This type is frozen for ABI stability. New functionality will be added
+///         through extension methods rather than new stored properties.
+@frozen public struct SkyTrackPoint {
     // MARK: - Properties
 
     /// The time of this sky track point
@@ -41,9 +44,17 @@ public struct SkyTrackPoint {
     ///   - time: The time of this point
     ///   - azimuthDeg: Azimuth angle in degrees
     ///   - elevationDeg: Elevation angle in degrees
+    ///
+    /// - Note: Marked as `@inlinable` for performance in hot paths such as
+    ///         sky track generation loops.
+    @inlinable
     public init(time: Date, azimuthDeg: Double, elevationDeg: Double) {
         self.time = time
         self.azimuthDeg = azimuthDeg
         self.elevationDeg = elevationDeg
     }
 }
+
+// MARK: - Codable Conformance
+
+extension SkyTrackPoint: Codable {}

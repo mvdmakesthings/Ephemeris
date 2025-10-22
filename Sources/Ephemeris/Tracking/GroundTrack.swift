@@ -22,7 +22,10 @@ import Foundation
 ///     print("\(point.time): \(point.latitudeDeg)°N, \(point.longitudeDeg)°E")
 /// }
 /// ```
-public struct GroundTrackPoint {
+///
+/// - Note: This type is frozen for ABI stability. New functionality will be added
+///         through extension methods rather than new stored properties.
+@frozen public struct GroundTrackPoint {
     // MARK: - Properties
 
     /// The time of this ground track point
@@ -42,9 +45,17 @@ public struct GroundTrackPoint {
     ///   - time: The time of this point
     ///   - latitudeDeg: Geodetic latitude in degrees
     ///   - longitudeDeg: Geodetic longitude in degrees
+    ///
+    /// - Note: Marked as `@inlinable` for performance in hot paths such as
+    ///         ground track generation loops.
+    @inlinable
     public init(time: Date, latitudeDeg: Double, longitudeDeg: Double) {
         self.time = time
         self.latitudeDeg = latitudeDeg
         self.longitudeDeg = longitudeDeg
     }
 }
+
+// MARK: - Codable Conformance
+
+extension GroundTrackPoint: Codable {}
