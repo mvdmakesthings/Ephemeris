@@ -2,8 +2,8 @@
 
 # Paths to include/exclude from linting
 included:
-  - Ephemeris
-  - EphemerisTests
+  - Sources/Ephemeris
+  - Tests/EphemerisTests
 
 excluded:
   - Pods
@@ -24,6 +24,7 @@ disabled_rules:
 opt_in_rules:
   - empty_count
   - empty_string
+  - force_unwrapping
 
 # Rule configurations
 file_length:
