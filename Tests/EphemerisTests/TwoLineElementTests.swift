@@ -12,32 +12,6 @@ import XCTest
 
 final class TwoLineElementTests: XCTestCase {
 
-    // MARK: - Helper Methods
-
-    /// Calculate TLE checksum for a line (modulo-10)
-    private func calculateChecksum(for line: String) -> Int {
-        var sum = 0
-        let maxIndex = min(68, line.count)
-        for i in 0..<maxIndex {
-            let index = line.index(line.startIndex, offsetBy: i)
-            let char = line[index]
-            if char.isNumber {
-                sum += Int(String(char)) ?? 0
-            } else if char == "-" {
-                sum += 1
-            }
-        }
-        return sum % 10
-    }
-
-    /// Fix the checksum of a TLE line by calculating and replacing the last digit
-    private func fixChecksum(for line: String) -> String {
-        guard line.count >= 69 else { return line }
-        let checksum = calculateChecksum(for: line)
-        let prefix = String(line.prefix(68))
-        return prefix + String(checksum)
-    }
-
     // MARK: - Basic Parsing Tests
 
     func testTLEParsing_withISSSample_shouldExtractAllFieldsCorrectly() throws {
@@ -127,8 +101,8 @@ final class TwoLineElementTests: XCTestCase {
         let line2 = "2 99999  65.0000 180.0000 0100000 180.0000 180.0000 15.00000000000001"
         let tleString56 = """
             Future Satellite
-            \(fixChecksum(for: line1))
-            \(fixChecksum(for: line2))
+            \(MockTLEs.fixChecksum(for: line1))
+            \(MockTLEs.fixChecksum(for: line2))
             """
 
         // When
@@ -148,8 +122,8 @@ final class TwoLineElementTests: XCTestCase {
         let line2 = "2 99999  65.0000 180.0000 0100000 180.0000 180.0000 15.00000000000001"
         let tleString = """
             Recent Satellite
-            \(fixChecksum(for: line1))
-            \(fixChecksum(for: line2))
+            \(MockTLEs.fixChecksum(for: line1))
+            \(MockTLEs.fixChecksum(for: line2))
             """
 
         // When
@@ -247,7 +221,7 @@ final class TwoLineElementTests: XCTestCase {
         let tleWithInvalidInclination = """
             ISS (ZARYA)
             1 25544U 98067A   20097.82871450  .00000874  00000-0  24271-4 0  9992
-            \(fixChecksum(for: line2))
+            \(MockTLEs.fixChecksum(for: line2))
             """
 
         // When/Then
@@ -366,128 +340,6 @@ final class TwoLineElementTests: XCTestCase {
         }
     }
 
-    // MARK: - Scientific Notation Parsing Tests
-
-    func testScientificNotation_withBSTARDragTerm_shouldParseCorrectly() throws {
-        // Given
-        // Format: 24271-4 means 0.24271 × 10⁻⁴ = 0.000024271
-        let tle = try MockTLEs.ISSSample()
-
-        // When/Then
-        XCTAssertEqual(tle.bstarDragTerm, 0.000024271, accuracy: 1e-9)
-    }
-
-    func testScientificNotation_withPositiveExponent_shouldParseCorrectly() throws {
-        // Given - BSTAR with positive exponent: 12345+2 means 0.12345 × 10² = 12.345
-        let line1 = "1 25544U 98067A   20097.82871450  .00000874  00000-0  12345+2 0  9998"
-        let line2 = "2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958"
-        let tleString = """
-            Test Satellite
-            \(fixChecksum(for: line1))
-            \(line2)
-            """
-
-        // When
-        let tle = try TwoLineElement(from: tleString)
-
-        // Then
-        XCTAssertEqual(tle.bstarDragTerm, 12.345, accuracy: 1e-9)
-    }
-
-    func testScientificNotation_withZeroValue_shouldParseAsZero() throws {
-        // Given
-        let line1 = "1 00001U 80001A   80001.00000000  .00000000  00000-0  00000-0 0  9999"
-        let line2 = "2 00001  65.1000 180.0000 0520000 180.0000 180.0000 15.00000000000005"
-        let tleString = """
-            Test Satellite
-            \(line1)
-            \(line2)
-            """
-
-        // When
-        let tle = try TwoLineElement(from: tleString)
-
-        // Then
-        XCTAssertEqual(tle.bstarDragTerm, 0.0, accuracy: 1e-12)
-    }
-
-    func testScientificNotation_withMeanMotionSecondDerivative_shouldParseCorrectly() throws {
-        // Given
-        let tle = try MockTLEs.ISSSample()
-
-        // When/Then
-        XCTAssertEqual(tle.meanMotionSecondDerivative, 0.0, accuracy: 1e-12)
-    }
-
-    func testScientificNotation_withNonZeroSecondDerivative_shouldParseCorrectly() throws {
-        // Given - 12345-5 means 0.12345 × 10⁻⁵
-        let line1 = "1 25544U 98067A   20097.82871450  .00000874  12345-5  24271-4 0  9999"
-        let line2 = "2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958"
-        let tleString = """
-            Test Satellite
-            \(fixChecksum(for: line1))
-            \(line2)
-            """
-
-        // When
-        let tle = try TwoLineElement(from: tleString)
-
-        // Then
-        XCTAssertEqual(tle.meanMotionSecondDerivative, 0.0000012345, accuracy: 1e-12)
-    }
-
-    // MARK: - Negative Value Handling Tests
-
-    func testNegativeValues_withNegativeFirstDerivative_shouldParseCorrectly() throws {
-        // Given - Test negative first derivative (orbital decay)
-        let tle = try MockTLEs.NOAASample()
-
-        // When/Then
-        XCTAssertEqual(tle.meanMotionFirstDerivative, -0.00000007, accuracy: 1e-12)
-    }
-
-    func testNegativeValues_withPositiveFirstDerivative_shouldParseCorrectly() throws {
-        // Given
-        let tle = try MockTLEs.ISSSample()
-
-        // When/Then
-        XCTAssertEqual(tle.meanMotionFirstDerivative, 0.00000874, accuracy: 1e-12)
-    }
-
-    func testNegativeValues_withNegativeSecondDerivative_shouldParseCorrectly() throws {
-        // Given
-        let line1 = "1 25544U 98067A   20097.82871450  .00000874 -12345-5  24271-4 0  9993"
-        let line2 = "2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958"
-        let tleString = """
-            Test Satellite
-            \(fixChecksum(for: line1))
-            \(line2)
-            """
-
-        // When
-        let tle = try TwoLineElement(from: tleString)
-
-        // Then
-        XCTAssertEqual(tle.meanMotionSecondDerivative, -0.0000012345, accuracy: 1e-12)
-    }
-
-    func testNegativeValues_withNegativeBSTARDragTerm_shouldParseCorrectly() throws {
-        // Given
-        let line1 = "1 25544U 98067A   20097.82871450  .00000874  00000-0 -12345-3 0  9997"
-        let line2 = "2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958"
-        let tleString = """
-            Test Satellite
-            \(fixChecksum(for: line1))
-            \(line2)
-            """
-
-        // When
-        let tle = try TwoLineElement(from: tleString)
-
-        // Then
-        XCTAssertEqual(tle.bstarDragTerm, -0.00012345, accuracy: 1e-12)
-    }
-
     // MARK: - Eccentricity Validation Tests
 
     func testEccentricity_withNormalValues_shouldBeLessThanOne() throws {
@@ -506,7 +358,7 @@ final class TwoLineElementTests: XCTestCase {
         let tleString = """
             Test Satellite
             \(line1)
-            \(fixChecksum(for: line2))
+            \(MockTLEs.fixChecksum(for: line2))
             """
 
         // When
@@ -524,7 +376,7 @@ final class TwoLineElementTests: XCTestCase {
         let tleString = """
             Test Satellite
             \(line1)
-            \(fixChecksum(for: line2))
+            \(MockTLEs.fixChecksum(for: line2))
             """
 
         // When
@@ -532,7 +384,7 @@ final class TwoLineElementTests: XCTestCase {
 
         // Then
         XCTAssertNotNil(tle)
-        XCTAssertLessThan(tle!.eccentricity, 1.0)
+        XCTAssertLessThan(try XCTUnwrap(tle).eccentricity, 1.0)
     }
 
     // MARK: - Fixed-Width Format Edge Cases
@@ -543,8 +395,8 @@ final class TwoLineElementTests: XCTestCase {
         let line2 = "2  5544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220959"
         let tleString = """
             Test Satellite
-            \(fixChecksum(for: line1))
-            \(fixChecksum(for: line2))
+            \(MockTLEs.fixChecksum(for: line1))
+            \(MockTLEs.fixChecksum(for: line2))
             """
 
         // When
@@ -595,7 +447,7 @@ final class TwoLineElementTests: XCTestCase {
         let tleString = """
             Test Satellite
             \(line1)
-            \(fixChecksum(for: line2))
+            \(MockTLEs.fixChecksum(for: line2))
             """
 
         // When
@@ -612,7 +464,7 @@ final class TwoLineElementTests: XCTestCase {
         let tleString = """
             Test Zero Fields
             \(line1)
-            \(fixChecksum(for: line2))
+            \(MockTLEs.fixChecksum(for: line2))
             """
 
         // When

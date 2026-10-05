@@ -40,6 +40,25 @@ final class DateTests: XCTestCase {
         XCTAssertEqual(julianDay, knownJulianDay, accuracy: 0.000001)
     }
 
+    func testJulianDate_property_shouldMatchCalendarBasedConversion() throws {
+        // Given
+        // The timestamp-based property must agree with the calendar algorithm.
+        // Dates span 1957 to 2056 (the NORAD TLE year range) at odd times of day.
+        let start = Date(timeIntervalSince1970: -386_380_800) // 1957-10-04 00:00 UTC
+        let step: TimeInterval = 86_400 * 365.25 * 3 + 12_345.678
+
+        for index in 0..<34 {
+            let date = start.addingTimeInterval(Double(index) * step)
+
+            // When
+            let calendarBased = try XCTUnwrap(Date.julianDay(from: date))
+
+            // Then
+            // 1e-8 days ≈ 1 ms
+            XCTAssertEqual(date.julianDate, calendarBased, accuracy: 1e-8)
+        }
+    }
+
     func testJulianDayFromEpoch_withYear2000Day1_shouldReturn2451544Point5() {
         // Given
         // Test epoch conversion for year 2000, day 1.0 (Jan 1, 2000 at midnight)
@@ -75,7 +94,7 @@ final class DateTests: XCTestCase {
         // Given
         // Test a historical date: Oct 15, 1582 (Gregorian calendar adoption)
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "UTC")!
+        calendar.timeZone = .gmt
 
         var components = DateComponents()
         components.year = 1582
@@ -100,7 +119,7 @@ final class DateTests: XCTestCase {
         // Given
         // Test a future date: Jan 1, 2100 00:00:00 UTC
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "UTC")!
+        calendar.timeZone = .gmt
 
         var components = DateComponents()
         components.year = 2100

@@ -55,16 +55,17 @@ The codebase is organized into logical modules following Swift Package Manager c
 ```
 Sources/Ephemeris/
 ├── Core/                      # Core orbital mechanics
-│   ├── Orbit.swift           # Main orbital calculations (~550 lines)
+│   ├── Orbit.swift           # Orbital elements, ECI state vector, geodetic position
+│   ├── OrbitCalculations.swift # Static Kepler/anomaly helpers
 │   ├── Position.swift        # GeodeticPosition type
 │   └── Orbitable.swift       # Protocol for orbital elements
 ├── Tracking/                  # Satellite tracking features
-│   ├── GroundTrack.swift     # Ground track generation
-│   ├── SkyTrack.swift        # Sky track generation
-│   └── PassPrediction.swift  # Pass prediction and PassWindow
+│   ├── GroundTrack.swift     # GroundTrackPoint + Orbit.groundTrack
+│   ├── SkyTrack.swift        # SkyTrackPoint + Orbit.skyTrack
+│   └── PassPrediction.swift  # PassWindow + Orbit.predictPasses
 ├── Observation/               # Observer-related types
 │   ├── Observer.swift        # Ground observer location
-│   └── Topocentric.swift     # Observer-relative coordinates
+│   └── Topocentric.swift     # Topocentric + Orbit.topocentric
 ├── Parsing/                   # Data parsing
 │   └── TwoLineElement.swift  # TLE parser (~440 lines)
 ├── Transforms/                # Coordinate transformations
@@ -83,7 +84,7 @@ Sources/Ephemeris/
 
 #### Core Module (`Sources/Ephemeris/Core/`)
 
-**Orbit** (`Core/Orbit.swift` - refactored, ~550 lines)
+**Orbit** (`Core/Orbit.swift`, with tracking methods in `extension Orbit` blocks next to their result types)
 - Central hub for orbital mechanics calculations
 - Converts TLE data to Keplerian orbital elements
 - Core capabilities:
@@ -329,7 +330,6 @@ All PRs must pass CI checks.
 The architecture review document (`architecture-review.md`) identifies potential improvements:
 - Standardizing to `Sources/` and `Tests/` directory structure
 - Potentially migrating to XCTest for better tooling integration
-- Splitting `Orbit.swift` into smaller focused files
 - Adding platform support for watchOS, tvOS, and visionOS
 
 ## Documentation Structure

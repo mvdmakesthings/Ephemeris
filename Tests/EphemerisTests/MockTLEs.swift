@@ -11,6 +11,20 @@ import Foundation
 
 struct MockTLEs {
 
+    /// Replace the last character of a TLE data line with its modulo-10 checksum.
+    ///
+    /// The checksum sums every digit in columns 1-68, counts each minus sign as 1,
+    /// and takes the result modulo 10. Lets tests build TLE lines with arbitrary
+    /// field values without hand-computing checksums.
+    static func fixChecksum(for line: String) -> String {
+        guard line.count >= 69 else { return line }
+        let sum = line.prefix(68).reduce(0) { total, char in
+            if let digit = char.wholeNumberValue { return total + digit }
+            return char == "-" ? total + 1 : total
+        }
+        return String(line.prefix(68)) + String(sum % 10)
+    }
+
     static func ISSSample() throws -> TwoLineElement {
         let tleString =
             """

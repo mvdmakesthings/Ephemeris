@@ -47,7 +47,7 @@ extension Date {
     ///         "Methods of Astrodynamics, A Computer Approach (v3)" by Capt David Vallado
     public static func julianDay(from date: Date) -> JulianDay? {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "UTC")!
+        calendar.timeZone = .gmt
         
         // Extract date components in UTC
         let dc = calendar.dateComponents(in: calendar.timeZone, from: date)
@@ -78,6 +78,19 @@ extension Date {
         return julianDay
     }
     
+    /// The Julian Date of this instant (UTC).
+    ///
+    /// Computed directly from the Unix timestamp, so it needs no calendar lookup and
+    /// cannot fail. Both Foundation's `Date` and the UTC Julian Date count days without
+    /// leap seconds, so the result matches `julianDay(from:)`.
+    ///
+    /// ```
+    /// JD = 2440587.5 + secondsSince1970 / 86400
+    /// ```
+    var julianDate: JulianDay {
+        return PhysicalConstants.Julian.unixEpoch + timeIntervalSince1970 / PhysicalConstants.Time.secondsPerDay
+    }
+
     /// Converts epoch year and epoch day fraction to Julian Day Number.
     ///
     /// This method is specifically designed for satellite Two-Line Element (TLE) data,
@@ -90,7 +103,7 @@ extension Date {
     /// - Note: Derived from https://github.com/dhmspector/ZeitSatTrack
     public static func julianDayFromEpoch(epochYear: Int, epochDayFraction: Double) -> JulianDay {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "UTC")!
+        calendar.timeZone = .gmt
         
         // Create date for January 1st of the epoch year at midnight
         var components = DateComponents()

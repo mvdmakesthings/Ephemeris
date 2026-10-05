@@ -12,18 +12,6 @@ import XCTest
 
 final class TLEInputFormatTests: XCTestCase {
 
-    // MARK: - Helper Methods
-
-    /// Replace the last character of a TLE line with its modulo-10 checksum
-    private func fixChecksum(for line: String) -> String {
-        guard line.count >= 69 else { return line }
-        let sum = line.prefix(68).reduce(0) { total, char in
-            if let digit = char.wholeNumberValue { return total + digit }
-            return char == "-" ? total + 1 : total
-        }
-        return String(line.prefix(68)) + String(sum % 10)
-    }
-
     // MARK: - Input Normalization Tests
 
     func testInputNormalization_withCRLFLineEndings_shouldParse() throws {
@@ -101,8 +89,8 @@ final class TLEInputFormatTests: XCTestCase {
         let line2 = "2 A0001  65.0000 180.0000 0100000 180.0000 180.0000 15.00000000000000"
         let tleString = """
             Alpha-5 Satellite
-            \(fixChecksum(for: line1))
-            \(fixChecksum(for: line2))
+            \(MockTLEs.fixChecksum(for: line1))
+            \(MockTLEs.fixChecksum(for: line2))
             """
 
         // When

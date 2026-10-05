@@ -72,3 +72,73 @@ extension Topocentric: Codable {}
 // MARK: - Equatable Conformance
 
 extension Topocentric: Equatable {}
+
+// MARK: - Orbit Topocentric Calculation
+
+extension Orbit {
+    /// Calculates topocentric (observer-relative) coordinates for the satellite.
+    ///
+    /// This method computes the satellite's position as seen from a specific observer
+    /// location on Earth, returning azimuth, elevation, range, and range rate.
+    ///
+    /// - Parameters:
+    ///   - date: The date and time for the calculation
+    ///   - observer: The observer's location on Earth
+    ///   - applyRefraction: Whether to apply atmospheric refraction correction (default: false)
+    /// - Returns: Topocentric coordinates (azimuth, elevation, range, range rate)
+    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    ///
+    /// ## Example
+    /// ```swift
+    /// let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
+    /// let topo = try orbit.topocentric(at: Date(), for: observer)
+    /// print("Az: \(topo.azimuthDeg)°, El: \(topo.elevationDeg)°")
+    /// ```
+    ///
+    /// - Note: Coordinate transformations follow Vallado, "Fundamentals of Astrodynamics"
+    public func topocentric(at date: Date, for observer: Observer, applyRefraction: Bool = false) throws -> Topocentric {
+        // Get Julian date and GMST
+        let julianDate = date.julianDate
+        let gmst = Date.greenwichSideRealTime(from: julianDate)
+
+        // Calculate satellite position and velocity in ECI frame
+        let (eciPosition, eciVelocity) = try calculateECIStateVector(at: date)
+
+        // Transform satellite position and velocity to ECEF
+        let satECEF = CoordinateTransforms.eciToECEF(eciPosition: eciPosition, gmst: gmst)
+        let satVelECEF = CoordinateTransforms.eciVelocityToECEF(eciPosition: eciPosition, eciVelocity: eciVelocity, gmst: gmst)
+
+        // Calculate observer position in ECEF
+        let obsECEF = CoordinateTransforms.geodeticToECEF(
+            latitudeDeg: observer.latitudeDeg,
+            longitudeDeg: observer.longitudeDeg,
+            altitudeMeters: observer.altitudeMeters
+        )
+
+        // Transform to ENU (local observer frame)
+        let enu = CoordinateTransforms.ecefToENU(
+            ecefPosition: satECEF,
+            observerECEF: obsECEF,
+            observerLatDeg: observer.latitudeDeg,
+            observerLonDeg: observer.longitudeDeg
+        )
+
+        // Calculate azimuth, elevation, and range
+        let (azimuth, elevation, range) = CoordinateTransforms.enuToAzEl(enu: enu)
+
+        // Apply refraction correction if requested
+        let correctedElevation = applyRefraction ? CoordinateTransforms.applyRefraction(elevationDeg: elevation) : elevation
+
+        // Calculate range rate (rate of change of distance)
+        // Project velocity onto the line-of-sight vector
+        let relativePos = satECEF.subtract(obsECEF)
+        let rangeRate = relativePos.dot(satVelECEF) / range
+
+        return Topocentric(
+            azimuthDeg: azimuth,
+            elevationDeg: correctedElevation,
+            rangeKm: range,
+            rangeRateKmPerSec: rangeRate
+        )
+    }
+}

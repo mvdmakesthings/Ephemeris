@@ -14,18 +14,10 @@ final class GroundTrackSkyTrackTests: XCTestCase {
 
     // MARK: - Helper Methods
 
-    /// Helper function to create UTC dates for testing
-    private func makeDate(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int) -> Date? {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "UTC")!
-        var components = DateComponents()
-        components.year = year
-        components.month = month
-        components.day = day
-        components.hour = hour
-        components.minute = minute
-        components.second = second
-        return calendar.date(from: components)
+    /// Helper function to create UTC dates for testing from an ISO 8601 string
+    /// (e.g. "2020-04-06T19:53:20Z")
+    private func makeDate(_ iso8601: String) -> Date? {
+        return ISO8601DateFormatter().date(from: iso8601)
     }
 
     // MARK: - Ground Track Tests
@@ -40,7 +32,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         let tle = try TwoLineElement(from: tleString)
         let orbit = Orbit(from: tle)
 
-        let epoch = try XCTUnwrap(makeDate(year: 2020, month: 4, day: 6, hour: 19, minute: 53, second: 20))
+        let epoch = try XCTUnwrap(makeDate("2020-04-06T19:53:20Z"))
         let start = epoch
         let end = start.addingTimeInterval(600) // 10 minutes
 
@@ -52,8 +44,8 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         XCTAssertEqual(groundTrack.count, 11)
 
         // First and last points should match start/end times
-        XCTAssertEqual(groundTrack.first!.time, start)
-        XCTAssertEqual(groundTrack.last!.time, end)
+        XCTAssertEqual(try XCTUnwrap(groundTrack.first).time, start)
+        XCTAssertEqual(try XCTUnwrap(groundTrack.last).time, end)
 
         // All values should be within valid ranges
         for point in groundTrack {
@@ -79,7 +71,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         let tle = try TwoLineElement(from: tleString)
         let orbit = Orbit(from: tle)
 
-        let epoch = try XCTUnwrap(makeDate(year: 2020, month: 4, day: 6, hour: 12, minute: 0, second: 0))
+        let epoch = try XCTUnwrap(makeDate("2020-04-06T12:00:00Z"))
         let start = epoch
         let end = start.addingTimeInterval(3600) // 1 hour
 
@@ -105,7 +97,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         let tle = try TwoLineElement(from: tleString)
         let orbit = Orbit(from: tle)
 
-        let epoch = try XCTUnwrap(makeDate(year: 2020, month: 4, day: 6, hour: 12, minute: 0, second: 0))
+        let epoch = try XCTUnwrap(makeDate("2020-04-06T12:00:00Z"))
         let start = epoch
         let end = start.addingTimeInterval(3600) // 1 hour
 
@@ -117,10 +109,8 @@ final class GroundTrackSkyTrackTests: XCTestCase {
 
         // For polar orbit, latitude can reach near ±90°
         var hasHighLatitude = false
-        for point in groundTrack {
-            if abs(point.latitudeDeg) > 80.0 {
-                hasHighLatitude = true
-            }
+        for point in groundTrack where abs(point.latitudeDeg) > 80.0 {
+            hasHighLatitude = true
         }
         XCTAssertTrue(hasHighLatitude, "Polar orbit should pass over high latitudes")
     }
@@ -135,7 +125,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         let tle = try TwoLineElement(from: tleString)
         let orbit = Orbit(from: tle)
 
-        let epoch = try XCTUnwrap(makeDate(year: 2020, month: 4, day: 6, hour: 12, minute: 0, second: 0))
+        let epoch = try XCTUnwrap(makeDate("2020-04-06T12:00:00Z"))
         let start = epoch
         let end = start.addingTimeInterval(3600) // 1 hour
 
@@ -161,7 +151,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         let tle = try TwoLineElement(from: tleString)
         let orbit = Orbit(from: tle)
 
-        let epoch = try XCTUnwrap(makeDate(year: 2020, month: 4, day: 6, hour: 19, minute: 53, second: 20))
+        let epoch = try XCTUnwrap(makeDate("2020-04-06T19:53:20Z"))
         let start = epoch
         let end = start.addingTimeInterval(600) // 10 minutes
 
@@ -187,7 +177,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         let tle = try TwoLineElement(from: tleString)
         let orbit = Orbit(from: tle)
 
-        let epoch = try XCTUnwrap(makeDate(year: 2020, month: 4, day: 6, hour: 19, minute: 53, second: 20))
+        let epoch = try XCTUnwrap(makeDate("2020-04-06T19:53:20Z"))
 
         // When
         let groundTrack = try orbit.groundTrack(from: epoch, to: epoch, stepSeconds: 60)
@@ -195,7 +185,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         // Then
         // Should have exactly 1 point when start == end
         XCTAssertEqual(groundTrack.count, 1)
-        XCTAssertEqual(groundTrack.first!.time, epoch)
+        XCTAssertEqual(try XCTUnwrap(groundTrack.first).time, epoch)
     }
 
     // MARK: - Sky Track Tests
@@ -212,7 +202,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
 
         let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
 
-        let epoch = try XCTUnwrap(makeDate(year: 2020, month: 4, day: 6, hour: 19, minute: 53, second: 20))
+        let epoch = try XCTUnwrap(makeDate("2020-04-06T19:53:20Z"))
         let start = epoch
         let end = start.addingTimeInterval(600) // 10 minutes
 
@@ -224,8 +214,8 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         XCTAssertEqual(skyTrack.count, 21)
 
         // First and last points should match start/end times
-        XCTAssertEqual(skyTrack.first!.time, start)
-        XCTAssertEqual(skyTrack.last!.time, end)
+        XCTAssertEqual(try XCTUnwrap(skyTrack.first).time, start)
+        XCTAssertEqual(try XCTUnwrap(skyTrack.last).time, end)
 
         // All values should be within valid ranges
         for point in skyTrack {
@@ -248,7 +238,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
 
         let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
 
-        let epoch = try XCTUnwrap(makeDate(year: 2020, month: 4, day: 6, hour: 19, minute: 53, second: 20))
+        let epoch = try XCTUnwrap(makeDate("2020-04-06T19:53:20Z"))
         let start = epoch
         let end = start.addingTimeInterval(7200) // 2 hours
 
@@ -286,7 +276,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
 
         let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
 
-        let epoch = try XCTUnwrap(makeDate(year: 2020, month: 4, day: 6, hour: 19, minute: 53, second: 20))
+        let epoch = try XCTUnwrap(makeDate("2020-04-06T19:53:20Z"))
         let start = epoch
         let end = start.addingTimeInterval(600) // 10 minutes
 
@@ -297,8 +287,8 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         XCTAssertEqual(skyTrack.count, 61)
 
         // During a pass, azimuth should change
-        let firstAzimuth = skyTrack.first!.azimuthDeg
-        let lastAzimuth = skyTrack.last!.azimuthDeg
+        let firstAzimuth = try XCTUnwrap(skyTrack.first).azimuthDeg
+        let lastAzimuth = try XCTUnwrap(skyTrack.last).azimuthDeg
 
         // Azimuth should change over 10 minutes
         XCTAssertGreaterThan(abs(firstAzimuth - lastAzimuth), 1.0)
@@ -316,7 +306,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
 
         let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
 
-        let epoch = try XCTUnwrap(makeDate(year: 2020, month: 4, day: 6, hour: 19, minute: 53, second: 20))
+        let epoch = try XCTUnwrap(makeDate("2020-04-06T19:53:20Z"))
         let start = epoch
         let end = start.addingTimeInterval(300) // 5 minutes
 
@@ -344,7 +334,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
 
         let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
 
-        let epoch = try XCTUnwrap(makeDate(year: 2020, month: 4, day: 6, hour: 19, minute: 53, second: 20))
+        let epoch = try XCTUnwrap(makeDate("2020-04-06T19:53:20Z"))
 
         // When
         let skyTrack = try orbit.skyTrack(for: observer, from: epoch, to: epoch, stepSeconds: 30)
@@ -352,7 +342,7 @@ final class GroundTrackSkyTrackTests: XCTestCase {
         // Then
         // Should have exactly 1 point when start == end
         XCTAssertEqual(skyTrack.count, 1)
-        XCTAssertEqual(skyTrack.first!.time, epoch)
+        XCTAssertEqual(try XCTUnwrap(skyTrack.first).time, epoch)
     }
 
     func testSkyTrack_consistencyWithTopocentricCalculations_shouldMatch() throws {
@@ -367,13 +357,13 @@ final class GroundTrackSkyTrackTests: XCTestCase {
 
         let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
 
-        let epoch = try XCTUnwrap(makeDate(year: 2020, month: 4, day: 6, hour: 19, minute: 53, second: 20))
+        let epoch = try XCTUnwrap(makeDate("2020-04-06T19:53:20Z"))
         let testTime = epoch.addingTimeInterval(300) // 5 minutes after epoch
 
         // When
         // Get sky track point
         let skyTrack = try orbit.skyTrack(for: observer, from: testTime, to: testTime, stepSeconds: 60)
-        let skyPoint = skyTrack.first!
+        let skyPoint = try XCTUnwrap(skyTrack.first)
 
         // Get direct topocentric calculation
         let topo = try orbit.topocentric(at: testTime, for: observer, applyRefraction: false)

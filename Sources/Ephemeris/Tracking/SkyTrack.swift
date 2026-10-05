@@ -58,3 +58,72 @@ import Foundation
 // MARK: - Codable Conformance
 
 extension SkyTrackPoint: Codable {}
+
+// MARK: - Orbit Sky Track Generation
+
+extension Orbit {
+    /// Generates a sky track (azimuth/elevation trace) for the satellite as seen from an observer.
+    ///
+    /// This method calculates the satellite's position in the observer's local horizontal
+    /// coordinate system (azimuth and elevation) at regular intervals across a specified
+    /// time window. The resulting array of points can be used for visualization, pass
+    /// planning, or antenna pointing.
+    ///
+    /// - Parameters:
+    ///   - observer: The observer's location on Earth
+    ///   - start: Start time for the sky track
+    ///   - end: End time for the sky track
+    ///   - stepSeconds: Time step between points in seconds (default: 60)
+    /// - Returns: Array of SkyTrackPoint objects representing the satellite's path across the sky
+    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    ///
+    /// ## Algorithm
+    /// For each time step from start to end:
+    /// 1. Calculate topocentric coordinates for the satellite relative to the observer
+    /// 2. Extract azimuth and elevation from the topocentric coordinates
+    /// 3. Store as a SkyTrackPoint
+    ///
+    /// ## Example
+    /// ```swift
+    /// let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
+    /// let now = Date()
+    /// let oneHourLater = now.addingTimeInterval(3600)
+    /// let skyTrack = try orbit.skyTrack(
+    ///     for: observer,
+    ///     from: now,
+    ///     to: oneHourLater,
+    ///     stepSeconds: 10
+    /// )
+    ///
+    /// // Visualize or use for antenna pointing
+    /// for point in skyTrack where point.elevationDeg > 0 {
+    ///     print("\(point.time): Az \(point.azimuthDeg)°, El \(point.elevationDeg)°")
+    /// }
+    /// ```
+    ///
+    /// ## Use Cases
+    /// - Visualizing satellite passes on a polar plot
+    /// - Generating antenna pointing commands
+    /// - Planning photography or observation sessions
+    /// - Validating pass prediction accuracy
+    ///
+    /// - Note: For smooth pass visualizations, use smaller step sizes (5-30 seconds).
+    ///         Points with negative elevation indicate the satellite is below the horizon.
+    public func skyTrack(for observer: Observer, from start: Date, to end: Date, stepSeconds: Double = 60) throws -> [SkyTrackPoint] {
+        var points: [SkyTrackPoint] = []
+        var currentTime = start
+
+        while currentTime <= end {
+            let topo = try topocentric(at: currentTime, for: observer, applyRefraction: false)
+            let point = SkyTrackPoint(
+                time: currentTime,
+                azimuthDeg: topo.azimuthDeg,
+                elevationDeg: topo.elevationDeg
+            )
+            points.append(point)
+            currentTime = currentTime.addingTimeInterval(stepSeconds)
+        }
+
+        return points
+    }
+}

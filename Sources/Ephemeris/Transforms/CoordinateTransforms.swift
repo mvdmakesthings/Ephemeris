@@ -134,13 +134,13 @@ public struct CoordinateTransforms {
         let sinLon = sin(lon)
         let cosLon = cos(lon)
         
-        // Radius of curvature in the prime vertical
-        let N = a / sqrt(1.0 - e2 * sinLat * sinLat)
-        
+        // Radius of curvature in the prime vertical (N)
+        let primeVerticalRadius = a / sqrt(1.0 - e2 * sinLat * sinLat)
+
         // ECEF coordinates
-        let x = (N + alt) * cosLat * cosLon
-        let y = (N + alt) * cosLat * sinLon
-        let z = (N * (1.0 - e2) + alt) * sinLat
+        let x = (primeVerticalRadius + alt) * cosLat * cosLon
+        let y = (primeVerticalRadius + alt) * cosLat * sinLon
+        let z = (primeVerticalRadius * (1.0 - e2) + alt) * sinLat
         
         return Vector3D(x: x, y: y, z: z)
     }
@@ -427,9 +427,9 @@ public struct CoordinateTransforms {
         
         // Bennett's formula (in arc minutes)
         let h = elevationDeg + 7.31 / (elevationDeg + 4.4)
-        let R = 1.0 / tan(h.inRadians()) // Refraction in arc minutes
+        let refractionArcMinutes = 1.0 / tan(h.inRadians())
         
         // Convert to degrees and add to elevation
-        return elevationDeg + R / 60.0
+        return elevationDeg + refractionArcMinutes / 60.0
     }
 }
