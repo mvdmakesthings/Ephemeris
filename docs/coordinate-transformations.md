@@ -681,6 +681,8 @@ $$
 A = \arctan2(E, N), \quad El = \arcsin(U/\rho), \quad \rho = \sqrt{E^2+N^2+U^2}
 $$
 
+Steps 2 to 7 are the two-body model used by `KeplerianOrbit`. `SGP4`, which Ephemeris uses for real tracking, replaces them with its own perturbed propagation in the TEME frame; steps 8 to 13 are the same for both.
+
 ### Matrix Pre-Computation
 
 For **real-time tracking**, pre-compute time-independent matrices:

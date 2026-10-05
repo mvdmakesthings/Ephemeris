@@ -698,7 +698,7 @@ print("RAAN: \(orbit.rightAscensionOfAscendingNode)°")    // 132.8077°
 print("Argument of Perigee: \(orbit.argumentOfPerigee)°") // 94.4121°
 print("Mean Anomaly: \(orbit.meanAnomaly)°")              // 44.3422° (at epoch)
 print("Mean Motion: \(orbit.meanMotion) rev/day")          // 15.50338483
-print("Epoch: \(orbit.epoch)")                             // 2024-10-17 12:25:58 UTC
+print("Epoch: \(orbit.epoch)")                             // 2024-10-17 12:25:58 +0000
 ```
 
 You can also build an orbit directly from elements, with no TLE involved:

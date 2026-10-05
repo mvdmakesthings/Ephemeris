@@ -543,15 +543,15 @@ For a time that's not exactly 0h UT1:
 
 **Step 1**: Calculate JD in UT1
 
-**Step 2**: Split into integer and fractional parts:
+**Step 2**: Split into the Julian date of the preceding midnight and the fraction of the day since then:
 $$
-JD_{UT1} = JD_{int} + JD_{frac}
+JD_{UT1} = JD_0 + JD_{frac}
 $$
-where $JD_{frac}$ is the fractional day (0 to 1).
+where $JD_0$ always ends in .5 (Julian days start at noon, so midnight is a half day) and $JD_{frac}$ is the fraction of the day since 0h UT1 (0 to 1).
 
-**Step 3**: Calculate $T_u$ using $JD_{int} + 0.5$ (corresponding to 0h UT1):
+**Step 3**: Calculate $T_u$ at 0h UT1:
 $$
-T_u = \frac{(JD_{int} + 0.5) - 2451545.0}{36525}
+T_u = \frac{JD_0 - 2451545.0}{36525}
 $$
 
 **Step 4**: Calculate GMST at 0h UT1:
@@ -604,34 +604,34 @@ $$
 
 Assume $UT1 \approx UTC$, so $JD_{UT1} = 2451545.25$
 
-**Step 2**: Split JD
+**Step 2**: Split JD at the preceding midnight (0h on January 1 is JD 2451544.5)
 $$
-JD_{int} = 2451545, \quad JD_{frac} = 0.25
+JD_0 = 2451544.5, \quad JD_{frac} = 0.75
 $$
 
 **Step 3**: Calculate $T_u$
 $$
-T_u = \frac{(2451545 + 0.5) - 2451545.0}{36525} = \frac{0.5}{36525} \approx 1.37 \times 10^{-5}
+T_u = \frac{2451544.5 - 2451545.0}{36525} = \frac{-0.5}{36525} \approx -1.369 \times 10^{-5}
 $$
 
-**Step 4**: GMST at 0h UT1 (approximately at J2000.0)
+**Step 4**: GMST at 0h UT1 (half a day before J2000.0)
 $$
-GMST_0 \approx 24110.54841 + 8640184.812866 \times 1.37 \times 10^{-5} \approx 24110.54841 + 118.37 \approx 24228.9 \text{ s}
+GMST_0 \approx 24110.54841 + 8640184.812866 \times (-1.369 \times 10^{-5}) \approx 24110.54841 - 118.28 \approx 23992.27 \text{ s}
 $$
 
 **Step 5**: Add time of day contribution
 $$
-GMST = 24228.9 + 1.00273790935 \times 86400 \times 0.25 \approx 24228.9 + 21659.4 \approx 45888.3 \text{ s}
+GMST = 23992.27 + 1.00273790935 \times 86400 \times 0.75 \approx 23992.27 + 64977.42 \approx 88969.69 \text{ s}
 $$
 
 **Step 6**: Reduce to [0, 86400)
 $$
-GMST = 45888.3 \mod 86400 = 45888.3 \text{ s} \approx 12^h 44^m 48^s
+GMST = 88969.69 \mod 86400 = 2569.69 \text{ s} \approx 0^h 42^m 50^s
 $$
 
 **Convert to degrees**:
 $$
-\theta_{GMST} = 45888.3 \times \frac{360°}{86400} \approx 191.2°
+\theta_{GMST} = 2569.69 \times \frac{360°}{86400} \approx 10.71°
 $$
 
 This is the rotation angle of Earth at 18:00 on J2000.0.
@@ -673,17 +673,17 @@ where $\theta = \theta_{GMST}$ in radians.
 
 - Must account for Earth's rotation to determine when satellite rises above horizon
 - GMST connects time to Earth orientation
-- Bisection algorithm refines crossing times to ~1 second accuracy
+- Bisection algorithm refines crossing times to ~0.1 second accuracy
 
 ### Satellite Velocity in ECEF
 
 **Velocity transformation** includes Earth's rotation:
 
 $$
-\mathbf{v}_{ECEF} = \mathbf{R}_z(\theta_{GMST}) \mathbf{v}_{ECI} + \boldsymbol{\omega}_\oplus \times \mathbf{r}_{ECEF}
+\mathbf{v}_{ECEF} = \mathbf{R}_z(\theta_{GMST}) \mathbf{v}_{ECI} - \boldsymbol{\omega}_\oplus \times \mathbf{r}_{ECEF}
 $$
 
-where $\boldsymbol{\omega}_\oplus = (0, 0, 7.2921159 \times 10^{-5})$ rad/s.
+where $\boldsymbol{\omega}_\oplus = (0, 0, 7.292115 \times 10^{-5})$ rad/s (`PhysicalConstants.Earth.rotationRate`).
 
 ---
 
@@ -694,38 +694,46 @@ where $\boldsymbol{\omega}_\oplus = (0, 0, 7.2921159 \times 10^{-5})$ rad/s.
 Ephemeris provides extensions to Swift's `Date` type for time calculations:
 
 ```swift
-import Foundation
-
 extension Date {
-    /// Calculate Julian Day Number from Date
-    public func julianDay() -> Double {
-        // Implementation converts Date to JD
-        // Assumes Date is in UTC
-    }
+    /// The Julian date of this instant (UTC): JD = 2440587.5 + secondsSince1970 / 86400
+    public var julianDate: JulianDate { get }
 
-    /// Calculate Greenwich Mean Sidereal Time
-    public func greenwichSiderealTime() -> Double {
-        // Returns GMST in radians
-        // Uses IAU 1982 formula
-    }
+    /// Greenwich Mean Sidereal Time at this instant, in radians (0 to 2π)
+    public var greenwichMeanSiderealTime: Radians { get }
+
+    /// GMST for a Julian date, in radians (IAU-82, the model SGP4 uses)
+    public static func greenwichMeanSiderealTime(julianDate: JulianDate) -> Radians
+
+    /// T = (JD − 2451545.0) / 36525
+    public static func julianCenturiesSinceJ2000(julianDate: JulianDate) -> Double
 }
 ```
 
-### Julian Day Calculation
+`JulianDate` and `Radians` are type aliases for `Double`.
+
+### Julian Date Calculation
 
 ```swift
 let date = Date()  // Current time in UTC
-let jd = date.julianDay()
+let jd = date.julianDate
 
-print("Julian Day: \(jd)")
-// Example output: Julian Day: 2460311.75
+print("Julian Date: \(jd)")
+// Example output: Julian Date: 2460311.75
+
+// Julian centuries since J2000.0
+let t = Date.julianCenturiesSinceJ2000(julianDate: jd)
 ```
+
+A parsed TLE's epoch is already a `Date`, so `tle.epoch.julianDate` gives its Julian date.
 
 ### GMST Calculation
 
 ```swift
 let date = Date()
-let gmst = date.greenwichSiderealTime()  // Radians
+let gmst = date.greenwichMeanSiderealTime  // Radians
+
+// The same value from a Julian date
+let gmstFromJD = Date.greenwichMeanSiderealTime(julianDate: date.julianDate)
 
 // Convert to degrees for display
 let gmstDegrees = gmst * 180.0 / .pi
@@ -734,35 +742,42 @@ print("GMST: \(gmstDegrees)°")
 // Example output: GMST: 245.6°
 ```
 
+Rather than splitting the day at 0h UT1, Ephemeris evaluates the equivalent single polynomial on the full date (Vallado, Eq. 3-47):
+
+$$
+GMST = 67310.54841 + (876600^h + 8640184.812866) T_u + 0.093104 T_u^2 - 6.2 \times 10^{-6} T_u^3 \text{ s}
+$$
+
+The `876600^h` term (876600 hours = 36525 days) carries the time of day. The instance property measures time from J2000.0 in seconds instead of through a Julian date, because a `Double` Julian date only resolves about 40 µs.
+
 ### Usage in Coordinate Transform
 
 ```swift
 import Ephemeris
 
 let tle = try TwoLineElement(from: tleString)
-let orbit = Orbit(from: tle)
+let sgp4 = try SGP4(tle: tle)
 
 // Calculate position at specific time
 let time = Date()
-let position = try orbit.calculatePosition(at: time)
+let position = try sgp4.calculatePosition(at: time)
 
 // Internally, this:
-// 1. Calculates JD from time
-// 2. Propagates orbit in ECI
-// 3. Calculates GMST using JD
-// 4. Rotates ECI → ECEF using GMST
-// 5. Converts ECEF → Geodetic
+// 1. Propagates the orbit in ECI (minutes since tle.epoch)
+// 2. Calculates GMST for the time
+// 3. Rotates ECI → ECEF using GMST
+// 4. Converts ECEF → Geodetic
 
-print("Lat: \(position.latitude)°, Lon: \(position.longitude)°")
+print("Lat: \(position.latitudeDeg)°, Lon: \(position.longitudeDeg)°")
 ```
 
 ### Precision Trade-offs
 
 **Ephemeris simplifications**:
-- Uses UTC as approximation for UT1 (ignores DUT1)
-- Uses simplified GMST formula (omits high-order terms for recent dates)
-- Accuracy: ~1-2 arcseconds in Earth rotation angle
-- Position error: ~50-100 m for LEO satellites
+- Uses UTC as approximation for UT1 (ignores DUT1, at most 0.9 s)
+- Uses the full IAU-82 GMST polynomial (no nutation, so mean rather than apparent sidereal time)
+- Accuracy: up to ~0.9 s of Earth rotation (about 14 arcseconds) from the UT1 approximation
+- Position error: up to ~0.4 km at the equator from DUT1, still smaller than typical TLE error
 
 **Acceptable for**:
 - Hobbyist satellite tracking

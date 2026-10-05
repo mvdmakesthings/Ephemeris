@@ -294,11 +294,11 @@ $$
 
 ### Which Does Ephemeris Use?
 
-**Ephemeris uses J2000.0 (EME2000)** for internal calculations because:
-1. **Simplicity**: No time-dependent transformations needed
-2. **Keplerian mechanics**: Orbital elements are naturally defined in an inertial frame
-3. **Accuracy**: Sufficient for hobbyist/educational satellite tracking
-4. **TLE compatibility**: NORAD TLEs provide elements in TEME (True Equator Mean Equinox), which we approximate as J2000.0
+**Ephemeris works in TEME** (True Equator, Mean Equinox of date), the frame NORAD TLEs and SGP4 are defined in:
+1. **TLE compatibility**: `SGP4` produces position and velocity in TEME, so no frame conversion is needed to stay consistent with the TLE
+2. **Simplicity**: A single rotation by GMST takes TEME to Earth-fixed coordinates, with no separate precession or nutation step
+3. **Accuracy**: Sufficient for hobbyist/educational satellite tracking, where the TLE itself is the main error source
+4. **Keplerian mechanics**: `KeplerianOrbit` treats the TLE angles as plain inertial elements, which is fine for learning but not for precise work
 
 **For high-precision work** (mission planning, laser ranging), you would:
 - Track precession/nutation
@@ -375,8 +375,8 @@ In ECI, propagating an orbit forward in time involves:
 
 ```
 ISS (ZARYA)
-1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
 ```
 
 **Orbital elements in TEME/ECI**:
@@ -393,7 +393,7 @@ To find where a satellite is at time $t$:
 
 **Step 1**: Calculate position in ECI from orbital elements
 ```
-r_ECI(t) = calculatePosition(a, e, i, Ω, ω, M(t))
+r_ECI(t) = stateVector(at: t).position   // from (a, e, i, Ω, ω, M(t))
 ```
 
 **Step 2**: Transform to Earth-fixed frame (ECEF) for mapping
@@ -403,7 +403,7 @@ r_ECEF(t) = rotateByGMST(r_ECI(t), t)
 
 **Step 3**: Convert to geodetic coordinates (lat, lon, alt)
 ```
-(φ, λ, h) = ECEFtoGeodetic(r_ECEF(t))
+(φ, λ, h) = ecefToGeodetic(r_ECEF(t))
 ```
 
 The ECI system is the **natural starting point** for this pipeline.
@@ -475,8 +475,8 @@ Some coordinate representations have singularities:
 
 The Ephemeris framework:
 
-1. **Parses TLEs**: Extracts orbital elements (assumed TEME ≈ J2000.0)
-2. **Propagates in ECI**: Solves Kepler's equation, calculates position in inertial frame
+1. **Parses TLEs**: Extracts orbital elements (mean elements in TEME)
+2. **Propagates in ECI**: `SGP4` (or the two-body `KeplerianOrbit`) computes position and velocity in the inertial frame with `stateVector(at:)`
 3. **Transforms to ECEF**: Rotates by GMST (see [Time Systems](time-systems.md))
 4. **Converts to Geodetic**: Provides user-friendly lat/lon/alt
 
@@ -487,19 +487,21 @@ The Ephemeris framework:
 ```swift
 import Ephemeris
 
-// TLE → Orbit (elements in TEME/ECI)
+// TLE → SGP4 propagator (elements in TEME)
 let tle = try TwoLineElement(from: tleString)
-let orbit = Orbit(from: tle)
+let sgp4 = try SGP4(tle: tle)
+
+// Inertial (TEME) state vector at time t
+let state = try sgp4.stateVector(at: Date())
+print("r_ECI: \(state.position) km, v_ECI: \(state.velocity) km/s")
 
 // Calculate position at time t
 // Internally:
-//   1. Propagate mean anomaly
-//   2. Solve Kepler's equation
-//   3. Calculate r_ECI from orbital elements
-//   4. Transform r_ECI → r_ECEF → (lat, lon, alt)
-let position = try orbit.calculatePosition(at: Date())
+//   1. Propagate the orbit to get r_ECI
+//   2. Transform r_ECI → r_ECEF → (lat, lon, alt)
+let position = try sgp4.calculatePosition(at: Date())
 
-print("Position: \(position.latitude)°, \(position.longitude)°, \(position.altitude) km")
+print("Position: \(position.latitudeDeg)°, \(position.longitudeDeg)°, \(position.altitudeKm) km")
 ```
 
 **Behind the scenes**, the orbital mechanics calculations happen in the ECI frame, leveraging its inertial properties.
@@ -507,13 +509,13 @@ print("Position: \(position.latitude)°, \(position.longitude)°, \(position.alt
 ### Simplifications
 
 Ephemeris uses a **simplified ECI** approach:
-- **J2000.0 approximation**: Treats TEME as J2000.0 (difference ~20 m for LEO)
-- **No precession correction**: Acceptable for short-term tracking (< 1 week)
-- **No nutation**: Simplified GMST calculation
+- **TEME throughout**: No conversion to J2000.0 or GCRF, since TLE users rarely need it
+- **TEME → Earth-fixed by GMST alone**: The IAU-82 GMST rotation, as in Vallado's reference SGP4 code
+- **No polar motion**: Earth's pole wanders by a few meters, which is ignored
 
 **Trade-offs**:
 - **Pros**: Simple, fast, easy to understand
-- **Cons**: Positional accuracy ~50-100 m for LEO satellites
+- **Cons**: Frame simplifications cost a few meters, far below the roughly 1 km error of a TLE itself
 - **Suitable for**: Hobbyist tracking, educational demonstrations, amateur radio
 - **Not suitable for**: Mission operations, high-precision orbit determination
 

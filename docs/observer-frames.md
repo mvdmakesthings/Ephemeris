@@ -425,23 +425,25 @@ $$
 
 ### Atmospheric Refraction Correction
 
-The **Bennett formula** (1982) approximates refraction:
+**Sæmundsson's formula** (1986) approximates refraction from the true (geometric) elevation:
 
 $$
 R = \frac{1.02}{\tan(El + \frac{10.3}{El + 5.11})}
 $$
 
-where $R$ is the refraction correction in arcminutes and $El$ is in degrees.
+where $R$ is the refraction correction in arcminutes and $El$ is the geometric elevation in degrees. (Bennett's 1982 formula, $R = 1 / \tan(El + 7.31 / (El + 4.4))$, is the inverse: it starts from the apparent elevation. Since a satellite's computed position gives the geometric elevation, Ephemeris uses Sæmundsson's form in `CoordinateTransforms.apparentElevation(fromTrueElevationDeg:)`.)
 
 **Apparent elevation**:
 $$
 El_{apparent} = El_{geometric} + R
 $$
 
-**Example**: At $El = 0°$ (horizon):
+**Example**: At $El_{geometric} = 0°$ (horizon):
 $$
-R \approx 34 \text{ arcminutes} = 0.57°
+R \approx 29 \text{ arcminutes} = 0.48°
 $$
+
+(The often-quoted 34 arcminutes is the refraction for an object that *appears* on the horizon, which is geometrically about 0.57° below it.)
 
 This is why the Sun appears to rise before it geometrically clears the horizon.
 
@@ -545,7 +547,7 @@ let observer = Observer(
 
 Internally, `Observer`:
 - Stores geodetic coordinates
-- Converts to ECEF when needed for transformations
+- Provides `geodeticPosition`, a `GeodeticPosition` with the altitude in kilometers, for the coordinate transforms
 - Used in topocentric calculations
 
 ### Topocentric Coordinates
@@ -563,12 +565,12 @@ let observer = Observer(
     altitudeMeters: 140
 )
 
-// Satellite orbit
+// Satellite propagator
 let tle = try TwoLineElement(from: tleString)
-let orbit = Orbit(from: tle)
+let sgp4 = try SGP4(tle: tle)
 
 // Calculate topocentric coordinates
-let topo = try orbit.topocentric(at: Date(), for: observer)
+let topo = try sgp4.topocentric(at: Date(), for: observer)
 
 print("Azimuth: \(topo.azimuthDeg)°")
 print("Elevation: \(topo.elevationDeg)°")
@@ -586,25 +588,25 @@ if topo.elevationDeg > 0 {
 ### The Topocentric Type
 
 ```swift
-public struct Topocentric {
-    public let azimuthDeg: Double        // 0-360°, clockwise from north
-    public let elevationDeg: Double      // -90 to +90°
+public struct Topocentric: Hashable, Codable, Sendable {
+    public let azimuthDeg: Degrees       // 0-360°, clockwise from north
+    public let elevationDeg: Degrees     // -90 to +90°
     public let rangeKm: Double           // Distance in km
-    public let rangeRateKmPerSec: Double // Radial velocity
+    public let rangeRateKmPerSec: Double // Radial velocity (positive = moving away)
 }
 ```
 
 ### Behind the Scenes
 
-When you call `orbit.topocentric(at:for:)`, Ephemeris:
+When you call `topocentric(at:for:)` on a propagator (`SGP4` or `KeplerianOrbit`), Ephemeris:
 
-1. **Propagates orbit**: Calculates satellite position in ECI
-2. **Transforms to ECEF**: Rotates by GMST
+1. **Propagates orbit**: Calculates satellite position and velocity in ECI
+2. **Transforms to ECEF**: Rotates by GMST (the velocity also loses Earth's rotation, so it is Earth-relative)
 3. **Converts observer**: Geodetic → ECEF for observer
 4. **Computes relative position**: $\Delta\mathbf{r} = \mathbf{r}_{sat} - \mathbf{r}_{obs}$
 5. **Transforms to ENU**: Applies rotation matrix based on observer (φ, λ)
 6. **Calculates Az/El**: Converts ENU to spherical coordinates
-7. **Computes range rate**: Dot product of relative position and velocity
+7. **Computes range rate**: Dot product of relative position and Earth-relative velocity, divided by range
 
 **See**: [Observer Geometry](observer-geometry.md) for full Swift implementation details.
 
@@ -613,7 +615,7 @@ When you call `orbit.topocentric(at:for:)`, Ephemeris:
 Predict when satellite is visible:
 
 ```swift
-let passes = try orbit.predictPasses(
+let passes = try sgp4.predictPasses(
     for: observer,
     from: Date(),
     to: Date().addingTimeInterval(24 * 3600),  // Next 24 hours
@@ -623,7 +625,7 @@ let passes = try orbit.predictPasses(
 
 for pass in passes {
     print("AOS: \(pass.aos.time) at \(pass.aos.azimuthDeg)° Az")
-    print("MAX: \(pass.max.time) at \(pass.max.elevationDeg)° El")
+    print("MAX: \(pass.culmination.time) at \(pass.culmination.elevationDeg)° El")
     print("LOS: \(pass.los.time) at \(pass.los.azimuthDeg)° Az")
     print("Duration: \(pass.duration) seconds\n")
 }
@@ -664,9 +666,9 @@ The `predictPasses` method uses bisection to find AOS/LOS times and golden-secti
    - Section 5.4: Topocentric Coordinates
    - Range and range rate formulas
 
-4. **Bennett, G.G.** (1982). "The Calculation of Astronomical Refraction in Marine Navigation." *Journal of Navigation*, 35(2), 255-259.
-   - Atmospheric refraction formula
-   - Accurate to ~0.1 arcminutes for elevation > 15°
+4. **Meeus, Jean.** (1998). *Astronomical Algorithms* (2nd Edition). Willmann-Bell.
+   - Chapter 16: Atmospheric Refraction
+   - Sæmundsson's formula (true to apparent) and Bennett's formula (apparent to true)
 
 5. **Snyder, John P.** (1987). *Map Projections: A Working Manual*. U.S. Geological Survey Professional Paper 1395.
    - Local tangent plane coordinates
