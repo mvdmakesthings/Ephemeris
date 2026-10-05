@@ -4,8 +4,10 @@
 included:
   - Sources/Ephemeris
   - Sources/EphemerisCatalog
+  - Sources/EphemerisRadio
   - Tests/EphemerisTests
   - Tests/EphemerisCatalogTests
+  - Tests/EphemerisRadioTests
 
 excluded:
   - Pods

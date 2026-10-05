@@ -20,6 +20,11 @@ let package = Package(
         .library(
             name: "EphemerisCatalog",
             targets: ["EphemerisCatalog"]
+        ),
+        // Optional: Doppler tuning of SDR programs and radios over rigctl (local network)
+        .library(
+            name: "EphemerisRadio",
+            targets: ["EphemerisRadio"]
         )
     ],
     dependencies: [],
@@ -29,6 +34,10 @@ let package = Package(
         ),
         .target(
             name: "EphemerisCatalog",
+            dependencies: ["Ephemeris"]
+        ),
+        .target(
+            name: "EphemerisRadio",
             dependencies: ["Ephemeris"]
         ),
         .testTarget(
@@ -42,6 +51,10 @@ let package = Package(
         .testTarget(
             name: "EphemerisCatalogTests",
             dependencies: ["EphemerisCatalog", "Ephemeris"]
+        ),
+        .testTarget(
+            name: "EphemerisRadioTests",
+            dependencies: ["EphemerisRadio", "Ephemeris"]
         )
     ]
 )

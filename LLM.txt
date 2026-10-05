@@ -28,7 +28,11 @@ Sources/Ephemeris/
 ├── Tracking/      GroundTrack, SkyTrack, PassPrediction (+ Propagator extensions)
 └── Utilities/     PhysicalConstants, type aliases, angle conversion
 
-Sources/EphemerisCatalog/   (separate product, the only networking code)
+Sources/EphemerisRadio/     (separate product, local-network radio control)
+    RigctlClient (actor), DopplerTuningSession (actor), RadioMode, RigControlError,
+    LineConnection / TCPLineConnection (BSD sockets)
+
+Sources/EphemerisCatalog/   (separate product, internet downloads)
     ElementSetClient (actor), ElementSetQuery, SatelliteGroup, FetchedCatalog, CatalogFetchError,
     CatalogTransport / URLSessionTransport, internal CatalogCache and ElementSetResponse
 ```
@@ -42,6 +46,9 @@ Sources/EphemerisCatalog/   (separate product, the only networking code)
 - **`SGP4`**: The propagator for TLE data. A port of Vallado's `sgp4unit.cpp`, including SDP4 deep-space terms. Output frame is TEME.
 - **`KeplerianOrbit`**: Two-body propagator for teaching. Can be built from a TLE or from chosen elements.
 - **`SatelliteCatalog`**: Many satellites from a TLE or OMM document. Bad entries go in `rejections` instead of failing the load; duplicates keep the newest epoch. Async queries `stateVectors(at:)`, `positions(at:)`, `lookAngles(from:at:)` and `passes(for:from:to:)` run on all cores and return results identical to a serial loop.
+- **`Doppler`** / **`DopplerPoint`**: f_rx = f(1 − ṙ/c); `Propagator.doppler(at:for:nominalFrequencyHz:)` and `dopplerCurve(...)` with drift rate from a central difference of range rate.
+- **`RigctlClient`** (`EphemerisRadio`): rigctl `F`/`f`/`M`/`m` for Hamlib, SDR++ and GQRX; lazy connect, reconnect, serialized commands.
+- **`DopplerTuningSession`** (`EphemerisRadio`): retunes once a second while the satellite is up, only when the change exceeds the tuning step; backoff, mode reselect, crystal correction.
 - **`ElementSetClient`** (`EphemerisCatalog`): Downloads from a GP data server whose endpoint the app supplies (OMM JSON; `docs/catalogs.md` recommends a free public endpoint). Cache first with a refresh floor of two hours, shared in-flight requests, single satellites answered from cached groups, cached "not found", one-second spacing, 15-minute retry wait, two-hour persisted pause on 403/429, stale copy on failure.
 - **`CatalogSatellite`**: One catalog entry with its element set, `SGP4`, `regime`, `age(at:)` and `canRise(forLatitudeDeg:minElevationDeg:)`, a conservative visibility test used to skip satellites that can never rise.
 - **`Observer`**, **`Topocentric`**, **`GeodeticPosition`**, **`PassWindow`**, **`GroundTrackPoint`**, **`SkyTrackPoint`**: immutable, `Sendable`, `Hashable`, `Codable` value types.
@@ -76,6 +83,7 @@ The core `Ephemeris` library never downloads data; callers pass in text or `Data
 | ECEF → geodetic | `CoordinateTransforms.ecefToGeodetic` | Fixed-point iteration | Vallado Alg. 12 |
 | Refraction | `CoordinateTransforms.apparentElevation` | Sæmundsson | Meeus Eq. 16.4 |
 | Pass events | `Propagator.predictPasses` | Sampling, bisection (0.1 s), golden-section | (none) |
+| Doppler rate | `Propagator.doppler` | −f·r̈/c, r̈ by central difference of ṙ over 1 s | Davidoff; checked against Skyfield |
 | Can a satellite rise? | `CatalogSatellite.canRise` | \|φ\| ≤ i + λ, λ = arccos(R cos ε / (R + h)) − ε at apogee | Wertz, SMAD 5.2 |
 
 ## Testing
@@ -86,6 +94,8 @@ XCTest (`swift test`). Test names follow `test[Feature]_[Scenario]_[ExpectedBeha
 - `KeplerianOrbitTests`: published examples plus conservation of energy and angular momentum
 - `TopocentricTests`: range rate against the numerical derivative of range
 - `SatelliteCatalogTests`: catalog queries against per-satellite propagation, and a brute-force check that `canRise` never skips a satellite that rises
+- `DopplerTests`: shift and rate against Skyfield, zero crossing at closest approach
+- `RigctlClientTests`, `DopplerTuningSessionTests`: rigctl over real TCP to a fake SDR server, and a simulated ISS pass
 - `ElementSetClientTests`, `ElementSetClientFailureTests`: caching, request sharing, pacing, backoff and rate-limit pauses against a fake server and manual clock
 
 ## Known Limitations

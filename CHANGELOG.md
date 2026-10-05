@@ -42,6 +42,20 @@ It is a breaking release: see **Migrating from 1.x** below.
 - `CatalogRejection` describing why an element set was left out of a catalog.
 - `TwoLineElement.parseEach(_:)` and `OrbitMeanElementsMessage.parseEach(_:format:)` parse a
   multi-satellite document and return one result per entry.
+- `Doppler`: downlink frequency, uplink pre-compensation and shift from range rate, with
+  `Topocentric.downlinkFrequency(nominalHz:)` and `uplinkFrequency(nominalHz:)`.
+- `Propagator.doppler(at:for:nominalFrequencyHz:)` and `dopplerCurve(for:nominalFrequencyHz:from:to:stepSeconds:)`
+  returning `DopplerPoint` (frequency, shift, drift rate in Hz/s, look angles). Verified
+  against Skyfield to 0.51 Hz and 0.003 Hz/s.
+- `PhysicalConstants.speedOfLight`.
+- `EphemerisRadio`, a separate library product:
+  - `RigctlClient`: the rigctl protocol (`F`, `f`, `M`, `m`) spoken by Hamlib `rigctld`,
+    SDR++ and GQRX, over BSD sockets on macOS, iOS and Linux. Connects lazily, reconnects
+    after a dropped or silent connection, and never interleaves commands from several tasks.
+  - `DopplerTuningSession`: retunes a radio once a second during a pass, sending a command
+    only when the frequency moves by the tuning step, backing off when the radio is
+    unreachable, and applying a crystal correction.
+- `docs/radio.md`: Doppler physics, pass curves, SDR setup and automatic tuning.
 - `EphemerisCatalog`, a separate library product with `ElementSetClient`: downloads groups
   or single satellites from any GP data server; the app supplies the endpoint, and
   `docs/catalogs.md` recommends a free public one. Responses are

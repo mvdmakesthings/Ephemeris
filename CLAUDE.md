@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-The package has two library products: `Ephemeris` (the core, which never touches the network) and `EphemerisCatalog` (`ElementSetClient`, which downloads and caches catalogs).
+The package has three library products: `Ephemeris` (the core, which never touches the network), `EphemerisCatalog` (`ElementSetClient`, which downloads and caches catalogs) and `EphemerisRadio` (`RigctlClient` and `DopplerTuningSession`, which control an SDR or radio on the local network).
 
 Ephemeris is a Swift framework for satellite tracking and orbital mechanics calculations. It provides tools to parse Two-Line Element (TLE) data and calculate orbital positions for Earth-orbiting satellites. The framework is dual-purpose: both a practical Swift library for iOS/macOS developers and an educational tool for learning orbital mechanics.
 
@@ -63,6 +63,7 @@ Sources/Ephemeris/
 │   ├── GeodeticPosition.swift       # WGS-84 latitude, longitude, altitude
 │   └── Vector3D.swift
 ├── Observation/
+│   ├── Doppler.swift                # Doppler formulas, DopplerPoint, Propagator.doppler / dopplerCurve
 │   ├── Observer.swift               # Ground station location
 │   ├── ObserverFrame.swift          # Internal: observer ECEF position + ENU axes, built once per search
 │   └── Topocentric.swift            # Look angles + Propagator.topocentric
@@ -91,7 +92,7 @@ Sources/Ephemeris/
     ├── TypeAliases.swift            # Degrees, Radians, JulianDate
     └── Double+Angles.swift          # inRadians(), inDegrees()
 
-Sources/EphemerisCatalog/            # Separate product; the only code that uses the network
+Sources/EphemerisCatalog/            # Separate product; the only code that downloads from the internet
 ├── ElementSetClient.swift            # Actor: cache first, shared requests, pacing, backoff, rate-limit pause
 ├── ElementSetQuery.swift             # Query (group, CATNR, INTDES, NAME), validation, cache keys; SatelliteGroup
 ├── ElementSetResponse.swift          # Response body → SatelliteCatalog ("No GP data found" → empty)
@@ -99,6 +100,14 @@ Sources/EphemerisCatalog/            # Separate product; the only code that uses
 ├── CatalogTransport.swift           # HTTP seam (URLSessionTransport) and internal TimeSource
 ├── CatalogFetchError.swift
 └── FetchedCatalog.swift             # Catalog + fetchedAt + source (network, cache, staleCache)
+
+Sources/EphemerisRadio/              # Separate product; local-network radio control
+├── RigctlClient.swift               # Actor: F/f/M/m over rigctl, lazy connect, reconnect, one command at a time
+├── TCPLineConnection.swift          # LineConnection protocol; BSD-socket TCP (Darwin and Glibc differences in `Socket`)
+├── DopplerTuningSession.swift       # Actor: retune once a second, tuning step, backoff, crystal correction
+├── RadioMode.swift                  # FM, WFM, AM, USB, LSB, CW (validated before sending)
+├── RigControlError.swift
+└── TimeSource.swift                 # Internal clock seam for tests
 ```
 
 ## Important Implementation Details
@@ -121,9 +130,15 @@ Sources/EphemerisCatalog/            # Separate product; the only code that uses
 - Queries run through the internal `concurrentCompactMap`, which splits the catalog into a few chunks per core and reassembles results in chunk order. Results must stay identical to a serial loop; the tests compare them exactly.
 - `CatalogSatellite.canRise(forLatitudeDeg:minElevationDeg:)` lets queries skip satellites that can never rise. It must never return `false` for a satellite that can rise: keep every approximation on the side of returning `true`. `SatelliteCatalogTests` checks this by brute force.
 
+### Radio Control
+
+- `RigctlClient` uses only `F`, `f`, `M`, `m`, which Hamlib, SDR++ and GQRX all support. Check any new command against all three before adding it.
+- The TCP layer uses BSD sockets (not Network.framework) so it builds and is tested on Linux too; keep platform differences inside the `Socket` enum.
+- Radio tests use `FakeRigServer`, a real TCP server on 127.0.0.1, and `RecordingRadio`; nothing needs hardware. The session's safeguards (tuning step, reconnect backoff, mode reselect, fresh command at each rise, immediate correction) were each mutation-checked.
+
 ### Network Etiquette
 
-Public element-set servers are free services that block abusive clients. The core library never touches the network; only `EphemerisCatalog` does, through `ElementSetClient`. The client has no built-in server: the app passes the endpoint, and `docs/catalogs.md` recommends one. Keep server names out of `EphemerisCatalog` code and identifiers. For any code that fetches data (including documentation examples):
+Public element-set servers are free services that block abusive clients. The core library never touches the network. `EphemerisCatalog` is the only code that downloads from the internet, through `ElementSetClient`; `EphemerisRadio` talks only to the radio or SDR program the user points it at. The client has no built-in server: the app passes the endpoint, and `docs/catalogs.md` recommends one. Keep server names out of `EphemerisCatalog` code and identifiers. For any code that fetches data (including documentation examples):
 - No test may make a network request. Use the files in `Tests/EphemerisTests/Resources/`, `SyntheticCatalog`, or `FakeElementSetServer` and `ManualClock` in `Tests/EphemerisCatalogTests/`.
 - Do not weaken `ElementSetClient`'s safeguards (two-hour refresh floor, one-second spacing, 15-minute retry wait, persisted rate-limit pause, shared in-flight requests). Each has a test, and each was mutation-checked.
 - Download groups (`GROUP=active`), never one satellite per request.
@@ -251,6 +266,7 @@ The `docs/` directory follows a "theory-first" approach: math foundations first,
 - `orbital-elements.md` - Keplerian elements theory + Swift code
 - `element-sets.md` - What TLE and OMM are, why both exist, and how they map to each other
 - `observer-geometry.md` - Coordinate transformations + pass prediction
+- `radio.md` - Doppler physics and pass curves, rigctl, SDR++ and GQRX setup, automatic tuning
 - `catalogs.md` - Whole-catalog loading and queries, visibility geometry, concurrency, `ElementSetClient` and data etiquette
 - `visualization.md` - SwiftUI and MapKit integration
 - `inertial-frames.md`, `earth-fixed-frames.md`, `observer-frames.md`, `coordinate-transformations.md` - Frame math

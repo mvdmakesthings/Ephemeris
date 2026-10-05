@@ -44,6 +44,11 @@ public enum PhysicalConstants {
         public static let rotationRate: Double = 7.292115e-5
     }
 
+    /// Speed of light in vacuum, c (km/s)
+    ///
+    /// Exact by definition of the metre (SI, 1983): 299,792,458 m/s.
+    public static let speedOfLight: Double = 299_792.458
+
     /// Time conversion constants.
     public enum Time {
         /// Seconds in one day

@@ -32,6 +32,8 @@ A Swift framework for satellite tracking and orbital mechanics calculations. Eph
 - 👁️ **Observer-Based Tracking**: Calculate azimuth, elevation, range, and range rate from any location on Earth
 - 🔭 **Pass Prediction**: Predict satellite passes with AOS, maximum elevation, and LOS times
 - 🗂️ **Whole Catalogs**: Load thousands of satellites from a TLE or OMM document and ask what is overhead, where everything is, or what passes over you, using every CPU core
+- 📻 **Doppler Correction**: Received frequency, shift and drift rate at any moment, and the Doppler curve over a pass
+- 🎛️ **SDR Control** (`EphemerisRadio`): Keeps SDR++, GQRX or a Hamlib radio tuned to a satellite during a pass over the rigctl protocol
 - ⬇️ **Catalog Downloads** (`EphemerisCatalog`): Fetch groups or single satellites from any GP data server, with a disk cache, shared requests, pacing and backoff so your app stays a good citizen
 - 📐 **Orbital Elements**: Support for all standard Keplerian orbital elements:
   - Semi-major axis
@@ -73,7 +75,9 @@ targets: [
         dependencies: [
             .product(name: "Ephemeris", package: "Ephemeris"),
             // Optional: download and cache catalogs from a GP data server
-            .product(name: "EphemerisCatalog", package: "Ephemeris")
+            .product(name: "EphemerisCatalog", package: "Ephemeris"),
+            // Optional: Doppler tuning of SDR programs and radios over rigctl
+            .product(name: "EphemerisRadio", package: "Ephemeris")
         ]
     )
 ]
@@ -81,7 +85,8 @@ targets: [
 
 `Ephemeris` is the core library and never touches the network. `EphemerisCatalog` adds
 `ElementSetClient`, which downloads element sets from a GP endpoint you choose, with caching
-and rate limits built in.
+and rate limits built in. `EphemerisRadio` adds `RigctlClient` and `DopplerTuningSession`,
+which keep an SDR program or radio tuned to a satellite on your local network.
 
 Or in Xcode:
 
@@ -234,6 +239,23 @@ let passes = await catalog.passes(for: observer, from: now, to: now.addingTimeIn
 
 See [Working With Whole Catalogs](./docs/catalogs.md) for the details, including how to
 download catalog data without overloading the public servers.
+
+### Doppler Tuning an SDR
+
+```swift
+import EphemerisRadio
+
+// Follow the ISS's FM downlink in GQRX (Tools → Remote Control enabled)
+let session = DopplerTuningSession(
+    propagator: sgp4,
+    observer: observer,
+    radio: RigctlClient(port: RigctlClient.gqrxPort),
+    configuration: .init(nominalFrequencyHz: 145_800_000, mode: .fm, passbandHz: 15_000)
+)
+let tuning = Task { await session.run() }   // retunes once a second while the ISS is up
+```
+
+See [Doppler Tuning and Radio Control](./docs/radio.md) for the physics and setup.
 
 ### Error Handling
 
@@ -422,9 +444,10 @@ Ephemeris documentation is designed to teach orbital mechanics through practical
 1. **[Orbital Elements](./docs/orbital-elements.md)** - The six Keplerian elements with math and Swift
 2. **[Element Sets: TLE and OMM](./docs/element-sets.md)** - What a published orbit is, and why OMM is replacing the TLE
 3. **[Observer Geometry](./docs/observer-geometry.md)** - Coordinate transformations and pass prediction
-4. **[Working With Whole Catalogs](./docs/catalogs.md)** - Thousands of satellites at once, visibility geometry, and fetching data responsibly
-5. **[Visualization](./docs/visualization.md)** - Ground tracks, sky tracks, and iOS integration
-6. **[Coordinate Transformations](./docs/coordinate-transformations.md)** - Deep dive into ECI, ECEF, and transformations
+4. **[Doppler Tuning and Radio Control](./docs/radio.md)** - Why signals slide in frequency, and keeping an SDR on them
+5. **[Working With Whole Catalogs](./docs/catalogs.md)** - Thousands of satellites at once, visibility geometry, and fetching data responsibly
+6. **[Visualization](./docs/visualization.md)** - Ground tracks, sky tracks, and iOS integration
+7. **[Coordinate Transformations](./docs/coordinate-transformations.md)** - Deep dive into ECI, ECEF, and transformations
 
 #### 🔍 Reference: "I need specific information"
 - **[LLM.txt](./LLM.txt)** - Project context for AI tools
@@ -435,6 +458,7 @@ Ephemeris documentation is designed to teach orbital mechanics through practical
 - **[Orbital Elements](./docs/orbital-elements.md)** - Keplerian elements, TLE format, Kepler's equation, accuracy considerations
 - **[Element Sets: TLE and OMM](./docs/element-sets.md)** - TLE and OMM formats compared, field by field, and how to load each
 - **[Observer Geometry](./docs/observer-geometry.md)** - Coordinate transformations, topocentric calculations, pass prediction algorithms
+- **[Doppler Tuning and Radio Control](./docs/radio.md)** - Doppler physics and pass curves, rigctl, SDR++ and GQRX setup, automatic tuning, crystal correction
 - **[Working With Whole Catalogs](./docs/catalogs.md)** - Catalog loading and queries, which satellites can ever rise, concurrency, performance, and data etiquette
 - **[Visualization](./docs/visualization.md)** - Ground tracks, sky tracks, SwiftUI Charts, and MapKit integration
 
@@ -455,6 +479,8 @@ Ephemeris documentation is designed to teach orbital mechanics through practical
 - **`Topocentric`**: Contains azimuth, elevation, range, and range rate for observer-relative coordinates
 - **`PassWindow`**: Describes a satellite pass with AOS, culmination (maximum elevation), and LOS events
 - **`SatelliteCatalog`**: Many satellites loaded from a TLE or OMM document, with lookups and concurrent `positions(at:)`, `lookAngles(from:at:)` and `passes(for:from:to:)` queries
+- **`Doppler`**, **`DopplerPoint`**: Received frequency, shift and drift rate; `Propagator.doppler(at:for:nominalFrequencyHz:)` and `dopplerCurve(...)`
+- **`RigctlClient`**, **`DopplerTuningSession`** (`EphemerisRadio`): Control SDR++, GQRX or Hamlib, and keep them tuned during a pass
 - **`ElementSetClient`** (`EphemerisCatalog`): Downloads catalogs from the GP endpoint you choose, with caching, pacing and backoff
 - **`CatalogSatellite`**: One catalog entry: its element set, `SGP4` propagator, orbit regime and element-set age
 - **`CoordinateTransforms`**: Utility functions for converting between coordinate systems (ECI, ECEF, ENU)
