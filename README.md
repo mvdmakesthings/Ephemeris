@@ -32,6 +32,7 @@ A Swift framework for satellite tracking and orbital mechanics calculations. Eph
 - 👁️ **Observer-Based Tracking**: Calculate azimuth, elevation, range, and range rate from any location on Earth
 - 🔭 **Pass Prediction**: Predict satellite passes with AOS, maximum elevation, and LOS times
 - 🗂️ **Whole Catalogs**: Load thousands of satellites from a TLE or OMM document and ask what is overhead, where everything is, or what passes over you, using every CPU core
+- ⬇️ **CelesTrak Downloads** (`EphemerisCatalog`): Fetch groups or single satellites with no account, with a disk cache, shared requests, pacing and backoff so your app stays a good citizen
 - 📐 **Orbital Elements**: Support for all standard Keplerian orbital elements:
   - Semi-major axis
   - Eccentricity
@@ -69,10 +70,17 @@ Then add it to your target dependencies:
 targets: [
     .target(
         name: "YourTarget",
-        dependencies: ["Ephemeris"]
+        dependencies: [
+            .product(name: "Ephemeris", package: "Ephemeris"),
+            // Optional: download and cache catalogs from CelesTrak
+            .product(name: "EphemerisCatalog", package: "Ephemeris")
+        ]
     )
 ]
 ```
+
+`Ephemeris` is the core library and never touches the network. `EphemerisCatalog` adds
+`CelesTrakClient`, which downloads element sets with caching and rate limits built in.
 
 Or in Xcode:
 
@@ -205,8 +213,9 @@ active satellites CelesTrak publishes), use `SatelliteCatalog`, which loads a TL
 document, skips bad entries, and runs queries on every CPU core:
 
 ```swift
-// One document with many element sets, such as a cached CelesTrak group file
-let catalog = SatelliteCatalog(tleText: tleDocument)
+// Download (or load from cache) every amateur radio satellite
+let client = CelesTrakClient(appIdentifier: "MyTracker/1.0")   // import EphemerisCatalog
+let catalog = try await client.catalog(for: .group(.amateur)).catalog
 print("Loaded \(catalog.satellites.count), rejected \(catalog.rejections.count)")
 
 // What is above 10° right now? (highest first)
@@ -444,6 +453,7 @@ Ephemeris documentation is designed to teach orbital mechanics through practical
 - **`Topocentric`**: Contains azimuth, elevation, range, and range rate for observer-relative coordinates
 - **`PassWindow`**: Describes a satellite pass with AOS, culmination (maximum elevation), and LOS events
 - **`SatelliteCatalog`**: Many satellites loaded from a TLE or OMM document, with lookups and concurrent `positions(at:)`, `lookAngles(from:at:)` and `passes(for:from:to:)` queries
+- **`CelesTrakClient`** (`EphemerisCatalog`): Downloads catalogs from CelesTrak with caching, pacing and backoff
 - **`CatalogSatellite`**: One catalog entry: its element set, `SGP4` propagator, orbit regime and element-set age
 - **`CoordinateTransforms`**: Utility functions for converting between coordinate systems (ECI, ECEF, ENU)
 
@@ -454,8 +464,9 @@ Element sets (as TLE or OMM) can be obtained from:
 - [Space-Track.org](https://www.space-track.org/) - Official source (free registration required)
 - [N2YO.com](https://www.n2yo.com/) - Real-time tracking and TLE data
 
-These are free public services. Download whole groups rather than single satellites, cache
-what you download, and don't fetch the same group more than once every couple of hours.
+These are free public services. `CelesTrakClient` caches, paces and backs off for you; if
+you write your own downloader, fetch whole groups, cache what you download, and don't fetch
+the same group more than once every couple of hours.
 See [Getting Catalog Data Responsibly](./docs/catalogs.md#getting-catalog-data-responsibly).
 
 ### Key Concepts

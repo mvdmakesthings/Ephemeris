@@ -13,7 +13,7 @@ Tracking one satellite is a matter of building an `SGP4` propagator and asking i
 - Whole-catalog queries: positions, look angles and passes
 - Why some satellites can never rise for an observer, and how to test that cheaply
 - How the work is spread across CPU cores without changing the results
-- How fast it is, and how to fetch data responsibly
+- How fast it is, and how to fetch data responsibly with `CelesTrakClient`
 
 ---
 
@@ -221,34 +221,72 @@ EPHEMERIS_BENCHMARK=1 swift test -c release --filter CatalogBenchmarkTests
 
 ## Getting Catalog Data Responsibly
 
-`SatelliteCatalog` never downloads anything; you give it data. When your app does download element sets, remember that CelesTrak and Space-Track are run as a public service, and both block clients that download too much.
+`SatelliteCatalog` never downloads anything; you give it data. When your app needs fresh data, use `CelesTrakClient` from the optional `EphemerisCatalog` library. It downloads from CelesTrak, which needs no account, and it is built so that an app can't accidentally send CelesTrak more requests than the data needs.
 
-- **Download a group, not one satellite at a time.** One request for a group such as `GROUP=active` replaces thousands of single-satellite requests.
-- **Download each group at most once per update cycle.** The data only changes a few times a day. Re-downloading unchanged data is the most common reason clients get blocked. An interval of a couple of hours is a sensible minimum.
-- **Cache what you download** and load from the cache on every launch. Check the cache's age before going to the network.
-- **Never download in a loop, on every screen refresh, or from tests.** Ephemeris' own tests use only local data: the verification files in the repository and a generated synthetic catalog.
-- **For Space-Track,** follow its published usage policy and rate limits, and reuse a logged-in session instead of logging in per request.
+### Why This Matters
+
+CelesTrak is a free public service, and it blocks clients that download the same data over and over. Its element sets change only a few times a day, so nearly every request an app might make can be answered from a copy it already has. Re-downloading unchanged data, for example on every launch or every screen refresh, is the most common way apps get blocked.
+
+### Using CelesTrakClient
 
 ```swift
-import Foundation
 import Ephemeris
+import EphemerisCatalog
 
-/// Loads the active-satellite catalog, downloading at most once every two hours.
-func loadCatalog(cacheURL: URL) async throws -> SatelliteCatalog {
-    let maximumCacheAge: TimeInterval = 2 * 3600
-    if let attributes = try? FileManager.default.attributesOfItem(atPath: cacheURL.path),
-       let modified = attributes[.modificationDate] as? Date,
-       Date().timeIntervalSince(modified) < maximumCacheAge,
-       let cached = try? Data(contentsOf: cacheURL) {
-        return try SatelliteCatalog(ommData: cached, format: .json)
-    }
+// One client for the whole app, named so CelesTrak can see who is asking
+let client = CelesTrakClient(appIdentifier: "MyTracker/1.0")
 
-    let url = URL(string: "https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=JSON")!
-    let (data, _) = try await URLSession.shared.data(from: url)
-    try data.write(to: cacheURL)
-    return try SatelliteCatalog(ommData: data, format: .json)
-}
+// A whole group in one request
+let amateur = try await client.catalog(for: .group(.amateur))
+print("\(amateur.catalog.satellites.count) satellites from \(amateur.source), downloaded \(amateur.fetchedAt)")
+
+// One satellite: answered from a cached group when it's in one, downloaded otherwise
+let newCubeSat = try await client.catalog(for: .catalogNumber(61000))
 ```
+
+Queries:
+
+| Query | Asks CelesTrak for | Use it for |
+|-------|--------------------|------------|
+| `.group(.amateur)` | `GROUP=amateur` | The normal case: a whole set in one request |
+| `.catalogNumber(25544)` | `CATNR=25544` | A satellite not in any group you've loaded |
+| `.internationalDesignator("2024-123")` | `INTDES=2024-123` | Every object from one launch |
+| `.name("NOAA")` | `NAME=NOAA` | Every satellite whose name contains the text |
+
+Common groups have constants (`.active`, `.stations`, `.amateur`, `.satnogs`, `.weather`, `.noaa`, `.cubesat`, `.gnss`, `.starlink` and others). Any other CelesTrak group works as a string: `.group("iridium-NEXT")`.
+
+### What the Client Does for You
+
+| Safeguard | Behavior |
+|-----------|----------|
+| Disk cache | Every response is saved. A query is downloaded again only when its copy is older than the refresh interval (two hours, and it can't be set lower) |
+| Shared requests | Callers asking for the same query at the same time share one download |
+| Single satellites from groups | `.catalogNumber` is answered from any fresh cached group that contains the satellite |
+| "Not found" is cached | Looking up a satellite CelesTrak doesn't have is not repeated |
+| Pacing | Requests are at least one second apart |
+| Backoff | After a failure, that query waits 15 minutes before it is tried again |
+| Rate limits | If CelesTrak answers 403 or 429, every request stops for two hours (or longer if `Retry-After` says so). The pause is saved to disk, so relaunching or clearing the cache doesn't end it |
+| Offline | When a refresh fails, the expired copy is returned with `source == .staleCache(error)` |
+| Identification | Each request sends a `User-Agent` with your app identifier |
+
+### Showing Something Immediately at Launch
+
+`cachedCatalog(for:)` never goes to the network. Show the cached copy right away, then refresh:
+
+```swift
+if let cached = try? await client.cachedCatalog(for: .group(.amateur)) {
+    show(cached.catalog)
+}
+let latest = try await client.catalog(for: .group(.amateur))   // from the cache if still fresh
+show(latest.catalog)
+```
+
+### If You Write Your Own Downloader
+
+- Download a group, not one satellite at a time.
+- Cache what you download, and check the cache's age before going to the network. Two hours is a sensible minimum between downloads of the same data.
+- Never download in a loop, on every screen refresh, or from tests. Ephemeris' own tests use only local data and a fake server.
+- Stop for a while when the server answers 403 or 429, and remember that across launches.
 
 ---
 

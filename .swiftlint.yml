@@ -3,7 +3,9 @@
 # Paths to include/exclude from linting
 included:
   - Sources/Ephemeris
+  - Sources/EphemerisCatalog
   - Tests/EphemerisTests
+  - Tests/EphemerisCatalogTests
 
 excluded:
   - Pods

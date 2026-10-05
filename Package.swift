@@ -14,12 +14,22 @@ let package = Package(
         .library(
             name: "Ephemeris",
             targets: ["Ephemeris"]
+        ),
+        // Optional: downloads and caches catalogs from CelesTrak. Kept separate so the core
+        // library never touches the network.
+        .library(
+            name: "EphemerisCatalog",
+            targets: ["EphemerisCatalog"]
         )
     ],
     dependencies: [],
     targets: [
         .target(
             name: "Ephemeris"
+        ),
+        .target(
+            name: "EphemerisCatalog",
+            dependencies: ["Ephemeris"]
         ),
         .testTarget(
             name: "EphemerisTests",
@@ -28,6 +38,10 @@ let package = Package(
                 // Vallado's SGP4 verification element sets and reference output
                 .copy("Resources")
             ]
+        ),
+        .testTarget(
+            name: "EphemerisCatalogTests",
+            dependencies: ["EphemerisCatalog", "Ephemeris"]
         )
     ]
 )
