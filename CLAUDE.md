@@ -140,7 +140,8 @@ Sources/Ephemeris/
 **TwoLineElement** (`Parsing/TwoLineElement.swift` - ~440 lines)
 - Parses and validates NORAD Two-Line Element format satellite data
 - Implements fixed-width field extraction with checksum verification
-- Handles 2-digit year interpretation (±50 year window)
+- Handles 2-digit year interpretation (NORAD convention: 57–99 → 19xx, 00–56 → 20xx)
+- Accepts two- or three-line input with any line endings, and Alpha-5 catalog numbers
 - Throws comprehensive `TLEParsingError` with context
 
 #### Transforms Module (`Sources/Ephemeris/Transforms/`)
@@ -189,7 +190,7 @@ Position calculation pipeline: Keplerian elements → ECI coordinates → ECEF c
 
 - Julian Day calculations for astronomical time
 - Greenwich Mean Sidereal Time (GMST) for Earth rotation
-- TLE epoch interpretation handles 2-digit years with ±50 year window
+- TLE epoch interpretation handles 2-digit years with the NORAD 1957 pivot
 - All date conversions are in `Date.swift` utilities
 
 ## Code Style and Conventions

@@ -8,7 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Nothing yet
+- `CoordinateTransforms.ecefToGeodetic(ecef:)` for WGS-84 ECEF to geodetic conversion
+- TLE parser accepts the bare two-line form, `\r\n` and `\r` line endings, blank lines,
+  trailing newlines, and Space-Track's `0 `-prefixed name line
+- Alpha-5 catalog number support (e.g. `A0001` = 100001)
+- TLE parser rejects element sets whose line 1 and line 2 catalog numbers differ
+
+### Fixed
+- Greenwich Mean Sidereal Time ignored the time of day, so Earth-fixed positions, azimuth,
+  elevation, and pass times were only correct near 0h UTC. Now uses the full IAU-82 GMST
+  expression (verified against Vallado Example 3-5).
+- Kepler's equation solver could stop after one Newton iteration when the step was negative,
+  causing errors of several degrees for high-eccentricity orbits.
+- `calculatePosition(at:)` returned geocentric latitude and altitude above a sphere. It now
+  returns WGS-84 geodetic latitude and height above the ellipsoid, consistent with
+  `Observer` and the topocentric calculations (up to ~0.19° / ~21 km difference).
+
+### Changed
+- 2-digit TLE epoch years now use the fixed NORAD convention (57–99 → 1957–1999,
+  00–56 → 2000–2056) instead of a ±50-year window relative to the current date, so the
+  same TLE always parses to the same epoch.
 
 ## [1.0.0] - 2025-10-21
 

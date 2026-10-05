@@ -118,13 +118,7 @@ final class TwoLineElementTests: XCTestCase {
         let tle1980 = try TwoLineElement(from: tleString1980)
 
         // Then
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let century = (currentYear / 100) * 100
-        var expectedYear80 = century + 80
-        if expectedYear80 > currentYear + 50 {
-            expectedYear80 -= 100
-        }
-        XCTAssertEqual(tle1980.epochYear, expectedYear80)
+        XCTAssertEqual(tle1980.epochYear, 1980)
     }
 
     func testYearParsing_withBoundaryConditionYears_shouldParseCorrectly() throws {
@@ -141,13 +135,8 @@ final class TwoLineElementTests: XCTestCase {
         let tle56 = try TwoLineElement(from: tleString56)
 
         // Then
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let century = (currentYear / 100) * 100
-        var expectedYear = century + 56
-        if expectedYear > currentYear + 50 {
-            expectedYear -= 100
-        }
-        XCTAssertEqual(tle56.epochYear, expectedYear)
+        // 56 is the last year of the NORAD 2000s range
+        XCTAssertEqual(tle56.epochYear, 2056)
     }
 
     func testYearParsing_withRecentYears_shouldParseCorrectly() throws {
@@ -170,19 +159,10 @@ final class TwoLineElementTests: XCTestCase {
         XCTAssertEqual(tle.epochYear, currentYear)
     }
 
-    func testYearParsing_noLongerAssumes1957Cutoff_shouldUsePlusMinusFiftyWindow() throws {
+    func testYearParsing_with57_shouldMapTo1957PerNORADConvention() throws {
         // Given
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let century = (currentYear / 100) * 100
-        var expectedYear57 = century + 57
-
-        // Adjust based on ±50 year window
-        if expectedYear57 > currentYear + 50 {
-            expectedYear57 -= 100
-        } else if expectedYear57 < currentYear - 50 {
-            expectedYear57 += 100
-        }
-
+        // NORAD convention: 57-99 → 1957-1999, 00-56 → 2000-2056.
+        // Sputnik 1 launched in 1957, so no valid TLE has an epoch before then.
         let tleString57 = """
             Test Satellite
             1 00001U 57001A   57275.00000000  .00000000  00000-0  00000-0 0  9990
@@ -193,10 +173,15 @@ final class TwoLineElementTests: XCTestCase {
         let tle57 = try TwoLineElement(from: tleString57)
 
         // Then
-        XCTAssertEqual(tle57.epochYear, expectedYear57)
+        XCTAssertEqual(tle57.epochYear, 1957)
+    }
 
-        if currentYear >= 2007 && currentYear <= 2106 {
-            XCTAssertEqual(expectedYear57, 2057)
+    func testYearParsing_withAllTwoDigitYears_shouldNotDependOnCurrentDate() {
+        // Given/When/Then
+        // The mapping is fixed, so the same TLE always yields the same epoch
+        for twoDigitYear in 0...99 {
+            let expected = twoDigitYear < 57 ? 2000 + twoDigitYear : 1900 + twoDigitYear
+            XCTAssertEqual(TwoLineElement.parse2DigitYear(twoDigitYear), expected)
         }
     }
 

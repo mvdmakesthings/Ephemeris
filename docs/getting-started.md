@@ -431,7 +431,7 @@ Before shipping your app:
 ## Common Issues
 
 ### "TLE parsing failed"
-- Check TLE format (must be exactly 3 lines)
+- Check TLE format (two data lines starting with `1 ` and `2 `, optionally preceded by a name line)
 - Verify checksums match
 - Get fresh TLE from CelesTrak
 

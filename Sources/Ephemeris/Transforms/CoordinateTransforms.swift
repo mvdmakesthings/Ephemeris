@@ -145,6 +145,74 @@ public struct CoordinateTransforms {
         return Vector3D(x: x, y: y, z: z)
     }
     
+    // MARK: - ECEF to Geodetic
+
+    /// Converts ECEF coordinates to geodetic coordinates (latitude, longitude, altitude).
+    ///
+    /// This is the inverse of `geodeticToECEF`. Geodetic latitude is measured from the
+    /// equatorial plane to the ellipsoid normal, not to Earth's center, so it differs from
+    /// geocentric latitude by up to about 0.19° at mid-latitudes. Altitude is the height
+    /// above the WGS-84 ellipsoid along that normal.
+    ///
+    /// - Parameter ecef: Position vector in ECEF frame (kilometers)
+    /// - Returns: Geodetic latitude and longitude in degrees, and height above the
+    ///            WGS-84 ellipsoid in kilometers
+    ///
+    /// ## Algorithm
+    /// Fixed-point iteration on latitude, which converges to sub-millimeter precision
+    /// in a few iterations for any point outside Earth's core:
+    /// ```
+    /// p = sqrt(X² + Y²)
+    /// lon = atan2(Y, X)
+    /// repeat:
+    ///     N = a / sqrt(1 - e²·sin²(lat))
+    ///     lat = atan2(Z + e²·N·sin(lat), p)
+    /// h = p·cos(lat) + Z·sin(lat) - a·sqrt(1 - e²·sin²(lat))
+    /// ```
+    /// The height expression stays well conditioned at the poles, unlike `p / cos(lat) - N`.
+    ///
+    /// ## Example
+    /// ```swift
+    /// let geodetic = CoordinateTransforms.ecefToGeodetic(
+    ///     ecef: Vector3D(x: 6524.834, y: 6862.875, z: 6448.296)
+    /// )
+    /// // geodetic.latitude ≈ 34.3525, geodetic.longitude ≈ 46.4464, geodetic.altitude ≈ 5085.22
+    /// ```
+    ///
+    /// - Note: Reference: Vallado, "Fundamentals of Astrodynamics and Applications",
+    ///         Section 3.4, Algorithm 12 and Example 3-3
+    public static func ecefToGeodetic(ecef: Vector3D) -> GeodeticPosition {
+        let a = PhysicalConstants.Earth.semiMajorAxis // km
+        let e2 = PhysicalConstants.Earth.eccentricitySquared
+
+        let p = sqrt(ecef.x * ecef.x + ecef.y * ecef.y)
+        let longitude = atan2(ecef.y, ecef.x)
+
+        // Initial guess: latitude for a point on the ellipsoid surface
+        var latitude = atan2(ecef.z, p * (1.0 - e2))
+
+        for _ in 0..<PhysicalConstants.Calculation.maxIterations {
+            let sinLat = sin(latitude)
+            // Radius of curvature in the prime vertical (N)
+            let primeVerticalRadius = a / sqrt(1.0 - e2 * sinLat * sinLat)
+            let nextLatitude = atan2(ecef.z + e2 * primeVerticalRadius * sinLat, p)
+            let change = abs(nextLatitude - latitude)
+            latitude = nextLatitude
+            if change < 1e-12 {
+                break
+            }
+        }
+
+        let sinLat = sin(latitude)
+        let altitude = p * cos(latitude) + ecef.z * sinLat - a * sqrt(1.0 - e2 * sinLat * sinLat)
+
+        return GeodeticPosition(
+            latitude: latitude.inDegrees(),
+            longitude: longitude.inDegrees(),
+            altitude: altitude
+        )
+    }
+
     // MARK: - ECI to ECEF
     
     /// Converts ECI (Earth-Centered Inertial) coordinates to ECEF (Earth-Centered, Earth-Fixed).

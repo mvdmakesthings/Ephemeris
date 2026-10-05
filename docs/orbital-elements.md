@@ -848,7 +848,8 @@ do {
 **Key TLE Parsing Features:**
 - Fixed-width field extraction using string subscripting
 - Checksum validation for data integrity
-- 2-digit year interpretation (±50 year window from current date)
+- 2-digit year interpretation (NORAD convention: 57–99 → 19xx, 00–56 → 20xx)
+- Alpha-5 catalog numbers (`A0001` → 100001)
 - Assumed decimal point handling for eccentricity (`0009821` → `0.0009821`)
 - Scientific notation parsing for BSTAR drag term
 

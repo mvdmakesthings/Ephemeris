@@ -83,13 +83,15 @@ extension Orbit {
         var ratio = 1.0
         var iteration = 0
 
+        // Iterate until the Newton step is small in magnitude. The step can be negative
+        // (E overshoots M), so the convergence check must use its absolute value.
         repeat {
             let f = eccentricAnomaly - eccentricity * sin(eccentricAnomaly) - meanAnomaly
             let f2 = 1 - eccentricity * cos(eccentricAnomaly)
             ratio = f / f2
             eccentricAnomaly -= ratio
             iteration += 1
-        } while (ratio > accuracy && iteration <= maxIterations)
+        } while abs(ratio) > accuracy && iteration < maxIterations
 
         return eccentricAnomaly.inDegrees()
     }

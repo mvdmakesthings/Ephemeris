@@ -46,6 +46,31 @@ final class OrbitalCalculationTests: XCTestCase {
         XCTAssertEqual(eccentricAnomaly.round(to: 5), expectedEccentricAnomaly)
     }
 
+    func testEccentricAnomaly_withHighEccentricity_shouldSatisfyKeplersEquationForAllMeanAnomalies() {
+        // Given
+        // Molniya-type orbit. The Newton step can be negative, and a convergence check
+        // without abs() stops after one iteration, leaving errors of several degrees.
+        let eccentricity = 0.7
+
+        for meanAnomalyDeg in stride(from: 0.0, to: 360.0, by: 1.0) {
+            // When
+            let eccentricAnomaly = Orbit.calculateEccentricAnomaly(
+                eccentricity: eccentricity,
+                meanAnomaly: meanAnomalyDeg
+            ).inRadians()
+
+            // Then
+            // Kepler's equation: M = E - e·sin(E)
+            let reconstructedMeanAnomaly = eccentricAnomaly - eccentricity * sin(eccentricAnomaly)
+            XCTAssertEqual(
+                reconstructedMeanAnomaly,
+                meanAnomalyDeg.inRadians(),
+                accuracy: 1e-9,
+                "Kepler's equation not satisfied for M = \(meanAnomalyDeg)°"
+            )
+        }
+    }
+
     func testTrueAnomaly_withEccentricity0Point5_shouldCalculateCorrectly() throws {
         // Given
         let eccentricity = 0.5

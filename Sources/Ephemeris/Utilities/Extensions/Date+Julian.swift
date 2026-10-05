@@ -126,20 +126,36 @@ extension Date {
     /// neglecting short term motions of the equinox due to nutation. It's essential for
     /// converting between celestial and terrestrial coordinate systems.
     ///
-    /// - Parameter julianDay: The Julian Day Number
-    /// - Returns: Greenwich Sidereal Time in radians (0 to 2π)
-    /// - Note: Based on the algorithm from "Methods of Astrodynamics, A Computer Approach (v3)"
-    ///         by Capt David Vallado
+    /// Uses the IAU-82 expression for Greenwich Mean Sidereal Time, which is the same
+    /// model SGP4 uses (`gstime` in Vallado et al. 2006). The polynomial is evaluated
+    /// on the full Julian date, so the time of day is included and the result advances
+    /// by roughly 360.9856° per solar day.
+    ///
+    /// ```
+    /// GMST(s) = 67310.54841 + (876600h + 8640184.812866)·T + 0.093104·T² − 6.2e-6·T³
+    /// ```
+    /// where `T` is Julian centuries of UT1 since J2000.0. UTC is used in place of UT1,
+    /// which introduces at most 0.9 s of rotation error (about 0.4 km at the equator).
+    ///
+    /// - Parameter julianDay: The Julian Day (UT1, UTC acceptable)
+    /// - Returns: Greenwich Mean Sidereal Time in radians (0 to 2π)
+    /// - Note: Vallado, "Fundamentals of Astrodynamics and Applications" (4th ed.), Eq. 3-47.
+    ///         Verified against Example 3-5 (1992-08-20 12:14 UT1 → 152.578787810°).
     public static func greenwichSideRealTime(from julianDay: JulianDay) -> Radians {
         let twopi: Double = PhysicalConstants.Angle.radiansPerCircle
-        
+
         // Convert to Julian centuries since J2000.0
         let t = toJ2000(from: julianDay)
-        
-        // Calculate GST using polynomial approximation
-        // Formula: GST = 1.753368559 + 628.3319705*T + 6.770708127e-6*T^2 (in radians)
-        var gst = 1.753368559 + 628.3319705 * t + 6.770708127e-6 * t * t
-        
+
+        // GMST in seconds of time (IAU-82)
+        let gmstSeconds = -6.2e-6 * t * t * t
+            + 0.093104 * t * t
+            + (876600.0 * PhysicalConstants.Time.secondsPerHour + 8640184.812866) * t
+            + 67310.54841
+
+        // Seconds of time to radians: 240 seconds of time per degree
+        var gst = (gmstSeconds / 240.0).inRadians()
+
         // Normalize to 0 to 2π range
         gst = gst.truncatingRemainder(dividingBy: twopi)
         if gst < 0.0 {

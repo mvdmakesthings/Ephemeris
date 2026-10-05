@@ -283,8 +283,9 @@ public struct Orbit: Orbitable {
     /// 1. Computing the current mean anomaly from the mean motion
     /// 2. Solving for eccentric anomaly using Newton-Raphson iteration
     /// 3. Calculating the true anomaly
-    /// 4. Transforming from orbital plane to Earth-fixed coordinates
-    /// 5. Accounting for Earth's rotation (sidereal time)
+    /// 4. Transforming from the orbital plane to the ECI frame
+    /// 5. Rotating into the Earth-fixed (ECEF) frame using Greenwich Mean Sidereal Time
+    /// 6. Converting ECEF to WGS-84 geodetic latitude, longitude, and ellipsoidal height
     ///
     /// - Parameter date: The date and time for which to calculate the position.
     ///                   If `nil`, uses the current date and time.
@@ -298,56 +299,21 @@ public struct Orbit: Orbitable {
     /// print("Altitude: \(position.altitude) km")
     /// ```
     ///
-    /// - Note: Transform math based on https://www.csun.edu/~hcmth017/master/node20.html
-    ///         Implementation inspired by ZeitSatTrack (Apache 2.0)
+    /// - Note: Latitude is geodetic (measured to the ellipsoid normal) and altitude is the
+    ///         height above the WGS-84 ellipsoid, matching what GPS and maps report.
     public func calculatePosition(at date: Date?) throws -> GeodeticPosition {
+        let date = date ?? Date()
 
-        // Current parameters at this specific time.
-        let julianDate = Date.julianDay(from: date ?? Date())!
+        // Satellite position in the inertial frame
+        let (eciPosition, _) = try calculateECIStateVector(at: date)
 
-        // Calculate 3 anomalies
-        let currentMeanAnomaly = self.meanAnomalyForJulianDate(julianDate: julianDate)
-        let currentEccentricAnomaly = Orbit.calculateEccentricAnomaly(eccentricity: self.eccentricity, meanAnomaly: currentMeanAnomaly)
-        let currentTrueAnomaly = try Orbit.calculateTrueAnomaly(eccentricity: self.eccentricity, eccentricAnomaly: currentEccentricAnomaly)
+        // Rotate into the Earth-fixed frame using sidereal time
+        let julianDate = Date.julianDay(from: date)!
+        let gmst = Date.greenwichSideRealTime(from: julianDate)
+        let ecefPosition = CoordinateTransforms.eciToECEF(eciPosition: eciPosition, gmst: gmst)
 
-        // Calculate the XYZ coordinates on the orbital plane
-        let orbitalRadius = self.semimajorAxis - (self.semimajorAxis * self.eccentricity) * cos(currentEccentricAnomaly.inRadians())
-        let x = orbitalRadius * cos(currentTrueAnomaly.inRadians())
-        let y = orbitalRadius * sin(currentTrueAnomaly.inRadians())
-        let z = 0.0
-
-        // Rotate about z''' by the argument of perigee.
-        let argOfPerigeeRads = self.argumentOfPerigee.inRadians()
-        let xByPerigee = cos(argOfPerigeeRads) * x - sin(argOfPerigeeRads) * y
-        let yByPerigee = sin(argOfPerigeeRads) * x + cos(argOfPerigeeRads) * y
-        let zByPerigee = z
-
-        // Rotate about x'' axis by inclination.
-        let inclinationRads = self.inclination.inRadians()
-        let xInclination = xByPerigee
-        let yInclination = cos(inclinationRads) * yByPerigee - sin(inclinationRads) * zByPerigee
-        let zInclination = sin(inclinationRads) * yByPerigee + cos(inclinationRads) * zByPerigee
-
-        // Rotate about z' axis by right ascension of the ascending node.
-        let raanRads = self.rightAscensionOfAscendingNode.inRadians()
-        let xRaan = cos(raanRads) * xInclination - sin(raanRads) * yInclination
-        let yRaan = sin(raanRads) * xInclination + cos(raanRads) * yInclination
-        let zRaan = zInclination
-
-        // Rotate about z axis by the rotation of the earth.
-        let rotationFromGeocentric = Date.greenwichSideRealTime(from: julianDate)
-        let rotationFromGeocentricRad = -rotationFromGeocentric
-        let xFinal = cos(rotationFromGeocentricRad) * xRaan - sin(rotationFromGeocentricRad) * yRaan
-        let yFinal = sin(rotationFromGeocentricRad) * xRaan + cos(rotationFromGeocentricRad) * yRaan
-        let zFinal = zRaan
-
-        // Geocoordinates
-        let earthsRadius = PhysicalConstants.Earth.radius
-        let latitude = 90.0 - acos(zFinal / sqrt(xFinal * xFinal + yFinal * yFinal + zFinal * zFinal)).inDegrees()
-        let longitude = atan2(yFinal, xFinal).inDegrees()
-        let altitude = orbitalRadius - earthsRadius
-
-        return GeodeticPosition(latitude: latitude, longitude: longitude, altitude: altitude)
+        // Convert to WGS-84 geodetic latitude, longitude, and height above the ellipsoid
+        return CoordinateTransforms.ecefToGeodetic(ecef: ecefPosition)
     }
 }
 

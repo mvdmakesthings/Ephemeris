@@ -143,8 +143,42 @@ final class DateTests: XCTestCase {
         let gst = Date.greenwichSideRealTime(from: jd)
 
         // Then
-        // GST at J2000.0 epoch should be approximately 1.753368559 radians
-        XCTAssertEqual(gst, 1.753368559, accuracy: 0.001)
+        // GMST at J2000.0 (noon) is 280.46061837° (Vallado, Eq. 3-47).
+        // 1.753368559 rad (100.46°) is the value at 0h UT that day, not at noon.
+        XCTAssertEqual(gst, 280.46061837.inRadians(), accuracy: 1e-9)
+    }
+
+    func testGreenwichSiderealTime_withValladoExample3_5_shouldMatchPublishedValue() throws {
+        // Given
+        // Vallado, "Fundamentals of Astrodynamics and Applications", Example 3-5:
+        // 1992 August 20, 12:14:00 UT1 → GMST = 152.578787810°
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "UTC"))
+        let date = try XCTUnwrap(calendar.date(from: DateComponents(year: 1992, month: 8, day: 20, hour: 12, minute: 14)))
+        let jd = try XCTUnwrap(Date.julianDay(from: date))
+
+        // When
+        let gst = Date.greenwichSideRealTime(from: jd)
+
+        // Then
+        XCTAssertEqual(gst.inDegrees(), 152.578787810, accuracy: 1e-6)
+    }
+
+    func testGreenwichSiderealTime_acrossOneDay_shouldAdvanceBySiderealRate() {
+        // Given
+        // Earth turns about 360.9856° relative to the stars per solar day, so GMST must
+        // advance by about 90.2464° every 6 hours. A model that ignores time of day would not.
+        let midnight = 2461318.5 // 2026-10-05 00:00 UTC
+        let quarterDay = 0.25
+
+        // When
+        let gstStart = Date.greenwichSideRealTime(from: midnight)
+        let gstLater = Date.greenwichSideRealTime(from: midnight + quarterDay)
+        var advance = (gstLater - gstStart).inDegrees()
+        if advance < 0 { advance += 360.0 }
+
+        // Then
+        XCTAssertEqual(advance, 90.2464, accuracy: 0.001)
     }
 
     // MARK: - J2000 Conversion Tests

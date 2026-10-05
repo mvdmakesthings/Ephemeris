@@ -140,6 +140,78 @@ final class ObserverTests: XCTestCase {
         XCTAssertLessThan(magnitude, 6379.0) // Less than equatorial + altitude
     }
 
+    // MARK: - ECEF to Geodetic Conversion Tests
+
+    func testECEFToGeodetic_withValladoExample3_3_shouldMatchPublishedValues() {
+        // Given
+        // Vallado, "Fundamentals of Astrodynamics and Applications", Example 3-3:
+        // r = (6524.834, 6862.875, 6448.296) km → φgd = 34.352496°, λ = 46.4464°, h = 5085.22 km
+        let ecef = Vector3D(x: 6524.834, y: 6862.875, z: 6448.296)
+
+        // When
+        let geodetic = CoordinateTransforms.ecefToGeodetic(ecef: ecef)
+
+        // Then
+        XCTAssertEqual(geodetic.latitude, 34.352496, accuracy: 1e-5)
+        XCTAssertEqual(geodetic.longitude, 46.4464, accuracy: 1e-4)
+        XCTAssertEqual(geodetic.altitude, 5085.22, accuracy: 0.01)
+    }
+
+    func testECEFToGeodetic_roundTripWithGeodeticToECEF_shouldRecoverInputs() {
+        // Given
+        let latitudes: [Double] = [-90, -89.9, -60, -34.5, 0, 12.3, 45, 77.7, 89.9, 90]
+        let longitudes: [Double] = [-179.9, -85.7594, 0, 46.4464, 179.9]
+        let altitudesKm: [Double] = [0, 0.14, 420, 20200, 35786]
+
+        for lat in latitudes {
+            for lon in longitudes {
+                for altKm in altitudesKm {
+                    // When
+                    let ecef = CoordinateTransforms.geodeticToECEF(
+                        latitudeDeg: lat,
+                        longitudeDeg: lon,
+                        altitudeMeters: altKm * 1000.0
+                    )
+                    let geodetic = CoordinateTransforms.ecefToGeodetic(ecef: ecef)
+
+                    // Then
+                    XCTAssertEqual(geodetic.latitude, lat, accuracy: 1e-9)
+                    XCTAssertEqual(geodetic.altitude, altKm, accuracy: 1e-6)
+                    // Longitude is undefined at the poles
+                    if abs(lat) < 90 {
+                        XCTAssertEqual(geodetic.longitude, lon, accuracy: 1e-9)
+                    }
+                }
+            }
+        }
+    }
+
+    func testCalculatePosition_observerAtSubSatellitePoint_shouldSeeSatelliteAtZenith() throws {
+        // Given
+        // An observer standing at the reported sub-satellite point should see the satellite
+        // straight overhead. This only holds if calculatePosition returns geodetic latitude
+        // (measured along the ellipsoid normal) consistent with the topocentric pipeline.
+        let orbit = Orbit(from: try MockTLEs.ISSSample())
+        let epoch = Date(timeIntervalSince1970: 1586218000) // 2020-04-07, near the TLE epoch
+
+        for minutes in stride(from: 0.0, through: 90.0, by: 7.5) {
+            let date = epoch.addingTimeInterval(minutes * 60)
+
+            // When
+            let position = try orbit.calculatePosition(at: date)
+            let observer = Observer(
+                latitudeDeg: position.latitude,
+                longitudeDeg: position.longitude,
+                altitudeMeters: 0
+            )
+            let topo = try orbit.topocentric(at: date, for: observer)
+
+            // Then
+            XCTAssertEqual(topo.elevationDeg, 90.0, accuracy: 1e-6)
+            XCTAssertEqual(topo.rangeKm, position.altitude, accuracy: 1e-6)
+        }
+    }
+
     // MARK: - Vector3D Operation Tests
 
     func testVector3D_magnitude_shouldCalculateCorrectly() {

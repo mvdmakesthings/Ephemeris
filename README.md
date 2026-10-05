@@ -417,7 +417,7 @@ TLE data for satellites can be obtained from:
 
 ### Key Concepts
 
-**TLE Format**: Uses 2-digit years with ±50 year window. Ephemeris automatically handles date interpretation for current satellite tracking (designed for recent TLE data).
+**TLE Format**: Accepts both the three-line (name + data) and bare two-line forms, with any line endings. 2-digit epoch years follow the NORAD convention (57–99 → 1957–1999, 00–56 → 2000–2056), and Alpha-5 catalog numbers (e.g. `A0001` = 100001) are supported.
 
 **Accuracy**: Best within 1-3 days of TLE epoch. Update TLEs regularly for mission-critical applications (every 1-3 days for LEO satellites).
 

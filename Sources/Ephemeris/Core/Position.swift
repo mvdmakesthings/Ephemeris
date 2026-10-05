@@ -34,7 +34,7 @@ import Foundation
     /// Longitude in degrees (-180 to 180), where positive values indicate east
     public let longitude: Double
 
-    /// Altitude in kilometers above Earth's surface
+    /// Altitude in kilometers above the WGS-84 ellipsoid
     public let altitude: Double
 
     // MARK: - Initialization
@@ -44,7 +44,7 @@ import Foundation
     /// - Parameters:
     ///   - latitude: Latitude in degrees (-90 to 90)
     ///   - longitude: Longitude in degrees (-180 to 180)
-    ///   - altitude: Altitude in kilometers above Earth's surface
+    ///   - altitude: Altitude in kilometers above the WGS-84 ellipsoid
     public init(latitude: Double, longitude: Double, altitude: Double) {
         self.latitude = latitude
         self.longitude = longitude
