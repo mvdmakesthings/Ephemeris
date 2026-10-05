@@ -58,7 +58,7 @@ Add Ephemeris to your `Package.swift` dependencies:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/mvdmakesthings/Ephemeris.git", from: "1.0.0")
+    .package(url: "https://github.com/mvdmakesthings/Ephemeris.git", from: "2.0.0")
 ]
 ```
 
@@ -109,9 +109,9 @@ do {
 
     // Calculate current position
     let position = try sgp4.calculatePosition(at: Date())
-    print("Latitude: \(position.latitude)°")
-    print("Longitude: \(position.longitude)°")
-    print("Altitude: \(position.altitude) km")
+    print("Latitude: \(position.latitudeDeg)°")
+    print("Longitude: \(position.longitudeDeg)°")
+    print("Altitude: \(position.altitudeKm) km")
 } catch {
     print("Error: \(error)")
 }
@@ -122,7 +122,7 @@ do {
 Both propagators conform to `Propagator`, so position, look angles, pass prediction, ground tracks and sky tracks work the same way with either one.
 
 - **`SGP4`**: Use this for real tracking. TLEs are mean elements fitted with SGP4, so it's the only model that reproduces the orbit they describe. It includes Earth's oblateness, drag and, for periods of 225 minutes or more, lunar and solar gravity.
-- **`Orbit`**: Two-body Keplerian motion. It's great for learning how orbital elements work, but it ignores oblateness and drag, so a low-orbit satellite drifts hundreds of kilometers from reality within a day.
+- **`KeplerianOrbit`**: Two-body Keplerian motion. It's great for learning how orbital elements work, but it ignores oblateness and drag, so a low-orbit satellite drifts hundreds of kilometers from reality within a day.
 
 ```swift
 let sgp4 = try SGP4(tle: tle)
@@ -140,8 +140,10 @@ let passes = try sgp4.predictPasses(for: observer, from: Date(), to: Date().addi
 
 ### Accessing Orbital Elements
 
+The classical elements live on `KeplerianOrbit`, which reads them straight from the TLE:
+
 ```swift
-let orbit = Orbit(from: tle)
+let orbit = KeplerianOrbit(tle: tle)
 
 // Access orbital parameters
 print("Semi-major axis: \(orbit.semimajorAxis) km")
@@ -151,6 +153,9 @@ print("RAAN: \(orbit.rightAscensionOfAscendingNode)°")
 print("Argument of Perigee: \(orbit.argumentOfPerigee)°")
 print("Mean Anomaly: \(orbit.meanAnomaly)°")
 print("Mean Motion: \(orbit.meanMotion) revolutions/day")
+print("True Anomaly now: \(orbit.trueAnomaly(at: Date()))°")
+print("Apogee: \(orbit.apogeeAltitude) km, Perigee: \(orbit.perigeeAltitude) km")
+print("Period: \(orbit.orbitalPeriod / 60) minutes")
 ```
 
 ### Calculate Position at Specific Time
@@ -163,13 +168,11 @@ let specificDate = calendar.date(from: components)
 
 // Calculate position at that time
 if let date = specificDate {
-    let position = try? orbit.calculatePosition(at: date)
-    if let pos = position {
-        print("At \(date):")
-        print("  Latitude: \(pos.latitude)°")
-        print("  Longitude: \(pos.longitude)°")
-        print("  Altitude: \(pos.altitude) km")
-    }
+    let position = try sgp4.calculatePosition(at: date)
+    print("At \(date):")
+    print("  Latitude: \(position.latitudeDeg)°")
+    print("  Longitude: \(position.longitudeDeg)°")
+    print("  Altitude: \(position.altitudeKm) km")
 }
 ```
 
@@ -186,8 +189,8 @@ for i in 0..<60 {
     let time = startTime.addingTimeInterval(Double(i) * timeInterval)
     
     do {
-        let position = try orbit.calculatePosition(at: time)
-        print("T+\(i) min: \(position.latitude)°, \(position.longitude)°, \(position.altitude) km")
+        let position = try sgp4.calculatePosition(at: time)
+        print("T+\(i) min: \(position.latitudeDeg)°, \(position.longitudeDeg)°, \(position.altitudeKm) km")
     } catch {
         print("Error calculating position: \(error)")
     }
@@ -199,20 +202,20 @@ for i in 0..<60 {
 ```swift
 // Track multiple satellites
 let satellites = [
-    ("ISS", issТleString),
-    ("GOES-16", goes16TleString),
-    ("GPS BIIF-1", gpsTleString)
+    ("ISS", issTLEString),
+    ("GOES-16", goes16TLEString),
+    ("GPS BIIF-1", gpsTLEString)
 ]
 
 for (name, tleString) in satellites {
     do {
         let tle = try TwoLineElement(from: tleString)
-        let orbit = Orbit(from: tle)
-        let position = try orbit.calculatePosition(at: Date())
+        let sgp4 = try SGP4(tle: tle)
+        let position = try sgp4.calculatePosition(at: Date())
         
         print("\(name):")
-        print("  Position: \(position.latitude)°, \(position.longitude)°")
-        print("  Altitude: \(position.altitude) km")
+        print("  Position: \(position.latitudeDeg)°, \(position.longitudeDeg)°")
+        print("  Altitude: \(position.altitudeKm) km")
         print()
     } catch {
         print("Error processing \(name): \(error)")
@@ -226,16 +229,16 @@ for (name, tleString) in satellites {
 // Comprehensive error handling
 let tleString = """
 SATELLITE NAME
-1 12345U 20001A   20100.50000000  .00001234  00000-0  12345-4 0  9999
-2 12345  51.6400  90.0000 0001000  45.0000  90.0000 15.50000000123456
+1 12345U 20001A   20100.50000000  .00001234  00000-0  12345-4 0  9995
+2 12345  51.6400  90.0000 0001000  45.0000  90.0000 15.50000000123457
 """
 
 do {
     let tle = try TwoLineElement(from: tleString)
-    let orbit = Orbit(from: tle)
-    let position = try orbit.calculatePosition(at: Date())
+    let sgp4 = try SGP4(tle: tle)
+    let position = try sgp4.calculatePosition(at: Date())
     
-    print("Successfully calculated position: \(position.latitude)°, \(position.longitude)°")
+    print("Successfully calculated position: \(position.latitudeDeg)°, \(position.longitudeDeg)°")
     
 } catch TLEParsingError.invalidFormat(let message) {
     print("Invalid TLE format: \(message)")
@@ -243,8 +246,11 @@ do {
     print("Checksum error on line \(line): expected \(expected), got \(actual)")
 } catch TLEParsingError.invalidNumber(let field, let value) {
     print("Invalid number in field '\(field)': \(value)")
-} catch CalculationError.reachedSingularity {
-    print("Cannot calculate orbit: eccentricity >= 1.0 (not an elliptical orbit)")
+} catch TLEParsingError.invalidEccentricity(let value) {
+    print("Eccentricity \(value) is outside 0 ≤ e < 1")
+} catch let error as SGP4Error {
+    // For example .decayed when the orbit has dropped into the atmosphere
+    print("SGP4 error \(error.code): \(error.localizedDescription)")
 } catch {
     print("Unexpected error: \(error)")
 }
@@ -255,22 +261,24 @@ do {
 ```swift
 import Foundation
 
-// Convert current date to Julian Day
-if let julianDay = Date.julianDay(from: Date()) {
-    print("Current Julian Day: \(julianDay)")
-    
-    // Calculate Greenwich Sidereal Time
-    let gst = Date.greenwichSideRealTime(from: julianDay)
-    print("Greenwich Sidereal Time: \(gst) radians")
-    
-    // Convert to J2000 epoch
-    let j2000 = Date.toJ2000(from: julianDay)
-    print("Julian centuries since J2000: \(j2000)")
-}
+// Convert the current date to a Julian Date
+let julianDate = Date().julianDate
+print("Current Julian Date: \(julianDate)")
 
-// Convert TLE epoch to Julian Day
-let epochJD = Date.julianDayFromEpoch(epochYear: 2020, epochDayFraction: 97.82871450)
-print("TLE Epoch as Julian Day: \(epochJD)")
+// Greenwich Mean Sidereal Time
+let gmst = Date.greenwichMeanSiderealTime(julianDate: julianDate)
+print("Greenwich Mean Sidereal Time: \(gmst) radians")
+
+// The same value straight from a Date
+print("GMST now: \(Date().greenwichMeanSiderealTime) radians")
+
+// Julian centuries since J2000
+let centuries = Date.julianCenturiesSinceJ2000(julianDate: julianDate)
+print("Julian centuries since J2000: \(centuries)")
+
+// A TLE epoch is already a Date
+let tle = try TwoLineElement(from: tleString)
+print("TLE epoch: \(tle.epoch), Julian Date \(tle.epoch.julianDate)")
 ```
 
 ### Predict Satellite Passes
@@ -287,7 +295,7 @@ ISS (ZARYA)
 2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
 """
 let tle = try TwoLineElement(from: tleString)
-let orbit = Orbit(from: tle)
+let sgp4 = try SGP4(tle: tle)
 
 // Define your observer location (Louisville, Kentucky)
 let observer = Observer(
@@ -300,7 +308,7 @@ let observer = Observer(
 let now = Date()
 let tomorrow = now.addingTimeInterval(24 * 3600)
 
-let passes = try orbit.predictPasses(
+let passes = try sgp4.predictPasses(
     for: observer,
     from: now,
     to: tomorrow,
@@ -313,12 +321,15 @@ for (i, pass) in passes.enumerated() {
     print("\nPass #\(i + 1)")
     print("AOS: \(pass.aos.time)")
     print("  Azimuth: \(pass.aos.azimuthDeg)°")
-    print("MAX: \(pass.max.time)")
-    print("  Elevation: \(pass.max.elevationDeg)°")
-    print("  Azimuth: \(pass.max.azimuthDeg)°")
+    print("MAX: \(pass.culmination.time)")
+    print("  Elevation: \(pass.culmination.elevationDeg)°")
+    print("  Azimuth: \(pass.culmination.azimuthDeg)°")
     print("LOS: \(pass.los.time)")
     print("  Azimuth: \(pass.los.azimuthDeg)°")
     print("Duration: \(Int(pass.duration)) seconds")
+    if pass.beginsBeforeSearch || pass.endsAfterSearch {
+        print("(Pass is cut off by the search window)")
+    }
 }
 ```
 
@@ -328,7 +339,7 @@ Get azimuth, elevation, and range for a satellite at any time:
 
 ```swift
 // Calculate current look angles
-let topo = try orbit.topocentric(at: Date(), for: observer)
+let topo = try sgp4.topocentric(at: Date(), for: observer)
 
 print("Satellite Position:")
 print("  Azimuth: \(topo.azimuthDeg)°")        // Direction (0° = North, 90° = East)
@@ -337,7 +348,7 @@ print("  Range: \(topo.rangeKm) km")           // Distance to satellite
 print("  Range Rate: \(topo.rangeRateKmPerSec) km/s")  // Approaching/receding
 
 // Apply atmospheric refraction correction for low elevations
-let topoRefracted = try orbit.topocentric(
+let topoRefracted = try sgp4.topocentric(
     at: Date(),
     for: observer,
     applyRefraction: true
@@ -349,10 +360,11 @@ print("Apparent Elevation (with refraction): \(topoRefracted.elevationDeg)°")
 
 ```swift
 // Analyze orbital characteristics
-func analyzeOrbit(_ orbit: Orbit) {
-    let earthRadius = PhysicalConstants.Earth.radius
-    
-    // Calculate apogee and perigee
+func analyzeOrbit(_ orbit: KeplerianOrbit) {
+    let earthRadius = PhysicalConstants.Earth.semiMajorAxis
+
+    // Apogee and perigee altitudes (KeplerianOrbit also has
+    // apogeeAltitude and perigeeAltitude for this)
     let apogee = orbit.semimajorAxis * (1 + orbit.eccentricity) - earthRadius
     let perigee = orbit.semimajorAxis * (1 - orbit.eccentricity) - earthRadius
     
@@ -373,14 +385,14 @@ func analyzeOrbit(_ orbit: Orbit) {
     }
     
     // Calculate orbital period
-    let mu = PhysicalConstants.Earth.µ
+    let mu = PhysicalConstants.Earth.mu
     let period = 2 * .pi * sqrt(pow(orbit.semimajorAxis, 3) / mu)
     print("  Orbital period: \(period / 60) minutes")
 }
 
 // Use the analyzer
 let tle = try TwoLineElement(from: tleString)
-let orbit = Orbit(from: tle)
+let orbit = KeplerianOrbit(tle: tle)
 analyzeOrbit(orbit)
 ```
 
@@ -403,7 +415,7 @@ Ephemeris documentation is designed to teach orbital mechanics through practical
 
 #### 🔍 Reference: "I need specific information"
 - **[API Reference](./docs/api-reference.md)** - All types, methods, and properties
-- **[Testing Guide](./docs/testing-guide.md)** - Testing patterns with Spectre
+- **[Testing Guide](./docs/testing-guide.md)** - Testing patterns with XCTest
 - **[LLM.txt](./LLM.txt)** - Project context for AI tools
 
 ### 📖 Documentation Overview
@@ -424,10 +436,13 @@ Ephemeris documentation is designed to teach orbital mechanics through practical
 ### Core Types
 
 - **`TwoLineElement`**: Parses and represents NORAD TLE format satellite data
-- **`Orbit`**: Represents orbital parameters and provides position calculation methods
+- **`SGP4`**: The SGP4/SDP4 propagator for TLE data, used for real tracking
+- **`KeplerianOrbit`**: Classical orbital elements with a two-body propagator, used for learning
+- **`Propagator`**: The protocol both propagators conform to, providing `stateVector(at:)`, `calculatePosition(at:)`, `topocentric(at:for:)`, `predictPasses(for:from:to:)`, `groundTrack(from:to:)` and `skyTrack(for:from:to:)`
+- **`GeodeticPosition`**: Latitude, longitude and altitude above the WGS-84 ellipsoid (`latitudeDeg`, `longitudeDeg`, `altitudeKm`)
 - **`Observer`**: Represents an Earth-based observer location (latitude, longitude, altitude)
 - **`Topocentric`**: Contains azimuth, elevation, range, and range rate for observer-relative coordinates
-- **`PassWindow`**: Describes a satellite pass with AOS, maximum elevation, and LOS details
+- **`PassWindow`**: Describes a satellite pass with AOS, culmination (maximum elevation), and LOS events
 - **`CoordinateTransforms`**: Utility functions for converting between coordinate systems (ECI, ECEF, ENU)
 
 ### Where to Get TLE Data
@@ -443,7 +458,7 @@ TLE data for satellites can be obtained from:
 
 **Accuracy**: With `SGP4`, expect about 1 km of error at the TLE epoch, growing by roughly 1-3 km per day for low Earth orbit. TLE age is the main error source, so refresh TLEs every day or two for antenna pointing.
 
-**Propagation**: `SGP4` is a line-by-line port of Vallado's reference implementation ("Revisiting Spacetrack Report #3", AIAA 2006-6753). It matches the published verification output (`tcppver.out`, 666 points across 33 satellites) to within 0.12 mm. `Orbit` uses two-body Keplerian mechanics for teaching and ignores all perturbations. See [Orbital Elements](./docs/orbital-elements.md) for the theory.
+**Propagation**: `SGP4` is a line-by-line port of Vallado's reference implementation ("Revisiting Spacetrack Report #3", AIAA 2006-6753). It matches the published verification output (`tcppver.out`, 666 points across 33 satellites) to within 0.12 mm. `KeplerianOrbit` uses two-body Keplerian mechanics for teaching and ignores all perturbations. See [Orbital Elements](./docs/orbital-elements.md) for the theory.
 
 ## For AI Tools and Developers
 
@@ -480,8 +495,9 @@ swift test
 swift test --verbose
 ```
 
-The test suite includes 122 tests covering:
+The test suite includes 126 tests covering:
 - TLE parsing and validation
+- SGP4/SDP4 propagation against Vallado's verification vectors
 - Orbital calculations and Kepler's equation
 - Coordinate transformations (ECI, ECEF, Geodetic, ENU)
 - Observer-relative calculations (topocentric coordinates)

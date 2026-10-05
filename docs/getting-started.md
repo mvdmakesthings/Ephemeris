@@ -7,7 +7,7 @@
 This guide is for Swift/iOS developers who want to start using Ephemeris **right now**. We'll build a working satellite tracker with minimal explanation, focusing on practical implementation. If you want to understand the orbital mechanics theory, see [Orbital Elements](orbital-elements.md) after completing this guide.
 
 **What you'll build:**
-- Parse TLE data and create an `Orbit`
+- Parse TLE data and create an `SGP4` propagator
 - Calculate current satellite position
 - Predict satellite passes from your location
 - Display results in a simple iOS app
@@ -30,7 +30,7 @@ This guide is for Swift/iOS developers who want to start using Ephemeris **right
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/mvdmakesthings/Ephemeris.git", from: "1.0.0")
+    .package(url: "https://github.com/mvdmakesthings/Ephemeris.git", from: "2.0.0")
 ]
 ```
 
@@ -47,15 +47,15 @@ import Ephemeris
 import Foundation
 
 // ISS TLE data (update from CelesTrak for current data)
-let issТLE = """
+let issTLE = """
 ISS (ZARYA)
-1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
 """
 
 do {
     // Parse the TLE
-    let tle = try TwoLineElement(from: issТLE)
+    let tle = try TwoLineElement(from: issTLE)
 
     print("✅ TLE Parsed Successfully!")
     print("Satellite: \(tle.name)")
@@ -82,23 +82,23 @@ Now let's find where the ISS is **right now**:
 import Ephemeris
 import Foundation
 
-let issТLE = """
+let issTLE = """
 ISS (ZARYA)
-1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
 """
 
 do {
-    let tle = try TwoLineElement(from: issТLE)
-    let orbit = Orbit(from: tle)
+    let tle = try TwoLineElement(from: issTLE)
+    let sgp4 = try SGP4(tle: tle)
 
     // Calculate current position
-    let position = try orbit.calculatePosition(at: Date())
+    let position = try sgp4.calculatePosition(at: Date())
 
     print("\n🛰️ ISS Current Position")
-    print("Latitude:  \(String(format: "%.2f", position.latitude))°")
-    print("Longitude: \(String(format: "%.2f", position.longitude))°")
-    print("Altitude:  \(String(format: "%.0f", position.altitude)) km")
+    print("Latitude:  \(String(format: "%.2f", position.latitudeDeg))°")
+    print("Longitude: \(String(format: "%.2f", position.longitudeDeg))°")
+    print("Altitude:  \(String(format: "%.0f", position.altitudeKm)) km")
 
 } catch {
     print("❌ Error: \(error)")
@@ -114,8 +114,8 @@ Altitude:  420 km
 ```
 
 **Behind the scenes:**
-1. Created `Orbit` from TLE
-2. Solved Kepler's equation for current time
+1. Created an `SGP4` propagator from the TLE
+2. Propagated the orbit to the current time (inertial TEME position)
 3. Transformed coordinates from ECI → ECEF → Geodetic
 
 ---
@@ -129,15 +129,15 @@ import Ephemeris
 import Foundation
 
 // ISS TLE
-let issТLE = """
+let issTLE = """
 ISS (ZARYA)
-1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
 """
 
 do {
-    let tle = try TwoLineElement(from: issТLE)
-    let orbit = Orbit(from: tle)
+    let tle = try TwoLineElement(from: issTLE)
+    let sgp4 = try SGP4(tle: tle)
 
     // Your location (Louisville, Kentucky in this example)
     // Replace with your coordinates!
@@ -151,7 +151,7 @@ do {
     let now = Date()
     let tomorrow = now.addingTimeInterval(24 * 3600)
 
-    let passes = try orbit.predictPasses(
+    let passes = try sgp4.predictPasses(
         for: observer,
         from: now,
         to: tomorrow,
@@ -168,7 +168,7 @@ do {
     for (i, pass) in passes.enumerated() {
         print("Pass #\(i + 1)")
         print("  AOS: \(formatter.string(from: pass.aos.time)) at \(String(format: "%.0f", pass.aos.azimuthDeg))° azimuth")
-        print("  MAX: \(formatter.string(from: pass.max.time)) - \(String(format: "%.0f", pass.max.elevationDeg))° elevation")
+        print("  MAX: \(formatter.string(from: pass.culmination.time)) - \(String(format: "%.0f", pass.culmination.elevationDeg))° elevation")
         print("  LOS: \(formatter.string(from: pass.los.time)) at \(String(format: "%.0f", pass.los.azimuthDeg))° azimuth")
         print("  Duration: \(Int(pass.duration)) seconds\n")
     }
@@ -222,8 +222,8 @@ struct ISSTrackerApp: App {
 }
 
 struct ContentView: View {
-    @State private var issPosition: Orbit.Position?
-    @State private var passes: [Orbit.PassWindow] = []
+    @State private var issPosition: GeodeticPosition?
+    @State private var passes: [PassWindow] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -244,9 +244,9 @@ struct ContentView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Current Position")
                                     .font(.headline)
-                                Text("Lat: \(String(format: "%.2f", position.latitude))°")
-                                Text("Lon: \(String(format: "%.2f", position.longitude))°")
-                                Text("Alt: \(String(format: "%.0f", position.altitude)) km")
+                                Text("Lat: \(String(format: "%.2f", position.latitudeDeg))°")
+                                Text("Lon: \(String(format: "%.2f", position.longitudeDeg))°")
+                                Text("Alt: \(String(format: "%.0f", position.altitudeKm)) km")
                             }
                             .padding()
                             .background(Color.blue.opacity(0.1))
@@ -280,18 +280,18 @@ struct ContentView: View {
     }
 
     func loadData() {
-        let issТLE = """
+        let issTLE = """
         ISS (ZARYA)
-        1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-        2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+        1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+        2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
         """
 
         do {
-            let tle = try TwoLineElement(from: issТLE)
-            let orbit = Orbit(from: tle)
+            let tle = try TwoLineElement(from: issTLE)
+            let sgp4 = try SGP4(tle: tle)
 
             // Update position
-            issPosition = try orbit.calculatePosition(at: Date())
+            issPosition = try sgp4.calculatePosition(at: Date())
 
             // Predict passes
             let observer = Observer(
@@ -303,7 +303,7 @@ struct ContentView: View {
             let now = Date()
             let tomorrow = now.addingTimeInterval(24 * 3600)
 
-            passes = try orbit.predictPasses(
+            passes = try sgp4.predictPasses(
                 for: observer,
                 from: now,
                 to: tomorrow,
@@ -320,21 +320,21 @@ struct ContentView: View {
     }
 
     func updatePosition() {
-        let issТLE = """
+        let issTLE = """
         ISS (ZARYA)
-        1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-        2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+        1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+        2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
         """
 
-        guard let tle = try? TwoLineElement(from: issТLE) else { return }
-        let orbit = Orbit(from: tle)
-        issPosition = try? orbit.calculatePosition(at: Date())
+        guard let tle = try? TwoLineElement(from: issTLE),
+              let sgp4 = try? SGP4(tle: tle) else { return }
+        issPosition = try? sgp4.calculatePosition(at: Date())
     }
 }
 
 struct PassView: View {
     let passNumber: Int
-    let pass: Orbit.PassWindow
+    let pass: PassWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -345,7 +345,7 @@ struct PassView: View {
             HStack {
                 Text("Max Elevation:")
                 Spacer()
-                Text("\(String(format: "%.0f", pass.max.elevationDeg))°")
+                Text("\(String(format: "%.0f", pass.culmination.elevationDeg))°")
                     .bold()
             }
 
@@ -479,8 +479,8 @@ struct ISSTrackerApp: App {
 }
 
 struct ContentView: View {
-    @State private var issPosition: Orbit.Position?
-    @State private var passes: [Orbit.PassWindow] = []
+    @State private var issPosition: GeodeticPosition?
+    @State private var passes: [PassWindow] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -500,9 +500,9 @@ struct ContentView: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Current Position")
                                     .font(.headline)
-                                Text("Lat: \(String(format: "%.2f", position.latitude))°")
-                                Text("Lon: \(String(format: "%.2f", position.longitude))°")
-                                Text("Alt: \(String(format: "%.0f", position.altitude)) km")
+                                Text("Lat: \(String(format: "%.2f", position.latitudeDeg))°")
+                                Text("Lon: \(String(format: "%.2f", position.longitudeDeg))°")
+                                Text("Alt: \(String(format: "%.0f", position.altitudeKm)) km")
                             }
                             .padding()
                             .background(Color.blue.opacity(0.1))
@@ -531,17 +531,17 @@ struct ContentView: View {
     }
 
     func loadData() {
-        let issТLE = """
+        let issTLE = """
         ISS (ZARYA)
-        1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-        2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+        1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+        2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
         """
 
         do {
-            let tle = try TwoLineElement(from: issТLE)
-            let orbit = Orbit(from: tle)
+            let tle = try TwoLineElement(from: issTLE)
+            let sgp4 = try SGP4(tle: tle)
 
-            issPosition = try orbit.calculatePosition(at: Date())
+            issPosition = try sgp4.calculatePosition(at: Date())
 
             let observer = Observer(
                 latitudeDeg: 38.2542,
@@ -552,7 +552,7 @@ struct ContentView: View {
             let now = Date()
             let tomorrow = now.addingTimeInterval(24 * 3600)
 
-            passes = try orbit.predictPasses(
+            passes = try sgp4.predictPasses(
                 for: observer,
                 from: now,
                 to: tomorrow,
@@ -568,20 +568,20 @@ struct ContentView: View {
     }
 
     func updatePosition() {
-        let issТLE = """
+        let issTLE = """
         ISS (ZARYA)
-        1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-        2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+        1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+        2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
         """
-        guard let tle = try? TwoLineElement(from: issТLE) else { return }
-        let orbit = Orbit(from: tle)
-        issPosition = try? orbit.calculatePosition(at: Date())
+        guard let tle = try? TwoLineElement(from: issTLE),
+              let sgp4 = try? SGP4(tle: tle) else { return }
+        issPosition = try? sgp4.calculatePosition(at: Date())
     }
 }
 
 struct PassView: View {
     let passNumber: Int
-    let pass: Orbit.PassWindow
+    let pass: PassWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -592,7 +592,7 @@ struct PassView: View {
             HStack {
                 Text("Max Elevation:")
                 Spacer()
-                Text("\(String(format: "%.0f", pass.max.elevationDeg))°")
+                Text("\(String(format: "%.0f", pass.culmination.elevationDeg))°")
                     .bold()
             }
 

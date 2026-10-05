@@ -401,8 +401,8 @@ A **Two-Line Element (TLE)** is a compact, fixed-width data representation of a 
 
 ```
 ISS (ZARYA)
-1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
 ```
 
 ### TLE Format Breakdown
@@ -426,7 +426,7 @@ ISS (ZARYA)
 | 54-61 | BSTAR drag term | `12345-3` | Atmospheric drag coefficient |
 | 63 | Ephemeris type | `0` | Internal use |
 | 65-68 | Element set number | `999` | Sequential number |
-| 69 | Checksum | `3` | Modulo-10 checksum |
+| 69 | Checksum | `6` | Modulo-10 checksum |
 
 #### Line 2: Orbital Elements
 
@@ -440,8 +440,8 @@ ISS (ZARYA)
 | **35-42** | **Argument of Perigee (ω)** | `94.4121` | **Orientation of perigee in degrees** |
 | **44-51** | **Mean Anomaly (M)** | `44.3422` | **Position at epoch (used instead of ν)** |
 | **53-63** | **Mean Motion (n)** | `15.50338483` | **Orbits per day (relates to a)** |
-| 64-68 | Revolution number | `48571` | Completed orbits since launch |
-| 69 | Checksum | `1` | Modulo-10 checksum |
+| 64-68 | Revolution number | `4857` | Completed orbits at epoch (the field wraps after 99999) |
+| 69 | Checksum | `8` | Modulo-10 checksum |
 
 ### Important Notes
 
@@ -474,8 +474,8 @@ where:
 
 **Example for ISS**:
 - Mean motion: 15.50338483 rev/day
-- Semi-major axis: ~6,778 km
-- Altitude: ~400 km (subtracting Earth's radius)
+- Semi-major axis: ~6,794 km
+- Altitude: ~416 km (subtracting Earth's radius)
 
 ### Parsing Challenges
 
@@ -673,9 +673,9 @@ For the ISS at LEO (~400 km altitude):
 
 Now that we understand the theoretical foundation, let's see how Ephemeris implements these concepts in Swift. The framework provides clean, type-safe APIs that make orbital mechanics accessible to iOS developers.
 
-### The `Orbit` Struct
+### The `KeplerianOrbit` Struct
 
-The `Orbit` struct represents a satellite's orbital elements and provides methods for position calculation:
+`KeplerianOrbit` holds the classical orbital elements and propagates them with two-body motion. It treats the TLE's mean elements as plain Keplerian elements, which makes it a good way to see the theory above in code. For real tracking use `SGP4` (see [Accuracy](#performance-considerations) below); both conform to the `Propagator` protocol and share the same position, look-angle and pass-prediction methods.
 
 ```swift
 import Ephemeris
@@ -683,102 +683,117 @@ import Ephemeris
 // Parse ISS TLE data
 let tleString = """
 ISS (ZARYA)
-1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
 """
 
 let tle = try TwoLineElement(from: tleString)
-let orbit = Orbit(from: tle)
+let orbit = KeplerianOrbit(tle: tle)
 
 // Access orbital elements
-print("Semi-major axis: \(orbit.semimajorAxis) km")        // ~6,778 km
+print("Semi-major axis: \(orbit.semimajorAxis) km")        // ~6,794 km
 print("Eccentricity: \(orbit.eccentricity)")               // ~0.0009821
 print("Inclination: \(orbit.inclination)°")                // 51.6435°
 print("RAAN: \(orbit.rightAscensionOfAscendingNode)°")    // 132.8077°
 print("Argument of Perigee: \(orbit.argumentOfPerigee)°") // 94.4121°
-print("Mean Anomaly: \(orbit.meanAnomaly)°")              // 44.3422°
+print("Mean Anomaly: \(orbit.meanAnomaly)°")              // 44.3422° (at epoch)
+print("Mean Motion: \(orbit.meanMotion) rev/day")          // 15.50338483
+print("Epoch: \(orbit.epoch)")                             // 2024-10-17 12:25:58 UTC
 ```
+
+You can also build an orbit directly from elements, with no TLE involved:
+
+```swift
+let orbit = KeplerianOrbit(
+    semimajorAxis: 6778.0,               // km
+    eccentricity: 0.0009821,
+    inclination: 51.6435,                // degrees
+    rightAscensionOfAscendingNode: 132.8077,
+    argumentOfPerigee: 94.4121,
+    meanAnomaly: 44.3422,                // degrees, at epoch
+    epoch: Date()
+)
+```
+
+Mean motion is then derived from the semi-major axis with Kepler's third law.
 
 ### Calculating Semi-Major Axis from Mean Motion
 
-Ephemeris automatically calculates the semi-major axis from the TLE's mean motion using Kepler's Third Law:
+`KeplerianOrbit(tle:)` calculates the semi-major axis from the TLE's mean motion using Kepler's Third Law:
 
 ```swift
 import Ephemeris
 
-// Static method for calculating semi-major axis
-let meanMotion = 15.50338483  // revolutions per day from TLE
-let semimajorAxis = Orbit.calculateSemimajorAxis(meanMotion: meanMotion)
-print("Semi-major axis: \(semimajorAxis) km")  // ~6,778 km
+let orbit = KeplerianOrbit(tle: tle)
+print("Semi-major axis: \(orbit.semimajorAxis) km")  // ~6,794 km
 
-// Calculate altitude above Earth's surface
-let altitude = semimajorAxis - PhysicalConstants.Earth.radius
-print("Altitude: \(altitude) km")  // ~400 km
+// Altitude above the equator at apogee and perigee
+print("Apogee: \(orbit.apogeeAltitude) km")    // ~422 km
+print("Perigee: \(orbit.perigeeAltitude) km")  // ~409 km
+
+// Kepler's Third Law the other way: period from semi-major axis
+print("Period: \(orbit.orbitalPeriod / 60) minutes")  // ~92.9 minutes
 ```
 
-**Implementation:**
+**Implementation** (an internal helper on `KeplerianOrbit`):
 
 ```swift
-public static func calculateSemimajorAxis(meanMotion: Double) -> Double {
-    let µ = PhysicalConstants.Earth.µ  // 398,600.4418 km³/s²
-    let n = meanMotion * 2 * .pi / PhysicalConstants.Time.secondsPerDay
-    return pow(µ / (n * n), 1.0 / 3.0)
+static func semimajorAxis(meanMotion: Double) -> Double {
+    let radiansPerSecond = meanMotion * 2.0 * .pi / PhysicalConstants.Time.secondsPerDay
+    return pow(PhysicalConstants.Earth.mu / (radiansPerSecond * radiansPerSecond), 1.0 / 3.0)
 }
 ```
 
 ### Solving Kepler's Equation: Mean → Eccentric → True Anomaly
 
-The most computationally intensive part of orbital mechanics is converting mean anomaly to true anomaly. Ephemeris uses Newton-Raphson iteration to solve Kepler's equation:
+The most computationally intensive part of orbital mechanics is converting mean anomaly to true anomaly. Ephemeris uses Newton-Raphson iteration to solve Kepler's equation. On a `KeplerianOrbit` the whole chain is one call:
 
 ```swift
 import Ephemeris
 
-// Starting with mean anomaly from TLE
-let meanAnomaly: Degrees = 44.3422  // M
-let eccentricity = 0.0009821        // e
+let orbit = KeplerianOrbit(tle: tle)
+let now = Date()
 
-// Step 1: Solve for eccentric anomaly (iterative)
-let eccentricAnomaly = Orbit.calculateEccentricAnomaly(
-    eccentricity: eccentricity,
-    meanAnomaly: meanAnomaly
-)
-print("Eccentric anomaly: \(eccentricAnomaly)°")
+// Mean anomaly advanced from the epoch: M(t) = M₀ + n(t − t₀)
+print("Mean anomaly: \(orbit.meanAnomaly(at: now))°")
 
-// Step 2: Calculate true anomaly
-let trueAnomaly = try Orbit.calculateTrueAnomaly(
-    eccentricity: eccentricity,
-    eccentricAnomaly: eccentricAnomaly
-)
-print("True anomaly: \(trueAnomaly)°")
+// Kepler's equation solved for E, then converted to ν
+print("True anomaly: \(orbit.trueAnomaly(at: now))°")
 ```
 
-**Newton-Raphson Implementation:**
+**Newton-Raphson Implementation** (internal helpers on `KeplerianOrbit`):
 
 ```swift
-public static func calculateEccentricAnomaly(
-    eccentricity: Double,
-    meanAnomaly: Degrees
-) -> Degrees {
-    let M = meanAnomaly.inRadians()
-    var E = M  // Initial guess
+static func solveKeplersEquation(meanAnomaly: Degrees, eccentricity: Double) -> Degrees {
+    let tolerance = 1e-12   // radians
+    let maxIterations = 50
 
-    let tolerance = PhysicalConstants.Calculation.defaultAccuracy
-    let maxIterations = PhysicalConstants.Calculation.maxIterations
+    let meanAnomalyRadians = meanAnomaly.inRadians()
+    var eccentricAnomaly = meanAnomalyRadians < .pi
+        ? meanAnomalyRadians + eccentricity / 2
+        : meanAnomalyRadians - eccentricity / 2
 
     for _ in 0..<maxIterations {
-        let delta = (E - eccentricity * sin(E) - M) / (1 - eccentricity * cos(E))
-        E -= delta
-
-        if abs(delta) < tolerance {
-            break  // Converged
+        let step = (eccentricAnomaly - eccentricity * sin(eccentricAnomaly) - meanAnomalyRadians)
+            / (1 - eccentricity * cos(eccentricAnomaly))
+        eccentricAnomaly -= step
+        // The step can be negative, so compare its magnitude
+        if abs(step) < tolerance {
+            break
         }
     }
+    return eccentricAnomaly.inDegrees()
+}
 
-    return E.inDegrees()
+static func trueAnomaly(eccentricAnomaly: Degrees, eccentricity: Double) -> Degrees {
+    // ν = 2·atan2(√(1 + e)·sin(E/2), √(1 − e)·cos(E/2))
+    let halfE = eccentricAnomaly.inRadians() / 2
+    return (2.0 * atan2(sqrt(1 + eccentricity) * sin(halfE),
+                        sqrt(1 - eccentricity) * cos(halfE))).inDegrees()
 }
 ```
 
-This typically converges in 3-5 iterations for typical satellite eccentricities (e < 0.1).
+This typically converges in 3-5 iterations for typical satellite eccentricities (e < 0.1). The half-angle `atan2` form of the true anomaly is the same as the `tan(ν/2)` relation above, but `atan2` keeps the result in the correct quadrant without any special cases.
 
 ### Calculating Satellite Position
 
@@ -789,23 +804,25 @@ import Ephemeris
 import Foundation
 
 // Calculate position at a specific time
-let orbit = Orbit(from: tle)
+let orbit = KeplerianOrbit(tle: tle)
 let position = try orbit.calculatePosition(at: Date())
 
-print("Latitude: \(position.latitude)°")
-print("Longitude: \(position.longitude)°")
-print("Altitude: \(position.altitude) km")
+print("Latitude: \(position.latitudeDeg)°")
+print("Longitude: \(position.longitudeDeg)°")
+print("Altitude: \(position.altitudeKm) km")   // above the WGS-84 ellipsoid
 ```
 
-**Behind the scenes**, `calculatePosition(at:)` performs these steps:
+**Behind the scenes**, for a `KeplerianOrbit` `calculatePosition(at:)` performs these steps:
 
 1. Propagate mean anomaly forward in time: $M(t) = M_0 + n(t - t_0)$
 2. Solve Kepler's equation for eccentric anomaly: $E$
 3. Convert to true anomaly: $\nu$
 4. Calculate position in orbital plane: $r = \frac{a(1-e^2)}{1 + e\cos(\nu)}$
 5. Transform to ECI coordinates using $i$, $\Omega$, $\omega$
-6. Rotate to ECEF using Greenwich Sidereal Time
+6. Rotate to ECEF using Greenwich Mean Sidereal Time
 7. Convert to geodetic coordinates (lat, lon, alt)
+
+Steps 1 to 5 are `stateVector(at:)`. `SGP4` replaces them with its own perturbed propagation and shares steps 6 and 7 through the `Propagator` protocol.
 
 ### TLE Parsing and Validation
 
@@ -816,8 +833,8 @@ import Ephemeris
 
 let tleString = """
 ISS (ZARYA)
-1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
 """
 
 do {
@@ -826,15 +843,16 @@ do {
     // Access parsed fields
     print("Satellite: \(tle.name)")
     print("Catalog #: \(tle.catalogNumber)")
-    print("Epoch: Year \(tle.epochYear), Day \(tle.epochDay)")
+    print("Epoch: \(tle.epoch)")   // a Date (UTC)
 
     // Orbital elements
     print("Inclination: \(tle.inclination)°")
-    print("RAAN: \(tle.rightAscension)°")
+    print("RAAN: \(tle.rightAscensionOfAscendingNode)°")
     print("Eccentricity: \(tle.eccentricity)")
     print("Arg of Perigee: \(tle.argumentOfPerigee)°")
     print("Mean Anomaly: \(tle.meanAnomaly)°")
     print("Mean Motion: \(tle.meanMotion) rev/day")
+    print("Revolution #: \(tle.revolutionNumberAtEpoch)")
 
 } catch TLEParsingError.invalidChecksum(let line, let expected, let actual) {
     print("Checksum error on line \(line): expected \(expected), got \(actual)")
@@ -846,7 +864,8 @@ do {
 ```
 
 **Key TLE Parsing Features:**
-- Fixed-width field extraction using string subscripting
+- Accepts the three-line form (name + two data lines) or the bare two-line form
+- Fixed-width field extraction by 1-based column ranges, matching the format table above
 - Checksum validation for data integrity
 - 2-digit year interpretation (NORAD convention: 57–99 → 19xx, 00–56 → 20xx)
 - Alpha-5 catalog numbers (`A0001` → 100001)
@@ -862,18 +881,18 @@ import Ephemeris
 import Foundation
 
 // 1. Parse TLE data
-let issТLE = """
+let issTLE = """
 ISS (ZARYA)
-1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
 """
 
 do {
-    let tle = try TwoLineElement(from: issТLE)
-    let orbit = Orbit(from: tle)
+    let tle = try TwoLineElement(from: issTLE)
+    let orbit = KeplerianOrbit(tle: tle)
 
     // 2. Analyze orbital characteristics
-    let earthRadius = PhysicalConstants.Earth.radius
+    let earthRadius = PhysicalConstants.Earth.semiMajorAxis
     let apogee = orbit.semimajorAxis * (1 + orbit.eccentricity) - earthRadius
     let perigee = orbit.semimajorAxis * (1 - orbit.eccentricity) - earthRadius
 
@@ -885,26 +904,27 @@ do {
     print("Inclination: \(orbit.inclination)°")
 
     // 3. Calculate orbital period (Kepler's Third Law)
-    let µ = PhysicalConstants.Earth.µ
-    let period = 2 * .pi * sqrt(pow(orbit.semimajorAxis, 3) / µ)
+    let mu = PhysicalConstants.Earth.mu
+    let period = 2 * .pi * sqrt(pow(orbit.semimajorAxis, 3) / mu)
     print("Orbital period: \(period / 60) minutes")
 
-    // 4. Track ISS over the next hour
+    // 4. Track ISS over the next hour (SGP4 for real tracking)
+    let sgp4 = try SGP4(tle: tle)
     let startTime = Date()
     let timeInterval: TimeInterval = 60  // 1 minute steps
 
     print("\n=== ISS Position Tracking ===")
     for i in 0..<60 {
         let time = startTime.addingTimeInterval(Double(i) * timeInterval)
-        let position = try orbit.calculatePosition(at: time)
+        let position = try sgp4.calculatePosition(at: time)
 
         if i % 10 == 0 {  // Print every 10 minutes
             let formatter = DateFormatter()
             formatter.timeStyle = .short
             print("\(formatter.string(from: time)): " +
-                  "\(String(format: "%.2f", position.latitude))° lat, " +
-                  "\(String(format: "%.2f", position.longitude))° lon, " +
-                  "\(String(format: "%.0f", position.altitude)) km alt")
+                  "\(String(format: "%.2f", position.latitudeDeg))° lat, " +
+                  "\(String(format: "%.2f", position.longitudeDeg))° lon, " +
+                  "\(String(format: "%.0f", position.altitudeKm)) km alt")
         }
     }
 
@@ -916,12 +936,12 @@ do {
 **Sample Output:**
 ```
 === ISS Orbital Analysis ===
-Semi-major axis: 6778.137 km
+Semi-major axis: 6793.874 km
 Eccentricity: 0.0009821
-Apogee altitude: 406.7 km
-Perigee altitude: 393.3 km
+Apogee altitude: 422.4 km
+Perigee altitude: 409.1 km
 Inclination: 51.6435°
-Orbital period: 92.68 minutes
+Orbital period: 92.88 minutes
 
 === ISS Position Tracking ===
 2:30 PM: 23.45° lat, -74.32° lon, 400 km alt
@@ -945,10 +965,9 @@ Orbital period: 92.68 minutes
 - Suitable for real-time tracking and animation
 
 **Accuracy:**
-- Ephemeris uses pure Keplerian mechanics (two-body problem)
-- Does not include atmospheric drag, solar radiation pressure, or perturbations
-- Best accuracy: Within 1-3 days of TLE epoch
-- Acceptable accuracy: Up to 7-10 days for LEO satellites
+- `SGP4` is a pure Swift port of Vallado's SGP4/SDP4 reference code and matches its published verification output (`tcppver.out`). It models Earth's oblateness, drag and, for deep-space orbits, lunar and solar gravity, so it is the right choice for tracking.
+- `KeplerianOrbit` is two-body only: no drag, oblateness or third-body effects. A low orbit drifts hundreds of kilometers from reality within a day, so use it for learning rather than pointing an antenna.
+- With `SGP4`, best accuracy is within 1-3 days of the TLE epoch, acceptable up to 7-10 days for LEO satellites
 - **Recommendation**: Update TLEs regularly for mission-critical applications
 
 ---
