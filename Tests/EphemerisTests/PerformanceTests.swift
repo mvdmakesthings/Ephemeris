@@ -30,6 +30,31 @@ final class PerformanceTests: XCTestCase {
 
     // MARK: - Position Calculation Performance
 
+    func testPerformance_SGP4NearEarthPropagation() throws {
+        let sgp4 = try SGP4(tle: try MockTLEs.ISSSample())
+
+        measure {
+            for minute in 0..<10_000 {
+                _ = try? sgp4.propagate(minutesSinceEpoch: Double(minute))
+            }
+        }
+    }
+
+    func testPerformance_SGP4DeepSpacePropagation() throws {
+        // Molniya-type orbit: lunar-solar terms plus the half-day resonance integrator
+        let tle = try TwoLineElement(from: """
+            1 22674U 93035D   06176.55909107  .00002121  00000-0  29868-3 0  6569
+            2 22674  63.5035 354.4452 7541712 253.3264  18.7754  1.96679808 93877
+            """)
+        let sgp4 = try SGP4(tle: tle)
+
+        measure {
+            for minute in 0..<10_000 {
+                _ = try? sgp4.propagate(minutesSinceEpoch: Double(minute))
+            }
+        }
+    }
+
     func testPerformance_PositionCalculation() throws {
         // Given
         let tle = try MockTLEs.ISSSample()

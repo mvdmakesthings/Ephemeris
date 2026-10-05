@@ -60,9 +60,9 @@ import Foundation
 
 extension GroundTrackPoint: Codable {}
 
-// MARK: - Orbit Ground Track Generation
+// MARK: - Propagator Ground Track Generation
 
-extension Orbit {
+extension Propagator {
     /// Generates a ground track (latitude/longitude trace) for the satellite over time.
     ///
     /// This method calculates the satellite's sub-satellite point (the point on Earth's
@@ -75,7 +75,7 @@ extension Orbit {
     ///   - end: End time for the ground track
     ///   - stepSeconds: Time step between points in seconds (default: 60)
     /// - Returns: Array of GroundTrackPoint objects representing the satellite's path
-    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    /// - Throws: Any error thrown by the propagator
     ///
     /// ## Algorithm
     /// For each time step from start to end:

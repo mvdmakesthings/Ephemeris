@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `SGP4`: pure Swift SGP4/SDP4 propagator for TLE data, ported from Vallado's reference
+  implementation, including deep-space lunar-solar periodics and 12h/24h resonance.
+  Supports WGS-72 (default), WGS-72 old and WGS-84 constants, and AFSPC or improved mode.
+  Verified against Vallado's 666-point test set (max error 0.12 mm).
+- `Propagator` protocol and `StateVector`. Position, topocentric look angles, pass
+  prediction, ground tracks and sky tracks now work with any propagator.
+- `GravityModel` with `.wgs72`, `.wgs72old` and `.wgs84`.
+- `SGP4Error` for decay and invalid-element conditions, with the reference error codes.
+- `Vector3D` is now `Equatable` and `Sendable`.
 - `CoordinateTransforms.ecefToGeodetic(ecef:)` for WGS-84 ECEF to geodetic conversion
 - TLE parser accepts the bare two-line form, `\r\n` and `\r` line endings, blank lines,
   trailing newlines, and Space-Track's `0 `-prefixed name line

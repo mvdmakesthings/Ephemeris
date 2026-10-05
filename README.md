@@ -26,7 +26,8 @@ A Swift framework for satellite tracking and orbital mechanics calculations. Eph
 ## Features
 
 - 📡 **TLE Parsing**: Parse NORAD Two-Line Element (TLE) format satellite data
-- 🛰️ **Orbital Calculations**: Calculate satellite positions using orbital mechanics
+- 🛰️ **SGP4/SDP4 Propagation**: Pure Swift port of the standard TLE propagator, including deep-space lunar-solar and resonance terms, verified against Vallado's published test vectors
+- 📘 **Two-Body Orbits**: A simple Keplerian propagator for learning the underlying math
 - 🌍 **Position Tracking**: Compute latitude, longitude, and altitude for satellites at any given time
 - 👁️ **Observer-Based Tracking**: Calculate azimuth, elevation, range, and range rate from any location on Earth
 - 🔭 **Pass Prediction**: Predict satellite passes with AOS, maximum elevation, and LOS times
@@ -103,17 +104,38 @@ do {
     let tle = try TwoLineElement(from: tleString)
     print("Satellite: \(tle.name)")
     
-    // Create an orbit from the TLE
-    let orbit = Orbit(from: tle)
-    
+    // Create an SGP4 propagator from the TLE
+    let sgp4 = try SGP4(tle: tle)
+
     // Calculate current position
-    let position = try orbit.calculatePosition(at: Date())
+    let position = try sgp4.calculatePosition(at: Date())
     print("Latitude: \(position.latitude)°")
     print("Longitude: \(position.longitude)°")
     print("Altitude: \(position.altitude) km")
 } catch {
     print("Error: \(error)")
 }
+```
+
+### Choosing a Propagator
+
+Both propagators conform to `Propagator`, so position, look angles, pass prediction, ground tracks and sky tracks work the same way with either one.
+
+- **`SGP4`**: Use this for real tracking. TLEs are mean elements fitted with SGP4, so it's the only model that reproduces the orbit they describe. It includes Earth's oblateness, drag and, for periods of 225 minutes or more, lunar and solar gravity.
+- **`Orbit`**: Two-body Keplerian motion. It's great for learning how orbital elements work, but it ignores oblateness and drag, so a low-orbit satellite drifts hundreds of kilometers from reality within a day.
+
+```swift
+let sgp4 = try SGP4(tle: tle)
+
+// Inertial (TEME) position and velocity 90 minutes after the TLE epoch
+let state = try sgp4.propagate(minutesSinceEpoch: 90)
+print("Position: \(state.position) km")
+print("Velocity: \(state.velocity) km/s")
+
+// Look angles and passes for an observer
+let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
+let lookAngles = try sgp4.topocentric(at: Date(), for: observer)
+let passes = try sgp4.predictPasses(for: observer, from: Date(), to: Date().addingTimeInterval(86400))
 ```
 
 ### Accessing Orbital Elements
@@ -419,9 +441,9 @@ TLE data for satellites can be obtained from:
 
 **TLE Format**: Accepts both the three-line (name + data) and bare two-line forms, with any line endings. 2-digit epoch years follow the NORAD convention (57–99 → 1957–1999, 00–56 → 2000–2056), and Alpha-5 catalog numbers (e.g. `A0001` = 100001) are supported.
 
-**Accuracy**: Best within 1-3 days of TLE epoch. Update TLEs regularly for mission-critical applications (every 1-3 days for LEO satellites).
+**Accuracy**: With `SGP4`, expect about 1 km of error at the TLE epoch, growing by roughly 1-3 km per day for low Earth orbit. TLE age is the main error source, so refresh TLEs every day or two for antenna pointing.
 
-**Propagation**: Uses Keplerian orbital mechanics (two-body problem). Does not include atmospheric drag, solar radiation pressure, or perturbations. See [Orbital Elements](./docs/orbital-elements.md) for detailed accuracy discussion.
+**Propagation**: `SGP4` is a line-by-line port of Vallado's reference implementation ("Revisiting Spacetrack Report #3", AIAA 2006-6753). It matches the published verification output (`tcppver.out`, 666 points across 33 satellites) to within 0.12 mm. `Orbit` uses two-body Keplerian mechanics for teaching and ignores all perturbations. See [Orbital Elements](./docs/orbital-elements.md) for the theory.
 
 ## For AI Tools and Developers
 

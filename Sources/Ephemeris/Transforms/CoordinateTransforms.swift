@@ -17,7 +17,7 @@ import Foundation
 ///
 /// - Note: This type is frozen for ABI stability. Vector operations are marked
 ///         `@inlinable` for performance in orbital calculations.
-@frozen public struct Vector3D {
+@frozen public struct Vector3D: Equatable, Sendable {
     /// X component
     public let x: Double
     

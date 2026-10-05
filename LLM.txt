@@ -84,17 +84,14 @@ Ephemeris/
 
 ## Design Decisions
 
-### Why Keplerian Mechanics (Not SGP4)?
+### Propagators: SGP4 and Two-Body
 
-**Decision**: Implement two-body Keplerian mechanics instead of SGP4/SDP4
+**Decision**: Use a pure Swift port of SGP4/SDP4 for tracking, and keep two-body Keplerian mechanics for teaching. Both conform to the `Propagator` protocol.
+
 **Rationale**:
-- **Educational**: Easier to understand and teach
-- **Simplicity**: No atmospheric drag model complexity
-- **Accuracy**: Good enough for hobbyist/educational use (1-3 days from TLE epoch)
-- **Pure Swift**: No need to port C/C++ SGP4 code
-- **Transparency**: Users see exactly what calculations are happening
-
-**Trade-off**: Less accurate for long-term predictions. Documented clearly in limitations.
+- TLEs are mean elements fitted with SGP4, so only SGP4 reproduces the orbit they describe
+- Two-body motion ignores J2, which turns a LEO orbital plane by several degrees per day
+- The SGP4 port keeps the reference variable names and is verified against Vallado's `tcppver.out` to within 0.12 mm
 
 ### Type Design Patterns
 
@@ -245,76 +242,20 @@ Uses J2000 epoch and Julian centuries for polynomial approximation.
 ## Known Limitations & Design Constraints
 
 **Explicitly NOT Implemented:**
-1. **Atmospheric drag** (SGP4/SDP4 models)
-   - Trade-off: Accuracy vs. complexity
-   - Impact: Predictions degrade after 3-7 days for LEO
+1. **Precise ephemerides** (numerical propagation, SP ephemerides, CCSDS OEM)
+   - SGP4 accuracy is limited by the TLE itself: ~1 km at epoch, growing 1-3 km/day in LEO
    - Mitigation: Users should update TLEs regularly
 
-2. **Perturbations** (Sun/Moon gravity, solar radiation pressure)
-   - Keplerian two-body problem only
-   - RAAN/perigee precession not modeled
-   - Good enough for short-term tracking
+2. **Solar radiation pressure and higher-order gravity** beyond what SGP4 models
+   - The two-body `Orbit` models no perturbations at all and is for teaching only
 
-3. **Deep-space orbits** (interplanetary, lunar, L-points)
+3. **Non-Earth orbits** (interplanetary, lunar, L-points)
    - Only Earth-orbiting satellites supported
-   - Earth-centric coordinate systems
-
-4. **High-precision timing** (<1 second)
-   - GMST calculation good to ~1 second
-   - Pass predictions accurate to ±1 second
-   - Not suitable for laser ranging
-
-**Intentional Design Choices:**
-- Value types (not reference types): Thread-safe, SwiftUI-friendly
-- No async/await: Calculations are fast enough to be synchronous
-- No Combine publishers: Users can wrap if needed
-- No UI components: Framework-only, not opinionated about UI
-
-## Performance Characteristics
-
-**Position Calculation**: O(1) with ~3-5 iterations
-- Single calculation: ~50 microseconds
-- 1000 calculations: ~50 milliseconds
-- Suitable for real-time tracking (60+ FPS)
-
-**Pass Prediction**: O(n) where n = (timeWindow / stepSeconds)
-- 24-hour window, 30-second steps: ~150-200 ms
-- Dominated by bisection refinements (~10 per crossing)
-- Not suitable for interactive scrubbing (pre-calculate)
-
-**Ground/Sky Track Generation**: O(n) where n = number of points
-- Linear in time range and step size
-- 90-minute orbit, 60-second steps: ~90 points, <10 ms
-- Memory scales linearly with points
-
-## Code Style & Conventions
-
-**Naming**:
-- Types: UpperCamelCase
-- Functions/Properties: lowerCamelCase
-- Constants: lowerCamelCase (not SCREAMING_CASE)
-- Type aliases for clarity: `Degrees`, `Radians`, `JulianDay`
-
-**Documentation**:
-- Every public declaration documented
-- Complex algorithms have inline comments
-- Academic sources referenced in comments
-- Examples in documentation follow Swift API Design Guidelines
-
-**SwiftLint Rules**: Enforced in CI
-- Line length: 120 characters
-- Function body length: 50 lines
-- Type body length: 400 lines
-- Cyclomatic complexity: <10
-
-## Future Roadmap (Not Yet Implemented)
 
 **Potential Enhancements** (maintain educational focus):
-1. Simplified drag model (for LEO accuracy)
-2. J2 oblateness effect (for RAAN/perigee precession)
-3. Constellation management (multiple satellites)
-4. TLE fetch integration (CelesTrak/Space-Track APIs)
-5. SGP4 propagator (as alternative to Keplerian)
+1. Constellation management (multiple satellites)
+2. TLE/OMM fetch integration (CelesTrak/Space-Track APIs)
+3. Sun position and satellite illumination for visual passes
 
 **Not Planned** (out of scope):
 - Mission planning tools

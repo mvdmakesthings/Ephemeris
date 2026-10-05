@@ -30,7 +30,7 @@ import Foundation
 ///
 /// - Note: Orbital calculations are based on Keplerian orbital mechanics and use
 ///         WGS84 physical constants for accuracy.
-public struct Orbit: Orbitable {
+public struct Orbit: Orbitable, Propagator {
 
     // MARK: - Orbital Elements
 
@@ -217,6 +217,16 @@ public struct Orbit: Orbitable {
 
     // MARK: - Public Methods
 
+    /// Calculates the inertial state vector using two-body Keplerian motion.
+    ///
+    /// - Parameter date: The date and time for which to calculate the state vector
+    /// - Returns: Position (km) and velocity (km/s) in the ECI frame
+    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    public func stateVector(at date: Date) throws -> StateVector {
+        let (position, velocity) = try calculateECIStateVector(at: date)
+        return StateVector(position: position, velocity: velocity)
+    }
+
     /// Calculates the ECI (Earth-Centered Inertial) position and velocity vectors.
     ///
     /// This internal method computes the satellite's state vector in the ECI frame,
@@ -226,7 +236,7 @@ public struct Orbit: Orbitable {
     /// - Returns: Tuple of (position vector in km, velocity vector in km/s) in ECI frame
     /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
     ///
-    /// - Note: Internal method used by calculatePosition and topocentric calculations
+    /// - Note: Internal method used by `stateVector(at:)`
     func calculateECIStateVector(at date: Date) throws -> (position: Vector3D, velocity: Vector3D) {
         let julianDate = date.julianDate
 
@@ -271,48 +281,5 @@ public struct Orbit: Orbitable {
         let vzECI = (sinω * sini) * vxOrbital + (cosω * sini) * vyOrbital
 
         return (Vector3D(x: xECI, y: yECI, z: zECI), Vector3D(x: vxECI, y: vyECI, z: vzECI))
-    }
-
-    /// Calculates the geographic position of the satellite at a specific time.
-    ///
-    /// This method performs a complete orbital propagation from the epoch time to the
-    /// specified date, calculating the satellite's position in Earth-centered, Earth-fixed
-    /// (ECEF) coordinates and converting them to latitude, longitude, and altitude.
-    ///
-    /// The calculation involves:
-    /// 1. Computing the current mean anomaly from the mean motion
-    /// 2. Solving for eccentric anomaly using Newton-Raphson iteration
-    /// 3. Calculating the true anomaly
-    /// 4. Transforming from the orbital plane to the ECI frame
-    /// 5. Rotating into the Earth-fixed (ECEF) frame using Greenwich Mean Sidereal Time
-    /// 6. Converting ECEF to WGS-84 geodetic latitude, longitude, and ellipsoidal height
-    ///
-    /// - Parameter date: The date and time for which to calculate the position.
-    ///                   If `nil`, uses the current date and time.
-    /// - Returns: A `GeodeticPosition` object containing latitude, longitude, and altitude
-    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
-    ///
-    /// ## Example
-    /// ```swift
-    /// let position = try orbit.calculatePosition(at: Date())
-    /// print("Satellite is at \(position.latitude)°N, \(position.longitude)°E")
-    /// print("Altitude: \(position.altitude) km")
-    /// ```
-    ///
-    /// - Note: Latitude is geodetic (measured to the ellipsoid normal) and altitude is the
-    ///         height above the WGS-84 ellipsoid, matching what GPS and maps report.
-    public func calculatePosition(at date: Date?) throws -> GeodeticPosition {
-        let date = date ?? Date()
-
-        // Satellite position in the inertial frame
-        let (eciPosition, _) = try calculateECIStateVector(at: date)
-
-        // Rotate into the Earth-fixed frame using sidereal time
-        let julianDate = date.julianDate
-        let gmst = Date.greenwichSideRealTime(from: julianDate)
-        let ecefPosition = CoordinateTransforms.eciToECEF(eciPosition: eciPosition, gmst: gmst)
-
-        // Convert to WGS-84 geodetic latitude, longitude, and height above the ellipsoid
-        return CoordinateTransforms.ecefToGeodetic(ecef: ecefPosition)
     }
 }

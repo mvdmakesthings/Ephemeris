@@ -66,6 +66,13 @@ Sources/Ephemeris/
 ├── Observation/               # Observer-related types
 │   ├── Observer.swift        # Ground observer location
 │   └── Topocentric.swift     # Topocentric + Orbit.topocentric
+├── Propagation/               # Propagators
+│   ├── Propagator.swift      # Propagator protocol, StateVector, calculatePosition
+│   ├── GravityModel.swift    # WGS-72 / WGS-84 constants for SGP4
+│   ├── SGP4.swift            # Public SGP4 type and the sgp4 propagation step
+│   ├── SGP4+Initialization.swift # sgp4init, initl, epoch conversion
+│   ├── SGP4+DeepSpace.swift  # dscom, dpper (lunar-solar periodics)
+│   └── SGP4+Resonance.swift  # dsinit, dspace (12h/24h resonance)
 ├── Parsing/                   # Data parsing
 │   └── TwoLineElement.swift  # TLE parser (~440 lines)
 ├── Transforms/                # Coordinate transformations
@@ -166,16 +173,17 @@ Sources/Ephemeris/
 
 ## Important Implementation Details
 
-### Why Keplerian Mechanics (Not SGP4)?
+### Propagators: SGP4 and Two-Body
 
-This framework implements **two-body Keplerian mechanics** instead of SGP4/SDP4:
-- **Educational focus**: Easier to understand and teach
-- **Simplicity**: No atmospheric drag model complexity
-- **Pure Swift**: No need to port C/C++ SGP4 code
-- **Transparency**: Users see exactly what calculations are happening
-- **Trade-off**: Less accurate for long-term predictions (best within 1-3 days of TLE epoch)
+Propagation sits behind the `Propagator` protocol (`Propagation/Propagator.swift`). Observer geometry, pass prediction, ground tracks and sky tracks are written once as protocol extensions.
 
-This is an intentional design decision documented in both the README and LLM.txt.
+- **`SGP4`** (`Propagation/SGP4*.swift`): A port of Vallado's `sgp4unit.cpp` (sgp4init, initl, sgp4, dscom, dpper, dsinit, dspace). It is the correct model for TLE data and the default for real tracking.
+  - Internal variable names deliberately match the reference so code can be checked line by line. Do not rename them.
+  - Keep operation order identical to the reference. `SGP4VerificationTests` compares against `tcppver.out` at a 1 mm tolerance, and the current max error is 0.12 mm.
+  - The TLE epoch is converted with the reference `days2mdhms` + `jday` arithmetic on purpose (see `referenceJulianDate`).
+  - The deep-space integrator restarts from epoch on every call instead of caching state, so `SGP4` stays a pure, `Sendable` value type.
+  - Output frame is TEME. Rotating by GMST gives Earth-fixed coordinates.
+- **`Orbit`**: Two-body Keplerian motion, kept for teaching. It ignores J2 and drag, so it is not suitable for tracking.
 
 ### Coordinate Systems and Transformations
 
@@ -185,7 +193,7 @@ The framework uses the WGS-84 geodetic standard and implements the following coo
 - **ENU (East-North-Up)**: Local tangent plane at observer location
 - **Horizontal (Az/El)**: Observer-centric spherical coordinates
 
-Position calculation pipeline: Keplerian elements → ECI coordinates → ECEF coordinates → Geodetic (lat/lon/alt)
+Position calculation pipeline: Propagator state vector (TEME/ECI) → ECEF via GMST → WGS-84 geodetic (lat/lon/alt)
 
 ### Time Systems
 
@@ -320,7 +328,7 @@ All PRs must pass CI checks.
 
 ### Accuracy Considerations
 
-- **Best accuracy**: Within 1-3 days of TLE epoch
+- **SGP4 accuracy**: About 1 km at TLE epoch, growing roughly 1-3 km per day in LEO
 - **Recommendation**: Update TLEs every 1-3 days for LEO satellites
 - **No modeling**: Atmospheric drag, solar radiation pressure, or gravitational perturbations not included
 - **Target use case**: Hobbyist/educational satellite tracking, not mission-critical applications

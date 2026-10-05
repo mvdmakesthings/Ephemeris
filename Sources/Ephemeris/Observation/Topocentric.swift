@@ -73,9 +73,9 @@ extension Topocentric: Codable {}
 
 extension Topocentric: Equatable {}
 
-// MARK: - Orbit Topocentric Calculation
+// MARK: - Propagator Topocentric Calculation
 
-extension Orbit {
+extension Propagator {
     /// Calculates topocentric (observer-relative) coordinates for the satellite.
     ///
     /// This method computes the satellite's position as seen from a specific observer
@@ -86,7 +86,7 @@ extension Orbit {
     ///   - observer: The observer's location on Earth
     ///   - applyRefraction: Whether to apply atmospheric refraction correction (default: false)
     /// - Returns: Topocentric coordinates (azimuth, elevation, range, range rate)
-    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    /// - Throws: Any error thrown by the propagator
     ///
     /// ## Example
     /// ```swift
@@ -102,7 +102,9 @@ extension Orbit {
         let gmst = Date.greenwichSideRealTime(from: julianDate)
 
         // Calculate satellite position and velocity in ECI frame
-        let (eciPosition, eciVelocity) = try calculateECIStateVector(at: date)
+        let state = try stateVector(at: date)
+        let eciPosition = state.position
+        let eciVelocity = state.velocity
 
         // Transform satellite position and velocity to ECEF
         let satECEF = CoordinateTransforms.eciToECEF(eciPosition: eciPosition, gmst: gmst)

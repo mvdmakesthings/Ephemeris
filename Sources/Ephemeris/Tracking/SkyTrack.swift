@@ -59,9 +59,9 @@ import Foundation
 
 extension SkyTrackPoint: Codable {}
 
-// MARK: - Orbit Sky Track Generation
+// MARK: - Propagator Sky Track Generation
 
-extension Orbit {
+extension Propagator {
     /// Generates a sky track (azimuth/elevation trace) for the satellite as seen from an observer.
     ///
     /// This method calculates the satellite's position in the observer's local horizontal
@@ -75,7 +75,7 @@ extension Orbit {
     ///   - end: End time for the sky track
     ///   - stepSeconds: Time step between points in seconds (default: 60)
     /// - Returns: Array of SkyTrackPoint objects representing the satellite's path across the sky
-    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    /// - Throws: Any error thrown by the propagator
     ///
     /// ## Algorithm
     /// For each time step from start to end:

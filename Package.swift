@@ -23,7 +23,11 @@ let package = Package(
         ),
         .testTarget(
             name: "EphemerisTests",
-            dependencies: ["Ephemeris"]
+            dependencies: ["Ephemeris"],
+            resources: [
+                // Vallado's SGP4 verification element sets and reference output
+                .copy("Resources")
+            ]
         )
     ]
 )

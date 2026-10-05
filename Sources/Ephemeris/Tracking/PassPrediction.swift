@@ -133,9 +133,9 @@ extension PassWindow: Codable {
     }
 }
 
-// MARK: - Orbit Pass Prediction
+// MARK: - Propagator Pass Prediction
 
-extension Orbit {
+extension Propagator {
     /// Predicts satellite passes over an observer's location within a time window.
     ///
     /// This method identifies all satellite passes (periods when the satellite is above
@@ -149,7 +149,7 @@ extension Orbit {
     ///   - minElevationDeg: Minimum elevation angle in degrees (default: 0°)
     ///   - stepSeconds: Time step for coarse search in seconds (default: 30s)
     /// - Returns: Array of PassWindow objects, one for each pass found
-    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    /// - Throws: Any error thrown by the propagator
     ///
     /// ## Algorithm
     /// 1. Coarse search with specified time step to detect elevation sign changes
@@ -253,7 +253,7 @@ extension Orbit {
 
 // MARK: - Pass Prediction Helpers
 
-extension Orbit {
+extension Propagator {
     /// Refines the time of an elevation crossing using bisection search.
     ///
     /// - Parameters:
@@ -263,7 +263,7 @@ extension Orbit {
     ///   - targetElevation: The elevation angle to find
     ///   - risingEdge: True for AOS (rising), false for LOS (falling)
     /// - Returns: The refined time of the elevation crossing
-    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    /// - Throws: Any error thrown by the propagator
     private func refineElevationCrossing(
         observer: Observer,
         t1: Date,
@@ -307,7 +307,7 @@ extension Orbit {
     ///   - t1: Start of search interval (AOS time)
     ///   - t2: End of search interval (LOS time)
     /// - Returns: Tuple of (time, elevation, azimuth) at maximum
-    /// - Throws: `CalculationError.reachedSingularity` if eccentricity >= 1.0
+    /// - Throws: Any error thrown by the propagator
     private func findMaxElevation(
         observer: Observer,
         t1: Date,
