@@ -54,7 +54,7 @@ public struct GravityModel: Equatable, Sendable {
 
     // MARK: - Standard Models
 
-    /// WGS-72 constants. Use these for TLEs from CelesTrak and Space-Track.
+    /// WGS-72 constants. Use these for published TLEs and OMMs, which are fitted with WGS-72.
     public static let wgs72 = GravityModel(mu: 398600.8, radiusEarthKm: 6378.135,
                                            j2: 0.001082616, j3: -0.00000253881, j4: -0.00000165597)
 

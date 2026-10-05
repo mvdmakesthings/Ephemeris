@@ -2,7 +2,7 @@
 //  CatalogTransport.swift
 //  EphemerisCatalog
 //
-//  The two things CelesTrakClient needs from the outside world, HTTP and time, behind small
+//  The two things ElementSetClient needs from the outside world, HTTP and time, behind small
 //  seams so the tests can replace both and never touch the network or wait in real time.
 //
 
@@ -30,7 +30,7 @@ public struct URLSessionTransport: CatalogTransport {
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
-            throw CelesTrakError.invalidResponse("Not an HTTP response")
+            throw CatalogFetchError.invalidResponse("Not an HTTP response")
         }
         return (data, http)
     }

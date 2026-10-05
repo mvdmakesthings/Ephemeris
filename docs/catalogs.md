@@ -13,7 +13,7 @@ Tracking one satellite is a matter of building an `SGP4` propagator and asking i
 - Whole-catalog queries: positions, look angles and passes
 - Why some satellites can never rise for an observer, and how to test that cheaply
 - How the work is spread across CPU cores without changing the results
-- How fast it is, and how to fetch data responsibly with `CelesTrakClient`
+- How fast it is, and how to fetch data responsibly with `ElementSetClient`
 
 ---
 
@@ -37,7 +37,7 @@ A catalog can be built from a TLE document, an OMM document in any encoding, or 
 ```swift
 import Ephemeris
 
-// A document of many TLEs, such as a CelesTrak group file (name lines optional)
+// A document of many TLEs, such as a downloaded group file (name lines optional)
 let fromTLEs = SatelliteCatalog(tleText: tleDocument)
 
 // An OMM document: JSON, XML, KVN or CSV (the encoding is detected)
@@ -221,20 +221,34 @@ EPHEMERIS_BENCHMARK=1 swift test -c release --filter CatalogBenchmarkTests
 
 ## Getting Catalog Data Responsibly
 
-`SatelliteCatalog` never downloads anything; you give it data. When your app needs fresh data, use `CelesTrakClient` from the optional `EphemerisCatalog` library. It downloads from CelesTrak, which needs no account, and it is built so that an app can't accidentally send CelesTrak more requests than the data needs.
+`SatelliteCatalog` never downloads anything; you give it data. When your app needs fresh data, use `ElementSetClient` from the optional `EphemerisCatalog` library. It works with any server that speaks the common GP query format, and it is built so that an app can't accidentally send that server more requests than the data needs.
 
 ### Why This Matters
 
-CelesTrak is a free public service, and it blocks clients that download the same data over and over. Its element sets change only a few times a day, so nearly every request an app might make can be answered from a copy it already has. Re-downloading unchanged data, for example on every launch or every screen refresh, is the most common way apps get blocked.
+Public element-set servers are free services, and they block clients that download the same data over and over. Element sets change only a few times a day, so nearly every request an app might make can be answered from a copy it already has. Re-downloading unchanged data, for example on every launch or every screen refresh, is the most common way apps get blocked.
 
-### Using CelesTrakClient
+### Choosing an Endpoint
+
+The library has no built-in server: your app passes in the endpoint. Any server that accepts the GP query format below and returns an array of CCSDS OMM records in JSON will work.
+
+**Recommended:** CelesTrak's GP endpoint, which is free and needs no account:
+
+```
+https://celestrak.org/NORAD/elements/gp.php
+```
+
+Before you ship, read the provider's usage guidance and make sure your app follows it. The client's safeguards (below) are designed to keep a normal app well within the limits of a public server, but the provider's own terms always take precedence.
+
+### Using ElementSetClient
 
 ```swift
 import Ephemeris
 import EphemerisCatalog
 
-// One client for the whole app, named so CelesTrak can see who is asking
-let client = CelesTrakClient(appIdentifier: "MyTracker/1.0")
+// One client for the whole app. The app identifier goes in the User-Agent header,
+// so the server's operator can see who is asking.
+let endpoint = URL(string: "https://celestrak.org/NORAD/elements/gp.php")!
+let client = ElementSetClient(endpoint: endpoint, appIdentifier: "MyTracker/1.0")
 
 // A whole group in one request
 let amateur = try await client.catalog(for: .group(.amateur))
@@ -246,14 +260,18 @@ let newCubeSat = try await client.catalog(for: .catalogNumber(61000))
 
 Queries:
 
-| Query | Asks CelesTrak for | Use it for |
-|-------|--------------------|------------|
+| Query | Sends | Use it for |
+|-------|-------|------------|
 | `.group(.amateur)` | `GROUP=amateur` | The normal case: a whole set in one request |
 | `.catalogNumber(25544)` | `CATNR=25544` | A satellite not in any group you've loaded |
 | `.internationalDesignator("2024-123")` | `INTDES=2024-123` | Every object from one launch |
 | `.name("NOAA")` | `NAME=NOAA` | Every satellite whose name contains the text |
 
-Common groups have constants (`.active`, `.stations`, `.amateur`, `.satnogs`, `.weather`, `.noaa`, `.cubesat`, `.gnss`, `.starlink` and others). Any other CelesTrak group works as a string: `.group("iridium-NEXT")`.
+Every request also carries `FORMAT=JSON`, and any parameters already on the endpoint URL (an API key, for example) are kept.
+
+Common group names have constants (`.active`, `.stations`, `.amateur`, `.satnogs`, `.weather`, `.noaa`, `.cubesat`, `.gnss`, `.starlink` and others). Group names are chosen by each server, so check your provider's list; any other name works as a string: `.group("iridium-NEXT")`.
+
+Each endpoint host gets its own cache folder by default, so switching providers never mixes their data or their rate-limit pauses.
 
 ### What the Client Does for You
 
@@ -262,10 +280,10 @@ Common groups have constants (`.active`, `.stations`, `.amateur`, `.satnogs`, `.
 | Disk cache | Every response is saved. A query is downloaded again only when its copy is older than the refresh interval (two hours, and it can't be set lower) |
 | Shared requests | Callers asking for the same query at the same time share one download |
 | Single satellites from groups | `.catalogNumber` is answered from any fresh cached group that contains the satellite |
-| "Not found" is cached | Looking up a satellite CelesTrak doesn't have is not repeated |
+| "Not found" is cached | Looking up a satellite the server doesn't have is not repeated |
 | Pacing | Requests are at least one second apart |
 | Backoff | After a failure, that query waits 15 minutes before it is tried again |
-| Rate limits | If CelesTrak answers 403 or 429, every request stops for two hours (or longer if `Retry-After` says so). The pause is saved to disk, so relaunching or clearing the cache doesn't end it |
+| Rate limits | If the server answers 403 or 429, every request stops for two hours (or longer if `Retry-After` says so). The pause is saved to disk, so relaunching or clearing the cache doesn't end it |
 | Offline | When a refresh fails, the expired copy is returned with `source == .staleCache(error)` |
 | Identification | Each request sends a `User-Agent` with your app identifier |
 

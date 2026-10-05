@@ -2,16 +2,16 @@
 //  CatalogCache.swift
 //  EphemerisCatalog
 //
-//  Files on disk that remember every CelesTrak response and when it was downloaded, so an
+//  Files on disk that remember every server response and when it was downloaded, so an
 //  app can relaunch as often as it likes without downloading anything again.
 //
 
 import Foundation
 
-/// A directory of cached CelesTrak responses.
+/// A directory of cached element-set server responses.
 ///
 /// Each query has two files:
-/// - `<key>.body`: the response exactly as CelesTrak sent it (OMM JSON, or the plain-text
+/// - `<key>.body`: the response exactly as the server sent it (OMM JSON, or the plain-text
 ///   "No GP data found" answer, which is cached too so a missing satellite is not looked up
 ///   again and again)
 /// - `<key>.meta.json`: when it was downloaded

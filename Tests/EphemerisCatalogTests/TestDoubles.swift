@@ -2,7 +2,7 @@
 //  TestDoubles.swift
 //  EphemerisCatalogTests
 //
-//  A fake CelesTrak and a manual clock. With these, the client's tests never send a real
+//  A fake element-set server and a manual clock. With these, the client's tests never send a real
 //  request and never wait in real time.
 //
 
@@ -23,8 +23,8 @@ struct FakeResponse: Sendable {
     }
 }
 
-/// Stands in for CelesTrak. Answers each request from a handler and records what was sent.
-actor FakeCelesTrak: CatalogTransport {
+/// Stands in for a GP server. Answers each request from a handler and records what was sent.
+actor FakeElementSetServer: CatalogTransport {
 
     /// Every request received, in order
     private(set) var requests: [URLRequest] = []
@@ -124,7 +124,7 @@ final class ManualClock: @unchecked Sendable {
     }
 }
 
-/// OMM JSON in the form CelesTrak serves, for a few real satellites
+/// OMM JSON in the form GP servers serve, for a few real satellites
 enum Fixtures {
 
     static let iss = record(name: "ISS (ZARYA)", id: "1998-067A", catalogNumber: 25544,

@@ -20,7 +20,7 @@ It is a breaking release: see **Migrating from 1.x** below.
 - `Propagator` protocol and `StateVector`. Position, look angles, pass prediction, ground
   tracks and sky tracks are written once and work with any propagator.
 - `OrbitMeanElementsMessage`: CCSDS Orbit Mean-Elements Message (OMM) support. Parses
-  JSON, XML, KVN and CSV as served by CelesTrak and Space-Track, with encoding detection.
+  JSON, XML, KVN and CSV as served by public GP servers, with encoding detection.
   OMM has no catalog-number limit, a microsecond epoch, and states its frame and model.
 - `MeanElementSet` protocol, adopted by `TwoLineElement` and `OrbitMeanElementsMessage`.
   `SGP4(elements:)` and `KeplerianOrbit(elements:)` accept either format.
@@ -42,15 +42,16 @@ It is a breaking release: see **Migrating from 1.x** below.
 - `CatalogRejection` describing why an element set was left out of a catalog.
 - `TwoLineElement.parseEach(_:)` and `OrbitMeanElementsMessage.parseEach(_:format:)` parse a
   multi-satellite document and return one result per entry.
-- `EphemerisCatalog`, a separate library product with `CelesTrakClient`: downloads groups
-  or single satellites from CelesTrak's GP API (OMM JSON, no account needed). Responses are
+- `EphemerisCatalog`, a separate library product with `ElementSetClient`: downloads groups
+  or single satellites from any GP data server; the app supplies the endpoint, and
+  `docs/catalogs.md` recommends a free public one. Responses are
   cached on disk with a refresh interval of at least two hours; simultaneous callers share
   one request; single satellites are answered from cached groups; "not found" is cached;
   requests are at least one second apart; failed queries back off for 15 minutes; a 403 or
   429 pauses every request for two hours, persisted across launches; an expired copy is
   returned when a refresh fails. Requests carry a `User-Agent` naming the app.
 - `docs/catalogs.md`: whole-catalog guide, including the visibility geometry and how to
-  fetch catalog data without overloading CelesTrak or Space-Track.
+  fetch catalog data without overloading public servers.
 - `docs/element-sets.md`: a guide to what element sets are and how TLE and OMM compare.
 - `GravityModel` with `.wgs72`, `.wgs72old` and `.wgs84`.
 - `SGP4Error` for decay and invalid-element conditions, with the reference error codes.

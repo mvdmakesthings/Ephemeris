@@ -6,7 +6,7 @@
 import Foundation
 import Ephemeris
 
-/// A catalog returned by `CelesTrakClient`, with where it came from and how old it is.
+/// A catalog returned by `ElementSetClient`, with where it came from and how old it is.
 ///
 /// Element sets age: SGP4 errors grow by roughly 1-3 km per day in low Earth orbit. Check
 /// `source` and `fetchedAt` to decide whether the data is good enough for what you are doing.
@@ -22,13 +22,13 @@ public struct FetchedCatalog: Sendable {
 
         /// Read from an expired cache entry because refreshing it failed. The error says why;
         /// the client will try again later on its own.
-        case staleCache(CelesTrakError)
+        case staleCache(CatalogFetchError)
     }
 
-    /// The satellites. Empty when CelesTrak had no data for the query.
+    /// The satellites. Empty when the server had no data for the query.
     public let catalog: SatelliteCatalog
 
-    /// When this data was downloaded from CelesTrak
+    /// When this data was downloaded from the server
     public let fetchedAt: Date
 
     /// Where the data came from on this call

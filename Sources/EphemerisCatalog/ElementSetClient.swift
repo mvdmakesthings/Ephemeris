@@ -1,9 +1,9 @@
 //
-//  CelesTrakClient.swift
+//  ElementSetClient.swift
 //  EphemerisCatalog
 //
-//  Downloads element sets from CelesTrak, caches them on disk, and makes it hard to send
-//  CelesTrak more requests than the data needs.
+//  Downloads element sets from a GP data server, caches them on disk, and makes it hard to
+//  send the server more requests than the data needs.
 //
 
 import Foundation
@@ -12,12 +12,20 @@ import FoundationNetworking
 #endif
 import Ephemeris
 
-/// Fetches satellite catalogs from CelesTrak, with a disk cache and built-in rate limits.
+/// Fetches satellite catalogs from a GP (general perturbations) data server, with a disk cache
+/// and built-in rate limits.
 ///
-/// CelesTrak is a free public service run by one person, and it blocks clients that download
-/// the same data over and over. Its element sets change only a few times a day, so almost
-/// every request an app might make can be answered from a copy it already has. This client
-/// does that for you:
+/// ## The Endpoint
+/// The client works with any server that answers the common GP query format: one parameter
+/// picking the satellites (`GROUP`, `CATNR`, `INTDES` or `NAME`) plus `FORMAT=JSON`, returning
+/// an array of CCSDS OMM records. You pass the endpoint in; the library has no built-in server.
+/// `docs/catalogs.md` recommends a free public endpoint that needs no account.
+///
+/// ## Being a Good Client
+/// Public element-set servers are usually free services, and they block clients that download
+/// the same data over and over. Element sets change only a few times a day, so almost every
+/// request an app might make can be answered from a copy it already has. This client does that
+/// for you:
 ///
 /// - **Cache first.** Every response is saved to disk. A query is downloaded again only after
 ///   its copy is older than the refresh interval, which can't be set below two hours.
@@ -25,11 +33,11 @@ import Ephemeris
 ///   they share a single download.
 /// - **Single satellites from groups.** A `.catalogNumber` query is answered from any cached
 ///   group that contains the satellite, so it costs a request only when it really is new.
-/// - **"Not found" is cached too.** Looking up a satellite CelesTrak doesn't have doesn't
+/// - **"Not found" is cached too.** Looking up a satellite the server doesn't have doesn't
 ///   repeat the request.
 /// - **Paced.** Requests are at least one second apart.
 /// - **Backs off.** After a failed request, the same query waits 15 minutes before it is tried
-///   again. If CelesTrak says the client is sending too much (HTTP 403 or 429), every request
+///   again. If the server says the client is sending too much (HTTP 403 or 429), every request
 ///   stops for two hours, and that pause is saved to disk so relaunching the app doesn't end it.
 /// - **Keeps working offline.** When a refresh fails, the expired copy is returned with
 ///   `source == .staleCache(error)` instead of an error.
@@ -37,7 +45,7 @@ import Ephemeris
 ///
 /// ## Example
 /// ```swift
-/// let client = CelesTrakClient(appIdentifier: "MyTracker/1.0")
+/// let client = ElementSetClient(endpoint: gpEndpoint, appIdentifier: "MyTracker/1.0")
 /// let amateur = try await client.catalog(for: .group(.amateur))
 /// print("\(amateur.catalog.satellites.count) satellites, downloaded \(amateur.fetchedAt)")
 ///
@@ -45,12 +53,12 @@ import Ephemeris
 /// ```
 ///
 /// Use one client for the whole app, so every caller shares the pacing and in-flight requests.
-public actor CelesTrakClient {
+public actor ElementSetClient {
 
     // MARK: - Limits
 
-    /// The shortest allowed refresh interval: two hours. CelesTrak updates its data about
-    /// that often, so downloading sooner returns the same data.
+    /// The shortest allowed refresh interval: two hours. Public GP data is regenerated a few
+    /// times a day at most, so downloading sooner returns the same data.
     public static let minimumRefreshInterval: TimeInterval = 2 * 3600
 
     /// The shortest time between two requests: one second
@@ -59,7 +67,7 @@ public actor CelesTrakClient {
     /// How long a query waits after a failed request before it is tried again: 15 minutes
     public static let retryInterval: TimeInterval = 15 * 60
 
-    /// How long every request pauses after CelesTrak reports too many requests: two hours,
+    /// How long every request pauses after the server reports too many requests: two hours,
     /// or longer if the response's `Retry-After` header asks for it
     public static let rateLimitPause: TimeInterval = 2 * 3600
 
@@ -67,6 +75,9 @@ public actor CelesTrakClient {
 
     /// How old a cached copy may get before it is downloaded again
     public nonisolated let refreshInterval: TimeInterval
+
+    /// The GP query URL that query parameters are added to
+    public nonisolated let endpoint: URL
 
     /// Where responses are cached
     public nonisolated let cacheDirectory: URL
@@ -100,28 +111,34 @@ public actor CelesTrakClient {
     /// Creates a client.
     ///
     /// - Parameters:
+    ///   - endpoint: The server's GP query URL, without query parameters (for example
+    ///     `https://example.org/elements/gp.php`). See `docs/catalogs.md` for a recommended
+    ///     public endpoint. Must be `http` or `https`.
     ///   - appIdentifier: Your app's name and version, such as `"MyTracker/1.0"`. It goes in
-    ///     the `User-Agent` header so CelesTrak can see who is sending requests.
-    ///   - cacheDirectory: Where to cache responses (default: `Ephemeris/CelesTrak` in the
-    ///     user's Caches directory)
+    ///     the `User-Agent` header so the server's operator can see who is sending requests.
+    ///   - cacheDirectory: Where to cache responses (default: a folder named after the
+    ///     endpoint's host under `Ephemeris/ElementSets` in the user's Caches directory, so
+    ///     two servers never share cached data or rate-limit pauses)
     ///   - refreshInterval: How old a cached copy may get before it is downloaded again.
     ///     Values below `minimumRefreshInterval` (two hours) are raised to it.
     ///   - gravity: Gravity model for the SGP4 propagators (default WGS-72, which TLEs and
     ///     OMMs are fitted with)
     ///   - transport: How requests are sent (default `URLSession.shared`)
     public init(
+        endpoint: URL,
         appIdentifier: String,
         cacheDirectory: URL? = nil,
-        refreshInterval: TimeInterval = CelesTrakClient.minimumRefreshInterval,
+        refreshInterval: TimeInterval = ElementSetClient.minimumRefreshInterval,
         gravity: GravityModel = .wgs72,
         transport: any CatalogTransport = URLSessionTransport()
     ) {
-        self.init(appIdentifier: appIdentifier, cacheDirectory: cacheDirectory, refreshInterval: refreshInterval,
-                  gravity: gravity, transport: transport, time: .system)
+        self.init(endpoint: endpoint, appIdentifier: appIdentifier, cacheDirectory: cacheDirectory,
+                  refreshInterval: refreshInterval, gravity: gravity, transport: transport, time: .system)
     }
 
     /// Creates a client with a substitute clock (for tests).
     init(
+        endpoint: URL,
         appIdentifier: String,
         cacheDirectory: URL?,
         refreshInterval: TimeInterval,
@@ -132,7 +149,11 @@ public actor CelesTrakClient {
         let identifier = appIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
         precondition(!identifier.isEmpty, "appIdentifier must name your app, for example \"MyTracker/1.0\"")
 
-        let directory = cacheDirectory ?? Self.defaultCacheDirectory
+        let scheme = endpoint.scheme?.lowercased()
+        precondition(scheme == "https" || scheme == "http", "endpoint must be an http or https URL")
+
+        let directory = cacheDirectory ?? Self.defaultCacheDirectory(for: endpoint)
+        self.endpoint = endpoint
         self.refreshInterval = max(refreshInterval, Self.minimumRefreshInterval)
         self.cacheDirectory = directory
         self.userAgent = "\(identifier) Ephemeris/2.0 (+https://github.com/mvdmakesthings/ephemeris)"
@@ -142,24 +163,29 @@ public actor CelesTrakClient {
         self.cache = CatalogCache(directory: directory)
     }
 
-    /// `Ephemeris/CelesTrak` in the user's Caches directory. The system may delete caches
-    /// when storage runs low, which is fine: the data is downloaded again when needed.
-    private static var defaultCacheDirectory: URL {
+    /// `Ephemeris/ElementSets/<host>` in the user's Caches directory. The system may delete
+    /// caches when storage runs low, which is fine: the data is downloaded again when needed.
+    static func defaultCacheDirectory(for endpoint: URL) -> URL {
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
+        // Host names are letters, digits, dots and hyphens; anything else becomes "_"
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: ".-"))
+        let host = (endpoint.host ?? "server").lowercased().unicodeScalars
+            .map { allowed.contains($0) ? String($0) : "_" }.joined()
         return caches.appendingPathComponent("Ephemeris", isDirectory: true)
-            .appendingPathComponent("CelesTrak", isDirectory: true)
+            .appendingPathComponent("ElementSets", isDirectory: true)
+            .appendingPathComponent(host, isDirectory: true)
     }
 
     // MARK: - Fetching
 
     /// Returns the satellites for a query, from the cache when it is fresh enough and from
-    /// CelesTrak otherwise.
+    /// the server otherwise.
     ///
     /// - Parameter query: What to fetch
     /// - Returns: The catalog, when it was downloaded, and whether it came from the network,
     ///   the cache, or an expired cache entry after a failed refresh
-    /// - Throws: `CelesTrakError` when the query is invalid, or when the download fails and
+    /// - Throws: `CatalogFetchError` when the query is invalid, or when the download fails and
     ///   there is no cached copy at all
     ///
     /// ## Order of Checks
@@ -168,7 +194,7 @@ public actor CelesTrakClient {
     /// 3. A download of the same query already in progress, which this call joins
     /// 4. A new download, unless a rate-limit pause or a retry wait is in effect
     /// 5. If the download fails, the expired cached copy if there is one
-    public func catalog(for query: CelesTrakQuery) async throws -> FetchedCatalog {
+    public func catalog(for query: ElementSetQuery) async throws -> FetchedCatalog {
         try query.validate()
         let key = query.cacheKey
         let now = time.now()
@@ -199,18 +225,18 @@ public actor CelesTrakClient {
     ///
     /// Useful at launch to show something immediately, then call `catalog(for:)` to refresh.
     ///
-    /// - Throws: `CelesTrakError.notCached` if the query has never been downloaded
-    public func cachedCatalog(for query: CelesTrakQuery) throws -> FetchedCatalog {
+    /// - Throws: `CatalogFetchError.notCached` if the query has never been downloaded
+    public func cachedCatalog(for query: ElementSetQuery) throws -> FetchedCatalog {
         try query.validate()
         guard let cached = cachedEntry(forKey: query.cacheKey) else {
-            throw CelesTrakError.notCached
+            throw CatalogFetchError.notCached
         }
         return cached.withSource(.cache)
     }
 
     /// Deletes every cached response. The next call for each query downloads it again.
     ///
-    /// A rate-limit pause from CelesTrak is kept, so clearing the cache can't be used to get
+    /// A rate-limit pause from the server is kept, so clearing the cache can't be used to get
     /// around it.
     public func clearCache() throws {
         try cache.removeResponses()
@@ -227,7 +253,7 @@ public actor CelesTrakClient {
         // An entry that can't be parsed (for example, written by a different version) is
         // treated as missing; the next download replaces it
         guard let stored = cache.entry(forKey: key),
-              let catalog = try? CelesTrakResponse.catalog(from: stored.body, gravity: gravity) else {
+              let catalog = try? ElementSetResponse.catalog(from: stored.body, gravity: gravity) else {
             return nil
         }
         let entry = FetchedCatalog(catalog: catalog, fetchedAt: stored.metadata.fetchedAt, source: .cache)
@@ -255,11 +281,11 @@ public actor CelesTrakClient {
     // MARK: - Downloading
 
     /// Downloads a query, or falls back to its expired cached copy if that fails.
-    private func refresh(_ query: CelesTrakQuery, key: String) async throws -> FetchedCatalog {
+    private func refresh(_ query: ElementSetQuery, key: String) async throws -> FetchedCatalog {
         do {
             return try await download(query, key: key)
-        } catch let error as CelesTrakError {
-            // A query CelesTrak calls invalid will never succeed, so report it even if an old
+        } catch let error as CatalogFetchError {
+            // A query the server calls invalid will never succeed, so report it even if an old
             // copy exists. Anything else (offline, server trouble, rate limit) is temporary.
             if case .invalidQuery = error {
                 throw error
@@ -272,7 +298,7 @@ public actor CelesTrakClient {
     }
 
     /// Sends one request, subject to the pauses and pacing, and caches the result.
-    private func download(_ query: CelesTrakQuery, key: String) async throws -> FetchedCatalog {
+    private func download(_ query: ElementSetQuery, key: String) async throws -> FetchedCatalog {
         try checkPauses(forKey: key)
 
         // Pacing: reserve the next free slot before waiting, so callers that arrive while this
@@ -290,14 +316,14 @@ public actor CelesTrakClient {
         let response: HTTPURLResponse
         do {
             (body, response) = try await transport.send(try request(for: query))
-        } catch let error as CelesTrakError {
+        } catch let error as CatalogFetchError {
             recordFailure(forKey: key)
             throw error
         } catch is CancellationError {
             throw CancellationError()
         } catch {
             recordFailure(forKey: key)
-            throw CelesTrakError.transport(error.localizedDescription)
+            throw CatalogFetchError.transport(error.localizedDescription)
         }
 
         let receivedAt = time.now()
@@ -305,7 +331,7 @@ public actor CelesTrakClient {
         case 200:
             let catalog: SatelliteCatalog
             do {
-                catalog = try CelesTrakResponse.catalog(from: body, gravity: gravity)
+                catalog = try ElementSetResponse.catalog(from: body, gravity: gravity)
             } catch {
                 recordFailure(forKey: key)
                 throw error
@@ -317,16 +343,16 @@ public actor CelesTrakClient {
             return entry
 
         case 403, 429:
-            // CelesTrak says this client is sending too much. Stop everything, and remember it
+            // The server says this client is sending too much. Stop everything, and remember it
             // across launches. Honor a longer Retry-After if the server sends one.
             let requested = response.value(forHTTPHeaderField: "Retry-After").flatMap(TimeInterval.init) ?? 0
             let until = receivedAt.addingTimeInterval(max(Self.rateLimitPause, requested))
             try? cache.recordRateLimit(until: until)
-            throw CelesTrakError.rateLimited(until: until)
+            throw CatalogFetchError.rateLimited(until: until)
 
         default:
             recordFailure(forKey: key)
-            throw CelesTrakError.httpStatus(response.statusCode)
+            throw CatalogFetchError.httpStatus(response.statusCode)
         }
     }
 
@@ -334,10 +360,10 @@ public actor CelesTrakClient {
     private func checkPauses(forKey key: String) throws {
         let now = time.now()
         if let until = cache.rateLimitedUntil(), until > now {
-            throw CelesTrakError.rateLimited(until: until)
+            throw CatalogFetchError.rateLimited(until: until)
         }
         if let until = retryAfter[key], until > now {
-            throw CelesTrakError.backingOff(until: until)
+            throw CatalogFetchError.backingOff(until: until)
         }
     }
 
@@ -346,15 +372,15 @@ public actor CelesTrakClient {
         retryAfter[key] = time.now().addingTimeInterval(Self.retryInterval)
     }
 
-    /// The `gp.php` request for a query, always asking for OMM JSON.
-    nonisolated func request(for query: CelesTrakQuery) throws -> URLRequest {
-        var components = URLComponents()
-        components.scheme = "https"
-        components.host = "celestrak.org"
-        components.path = "/NORAD/elements/gp.php"
-        components.queryItems = [query.queryItem, URLQueryItem(name: "FORMAT", value: "JSON")]
+    /// The GP request for a query, always asking for OMM JSON. Any query parameters already
+    /// on the endpoint (an API key, for example) are kept.
+    nonisolated func request(for query: ElementSetQuery) throws -> URLRequest {
+        guard var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false) else {
+            throw CatalogFetchError.invalidQuery("Could not read the endpoint \(endpoint)")
+        }
+        components.queryItems = (components.queryItems ?? []) + [query.queryItem, URLQueryItem(name: "FORMAT", value: "JSON")]
         guard let url = components.url else {
-            throw CelesTrakError.invalidQuery("Could not build a URL for \(query)")
+            throw CatalogFetchError.invalidQuery("Could not build a URL for \(query)")
         }
 
         var request = URLRequest(url: url, timeoutInterval: 60)

@@ -1,15 +1,15 @@
 //
-//  CelesTrakClientTests.swift
+//  ElementSetClientTests.swift
 //  EphemerisCatalogTests
 //
-//  Requests, caching and request sharing. Every test runs against FakeCelesTrak: nothing
-//  here ever sends a request to the real CelesTrak.
+//  Requests, caching and request sharing. Every test runs against FakeElementSetServer: nothing
+//  here ever sends a real request.
 //
 
 import XCTest
 @testable import EphemerisCatalog
 
-final class CelesTrakClientTests: CelesTrakTestCase {
+final class ElementSetClientTests: ElementSetClientTestCase {
 
     // MARK: - Requests
 
@@ -24,10 +24,10 @@ final class CelesTrakClientTests: CelesTrakTestCase {
         let name = try client.request(for: .name("NOAA 19"))
 
         // Then: the documented gp.php form, always asking for OMM JSON
-        XCTAssertEqual(group.url?.absoluteString, "https://celestrak.org/NORAD/elements/gp.php?GROUP=amateur&FORMAT=JSON")
-        XCTAssertEqual(number.url?.absoluteString, "https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=JSON")
-        XCTAssertEqual(launch.url?.absoluteString, "https://celestrak.org/NORAD/elements/gp.php?INTDES=1998-067&FORMAT=JSON")
-        XCTAssertEqual(name.url?.absoluteString, "https://celestrak.org/NORAD/elements/gp.php?NAME=NOAA%2019&FORMAT=JSON")
+        XCTAssertEqual(group.url?.absoluteString, "https://gp.example.org/elements/gp.php?GROUP=amateur&FORMAT=JSON")
+        XCTAssertEqual(number.url?.absoluteString, "https://gp.example.org/elements/gp.php?CATNR=25544&FORMAT=JSON")
+        XCTAssertEqual(launch.url?.absoluteString, "https://gp.example.org/elements/gp.php?INTDES=1998-067&FORMAT=JSON")
+        XCTAssertEqual(name.url?.absoluteString, "https://gp.example.org/elements/gp.php?NAME=NOAA%2019&FORMAT=JSON")
     }
 
     func testRequest_shouldIdentifyTheAppAndLibrary() throws {
@@ -41,6 +41,33 @@ final class CelesTrakClientTests: CelesTrakTestCase {
         let userAgent = try XCTUnwrap(request.value(forHTTPHeaderField: "User-Agent"))
         XCTAssertTrue(userAgent.hasPrefix("EphemerisTests/1.0 Ephemeris/2.0"))
         XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
+    }
+
+    func testRequest_withEndpointQueryParameters_shouldKeepThem() throws {
+        // Given: an endpoint that needs its own parameter, such as an API key
+        let keyed = try XCTUnwrap(URL(string: "https://gp.example.org/gp?key=abc"))
+        let client = ElementSetClient(endpoint: keyed, appIdentifier: "EphemerisTests/1.0", cacheDirectory: cacheDirectory)
+
+        // When
+        let request = try client.request(for: .catalogNumber(25544))
+
+        // Then
+        XCTAssertEqual(request.url?.absoluteString, "https://gp.example.org/gp?key=abc&CATNR=25544&FORMAT=JSON")
+    }
+
+    func testDefaultCacheDirectory_forDifferentHosts_shouldBeSeparateFolders() throws {
+        // Given
+        let first = try XCTUnwrap(URL(string: "https://gp.example.org/elements/gp.php"))
+        let second = try XCTUnwrap(URL(string: "https://mirror.example.net/gp.php"))
+
+        // When
+        let firstDirectory = ElementSetClient.defaultCacheDirectory(for: first)
+        let secondDirectory = ElementSetClient.defaultCacheDirectory(for: second)
+
+        // Then: each server's data and rate-limit pause stay separate
+        XCTAssertEqual(firstDirectory.lastPathComponent, "gp.example.org")
+        XCTAssertEqual(secondDirectory.lastPathComponent, "mirror.example.net")
+        XCTAssertEqual(firstDirectory.deletingLastPathComponent(), secondDirectory.deletingLastPathComponent())
     }
 
     // MARK: - Caching
@@ -201,8 +228,8 @@ final class CelesTrakClientTests: CelesTrakTestCase {
         XCTAssertEqual(queries, ["GROUP=stations", "CATNR=25544"])
     }
 
-    func testCatalogNumber_whenCelesTrakHasNoData_shouldCacheTheEmptyAnswer() async throws {
-        // Given: CelesTrak's plain-text answer for a query that matches nothing
+    func testCatalogNumber_whenServerHasNoData_shouldCacheTheEmptyAnswer() async throws {
+        // Given: the plain-text answer GP servers give for a query that matches nothing
         await server.respondAlways(.ok("No GP data found"))
         let client = makeClient()
 
@@ -278,7 +305,7 @@ final class CelesTrakClientTests: CelesTrakTestCase {
 
     func testCacheKey_forUnusualNames_shouldBeSafeFileNames() {
         // Given
-        let queries: [CelesTrakQuery] = [.name("NOAA/19 ü"), .name("../../etc"), .name("noaa 19")]
+        let queries: [ElementSetQuery] = [.name("NOAA/19 ü"), .name("../../etc"), .name("noaa 19")]
 
         // When
         let keys = queries.map(\.cacheKey)
@@ -287,6 +314,6 @@ final class CelesTrakClientTests: CelesTrakTestCase {
         for key in keys {
             XCTAssertNotNil(key.range(of: "^name-[0-9a-f]+$", options: .regularExpression), key)
         }
-        XCTAssertEqual(CelesTrakQuery.name("noaa 19").cacheKey, CelesTrakQuery.name(" NOAA 19 ").cacheKey)
+        XCTAssertEqual(ElementSetQuery.name("noaa 19").cacheKey, ElementSetQuery.name(" NOAA 19 ").cacheKey)
     }
 }

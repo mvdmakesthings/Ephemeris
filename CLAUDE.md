@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-The package has two library products: `Ephemeris` (the core, which never touches the network) and `EphemerisCatalog` (`CelesTrakClient`, which downloads and caches catalogs).
+The package has two library products: `Ephemeris` (the core, which never touches the network) and `EphemerisCatalog` (`ElementSetClient`, which downloads and caches catalogs).
 
 Ephemeris is a Swift framework for satellite tracking and orbital mechanics calculations. It provides tools to parse Two-Line Element (TLE) data and calculate orbital positions for Earth-orbiting satellites. The framework is dual-purpose: both a practical Swift library for iOS/macOS developers and an educational tool for learning orbital mechanics.
 
@@ -92,12 +92,12 @@ Sources/Ephemeris/
     └── Double+Angles.swift          # inRadians(), inDegrees()
 
 Sources/EphemerisCatalog/            # Separate product; the only code that uses the network
-├── CelesTrakClient.swift            # Actor: cache first, shared requests, pacing, backoff, rate-limit pause
-├── CelesTrakQuery.swift             # Query (group, CATNR, INTDES, NAME), validation, cache keys; CelesTrakGroup
-├── CelesTrakResponse.swift          # Response body → SatelliteCatalog ("No GP data found" → empty)
+├── ElementSetClient.swift            # Actor: cache first, shared requests, pacing, backoff, rate-limit pause
+├── ElementSetQuery.swift             # Query (group, CATNR, INTDES, NAME), validation, cache keys; SatelliteGroup
+├── ElementSetResponse.swift          # Response body → SatelliteCatalog ("No GP data found" → empty)
 ├── CatalogCache.swift               # Files on disk: response bodies, fetch times, rate-limit pause
 ├── CatalogTransport.swift           # HTTP seam (URLSessionTransport) and internal TimeSource
-├── CelesTrakError.swift
+├── CatalogFetchError.swift
 └── FetchedCatalog.swift             # Catalog + fetchedAt + source (network, cache, staleCache)
 ```
 
@@ -123,9 +123,9 @@ Sources/EphemerisCatalog/            # Separate product; the only code that uses
 
 ### Network Etiquette
 
-CelesTrak and Space-Track are free public services that block abusive clients. The core library never touches the network; only `EphemerisCatalog` does, through `CelesTrakClient`. For any code that fetches data (including documentation examples):
-- No test may make a network request. Use the files in `Tests/EphemerisTests/Resources/`, `SyntheticCatalog`, or `FakeCelesTrak` and `ManualClock` in `Tests/EphemerisCatalogTests/`.
-- Do not weaken `CelesTrakClient`'s safeguards (two-hour refresh floor, one-second spacing, 15-minute retry wait, persisted rate-limit pause, shared in-flight requests). Each has a test, and each was mutation-checked.
+Public element-set servers are free services that block abusive clients. The core library never touches the network; only `EphemerisCatalog` does, through `ElementSetClient`. The client has no built-in server: the app passes the endpoint, and `docs/catalogs.md` recommends one. Keep server names out of `EphemerisCatalog` code and identifiers. For any code that fetches data (including documentation examples):
+- No test may make a network request. Use the files in `Tests/EphemerisTests/Resources/`, `SyntheticCatalog`, or `FakeElementSetServer` and `ManualClock` in `Tests/EphemerisCatalogTests/`.
+- Do not weaken `ElementSetClient`'s safeguards (two-hour refresh floor, one-second spacing, 15-minute retry wait, persisted rate-limit pause, shared in-flight requests). Each has a test, and each was mutation-checked.
 - Download groups (`GROUP=active`), never one satellite per request.
 - Cache every download and check the cache age first; fetch the same group at most once per update cycle (two hours minimum).
 - Send a descriptive `User-Agent`, and follow Space-Track's published rate limits with a reused login session.
@@ -251,7 +251,7 @@ The `docs/` directory follows a "theory-first" approach: math foundations first,
 - `orbital-elements.md` - Keplerian elements theory + Swift code
 - `element-sets.md` - What TLE and OMM are, why both exist, and how they map to each other
 - `observer-geometry.md` - Coordinate transformations + pass prediction
-- `catalogs.md` - Whole-catalog loading and queries, visibility geometry, concurrency, `CelesTrakClient` and data etiquette
+- `catalogs.md` - Whole-catalog loading and queries, visibility geometry, concurrency, `ElementSetClient` and data etiquette
 - `visualization.md` - SwiftUI and MapKit integration
 - `inertial-frames.md`, `earth-fixed-frames.md`, `observer-frames.md`, `coordinate-transformations.md` - Frame math
 - `time-systems.md` - Julian Day, GMST, and time conversions

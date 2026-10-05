@@ -9,7 +9,7 @@ import Foundation
 
 /// A set of SGP4 mean orbital elements, whatever text format it arrived in.
 ///
-/// Space-Track and CelesTrak publish each satellite's orbit as a *General Perturbations
+/// Public catalogs publish each satellite's orbit as a *General Perturbations
 /// (GP) element set*: a handful of numbers fitted so that the SGP4 model reproduces the
 /// satellite's observed motion. The same numbers can be written in two formats:
 ///

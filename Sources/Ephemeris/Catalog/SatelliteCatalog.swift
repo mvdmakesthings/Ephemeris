@@ -33,7 +33,7 @@ public struct CatalogRejection: Sendable {
 
 /// A collection of satellites, ready to propagate together.
 ///
-/// Load it from a TLE document (such as a CelesTrak group file), an OMM document in any
+/// Load it from a TLE document (such as a downloaded group file), an OMM document in any
 /// encoding, or element sets you already have. Each satellite gets its own `SGP4`
 /// propagator, and whole-catalog questions ("where is everything?", "what is overhead?",
 /// "what passes over me tonight?") run concurrently across all CPU cores.
@@ -43,7 +43,7 @@ public struct CatalogRejection: Sendable {
 ///
 /// ## Example
 /// ```swift
-/// let catalog = try SatelliteCatalog(omm: celestrakJSON)
+/// let catalog = try SatelliteCatalog(omm: ommJSON)
 /// print("\(catalog.satellites.count) satellites, \(catalog.rejections.count) rejected")
 ///
 /// let overhead = await catalog.lookAngles(from: observer, at: Date(), minElevationDeg: 10)
@@ -80,7 +80,7 @@ public struct SatelliteCatalog: Sendable {
         self.init(elementSets: elementSets, gravity: gravity, earlierRejections: [])
     }
 
-    /// Builds a catalog from a document of TLEs, such as a CelesTrak group file.
+    /// Builds a catalog from a document of TLEs, such as a downloaded group file.
     ///
     /// - Parameters:
     ///   - tleText: Any number of TLEs, with or without name lines
@@ -121,7 +121,7 @@ public struct SatelliteCatalog: Sendable {
         self.init(elementSets: elementSets, gravity: gravity, earlierRejections: rejections)
     }
 
-    /// Builds a catalog from UTF-8 OMM data in any encoding, such as a CelesTrak download.
+    /// Builds a catalog from UTF-8 OMM data in any encoding, such as a GP server download.
     ///
     /// - Parameters:
     ///   - ommData: The document

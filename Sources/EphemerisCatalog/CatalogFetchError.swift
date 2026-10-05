@@ -1,17 +1,17 @@
 //
-//  CelesTrakError.swift
+//  CatalogFetchError.swift
 //  EphemerisCatalog
 //
 
 import Foundation
 
-/// Why a CelesTrak request could not produce a catalog.
-public enum CelesTrakError: Error, Equatable, Sendable {
+/// Why a request to an element-set server could not produce a catalog.
+public enum CatalogFetchError: Error, Equatable, Sendable {
 
     /// The query was rejected before sending (bad catalog number, designator or name)
     case invalidQuery(String)
 
-    /// CelesTrak refused the request because of request volume (HTTP 403 or 429).
+    /// The server refused the request because of request volume (HTTP 403 or 429).
     /// Every request is paused until the given time, including after an app relaunch.
     case rateLimited(until: Date)
 

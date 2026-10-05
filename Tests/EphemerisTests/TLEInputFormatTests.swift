@@ -31,7 +31,7 @@ final class TLEInputFormatTests: XCTestCase {
 
     func testInputNormalization_withTrailingNewlineAndBlankLines_shouldParse() throws {
         // Given
-        // CelesTrak downloads end with a newline; pasted text often has blank lines
+        // Downloaded files end with a newline; pasted text often has blank lines
         let tleString = """
 
             ISS (ZARYA)

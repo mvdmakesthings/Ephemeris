@@ -51,13 +51,13 @@ extension OMMParsingError: LocalizedError {
 ///   (SGP4). An OMM names them, along with the producer and creation date.
 ///
 /// OMM is defined by CCSDS 502.0-B ("Orbit Data Messages"), the international standard
-/// space agencies use to exchange orbit data. Space-Track and CelesTrak publish every
-/// satellite in it, and CelesTrak recommends it for new software.
+/// space agencies use to exchange orbit data. The public catalogs publish every satellite in
+/// it, and it is the recommended format for new software.
 ///
 /// ## Same Data, Different Encodings
 /// An OMM is a set of named keywords. The standard allows several encodings, and this type
 /// reads all of them:
-/// - **JSON**: CelesTrak's and Space-Track's most popular format (an array of objects)
+/// - **JSON**: the most popular format from public GP servers (an array of objects)
 /// - **XML**: the CCSDS NDM/XML schema
 /// - **KVN**: CCSDS "keyword = value" text
 /// - **CSV**: one header row of keywords, one row per satellite
@@ -160,7 +160,7 @@ public struct OrbitMeanElementsMessage: MeanElementSet, Hashable, Codable, Senda
     ///
     /// Keywords are the CCSDS names (`EPOCH`, `MEAN_MOTION`, ...). Metadata that is absent
     /// takes the values SGP4 element sets always use (EARTH, TEME, UTC, SGP4), as in
-    /// CelesTrak's JSON and CSV, which omit them.
+    /// JSON and CSV from public GP servers, which omit them.
     ///
     /// - Parameter fields: Keyword → value text
     /// - Throws: `OMMParsingError` if a required keyword is missing or unreadable, or the

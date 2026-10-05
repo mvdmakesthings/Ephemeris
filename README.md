@@ -32,7 +32,7 @@ A Swift framework for satellite tracking and orbital mechanics calculations. Eph
 - 👁️ **Observer-Based Tracking**: Calculate azimuth, elevation, range, and range rate from any location on Earth
 - 🔭 **Pass Prediction**: Predict satellite passes with AOS, maximum elevation, and LOS times
 - 🗂️ **Whole Catalogs**: Load thousands of satellites from a TLE or OMM document and ask what is overhead, where everything is, or what passes over you, using every CPU core
-- ⬇️ **CelesTrak Downloads** (`EphemerisCatalog`): Fetch groups or single satellites with no account, with a disk cache, shared requests, pacing and backoff so your app stays a good citizen
+- ⬇️ **Catalog Downloads** (`EphemerisCatalog`): Fetch groups or single satellites from any GP data server, with a disk cache, shared requests, pacing and backoff so your app stays a good citizen
 - 📐 **Orbital Elements**: Support for all standard Keplerian orbital elements:
   - Semi-major axis
   - Eccentricity
@@ -72,7 +72,7 @@ targets: [
         name: "YourTarget",
         dependencies: [
             .product(name: "Ephemeris", package: "Ephemeris"),
-            // Optional: download and cache catalogs from CelesTrak
+            // Optional: download and cache catalogs from a GP data server
             .product(name: "EphemerisCatalog", package: "Ephemeris")
         ]
     )
@@ -80,7 +80,8 @@ targets: [
 ```
 
 `Ephemeris` is the core library and never touches the network. `EphemerisCatalog` adds
-`CelesTrakClient`, which downloads element sets with caching and rate limits built in.
+`ElementSetClient`, which downloads element sets from a GP endpoint you choose, with caching
+and rate limits built in.
 
 Or in Xcode:
 
@@ -209,12 +210,13 @@ for i in 0..<60 {
 ### Multiple Satellites
 
 For a handful of satellites, build one `SGP4` each. For a whole catalog (the 10,000+
-active satellites CelesTrak publishes), use `SatelliteCatalog`, which loads a TLE or OMM
+active satellites in the public catalog), use `SatelliteCatalog`, which loads a TLE or OMM
 document, skips bad entries, and runs queries on every CPU core:
 
 ```swift
 // Download (or load from cache) every amateur radio satellite
-let client = CelesTrakClient(appIdentifier: "MyTracker/1.0")   // import EphemerisCatalog
+let endpoint = URL(string: "https://celestrak.org/NORAD/elements/gp.php")!   // recommended; see docs/catalogs.md
+let client = ElementSetClient(endpoint: endpoint, appIdentifier: "MyTracker/1.0")   // import EphemerisCatalog
 let catalog = try await client.catalog(for: .group(.amateur)).catalog
 print("Loaded \(catalog.satellites.count), rejected \(catalog.rejections.count)")
 
@@ -453,7 +455,7 @@ Ephemeris documentation is designed to teach orbital mechanics through practical
 - **`Topocentric`**: Contains azimuth, elevation, range, and range rate for observer-relative coordinates
 - **`PassWindow`**: Describes a satellite pass with AOS, culmination (maximum elevation), and LOS events
 - **`SatelliteCatalog`**: Many satellites loaded from a TLE or OMM document, with lookups and concurrent `positions(at:)`, `lookAngles(from:at:)` and `passes(for:from:to:)` queries
-- **`CelesTrakClient`** (`EphemerisCatalog`): Downloads catalogs from CelesTrak with caching, pacing and backoff
+- **`ElementSetClient`** (`EphemerisCatalog`): Downloads catalogs from the GP endpoint you choose, with caching, pacing and backoff
 - **`CatalogSatellite`**: One catalog entry: its element set, `SGP4` propagator, orbit regime and element-set age
 - **`CoordinateTransforms`**: Utility functions for converting between coordinate systems (ECI, ECEF, ENU)
 
@@ -464,7 +466,7 @@ Element sets (as TLE or OMM) can be obtained from:
 - [Space-Track.org](https://www.space-track.org/) - Official source (free registration required)
 - [N2YO.com](https://www.n2yo.com/) - Real-time tracking and TLE data
 
-These are free public services. `CelesTrakClient` caches, paces and backs off for you; if
+These are free public services. `ElementSetClient` caches, paces and backs off for you; if
 you write your own downloader, fetch whole groups, cache what you download, and don't fetch
 the same group more than once every couple of hours.
 See [Getting Catalog Data Responsibly](./docs/catalogs.md#getting-catalog-data-responsibly).
@@ -473,7 +475,7 @@ See [Getting Catalog Data Responsibly](./docs/catalogs.md#getting-catalog-data-r
 
 **TLE Format**: Accepts both the three-line (name + data) and bare two-line forms, with any line endings. 2-digit epoch years follow the NORAD convention (57-99 → 1957-1999, 00-56 → 2000-2056), and Alpha-5 catalog numbers (e.g. `A0001` = 100001) are supported.
 
-**OMM Format**: `OrbitMeanElementsMessage.parse(_:)` reads CelesTrak and Space-Track OMM data in JSON, XML, KVN or CSV and detects the encoding. An OMM carries the same SGP4 elements as a TLE but has no catalog-number limit, a full-precision epoch, and states its frame and model. Both conform to `MeanElementSet`, so `SGP4(elements:)` accepts either. See [Element Sets](./docs/element-sets.md).
+**OMM Format**: `OrbitMeanElementsMessage.parse(_:)` reads OMM data from public GP servers in JSON, XML, KVN or CSV and detects the encoding. An OMM carries the same SGP4 elements as a TLE but has no catalog-number limit, a full-precision epoch, and states its frame and model. Both conform to `MeanElementSet`, so `SGP4(elements:)` accepts either. See [Element Sets](./docs/element-sets.md).
 
 **Accuracy**: With `SGP4`, expect about 1 km of error at the TLE epoch, growing by roughly 1-3 km per day for low Earth orbit. TLE age is the main error source, so refresh TLEs every day or two for antenna pointing.
 

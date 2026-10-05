@@ -243,7 +243,7 @@ public struct TwoLineElement: MeanElementSet, Hashable, Codable, Sendable {
 // MARK: - Documents With Many Element Sets
 
 extension TwoLineElement {
-    /// Parses every element set in a document of many TLEs, such as a CelesTrak group file.
+    /// Parses every element set in a document of many TLEs, such as a downloaded group file.
     ///
     /// Each element set is parsed independently, so one malformed entry does not stop the
     /// rest. Name lines are optional: a non-data line directly before a `1 ` line is taken as

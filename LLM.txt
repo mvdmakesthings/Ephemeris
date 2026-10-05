@@ -29,8 +29,8 @@ Sources/Ephemeris/
 └── Utilities/     PhysicalConstants, type aliases, angle conversion
 
 Sources/EphemerisCatalog/   (separate product, the only networking code)
-    CelesTrakClient (actor), CelesTrakQuery, CelesTrakGroup, FetchedCatalog, CelesTrakError,
-    CatalogTransport / URLSessionTransport, internal CatalogCache and CelesTrakResponse
+    ElementSetClient (actor), ElementSetQuery, SatelliteGroup, FetchedCatalog, CatalogFetchError,
+    CatalogTransport / URLSessionTransport, internal CatalogCache and ElementSetResponse
 ```
 
 ### Core Types
@@ -42,7 +42,7 @@ Sources/EphemerisCatalog/   (separate product, the only networking code)
 - **`SGP4`**: The propagator for TLE data. A port of Vallado's `sgp4unit.cpp`, including SDP4 deep-space terms. Output frame is TEME.
 - **`KeplerianOrbit`**: Two-body propagator for teaching. Can be built from a TLE or from chosen elements.
 - **`SatelliteCatalog`**: Many satellites from a TLE or OMM document. Bad entries go in `rejections` instead of failing the load; duplicates keep the newest epoch. Async queries `stateVectors(at:)`, `positions(at:)`, `lookAngles(from:at:)` and `passes(for:from:to:)` run on all cores and return results identical to a serial loop.
-- **`CelesTrakClient`** (`EphemerisCatalog`): Downloads from CelesTrak's GP API (OMM JSON, no account). Cache first with a refresh floor of two hours, shared in-flight requests, single satellites answered from cached groups, cached "not found", one-second spacing, 15-minute retry wait, two-hour persisted pause on 403/429, stale copy on failure.
+- **`ElementSetClient`** (`EphemerisCatalog`): Downloads from a GP data server whose endpoint the app supplies (OMM JSON; `docs/catalogs.md` recommends a free public endpoint). Cache first with a refresh floor of two hours, shared in-flight requests, single satellites answered from cached groups, cached "not found", one-second spacing, 15-minute retry wait, two-hour persisted pause on 403/429, stale copy on failure.
 - **`CatalogSatellite`**: One catalog entry with its element set, `SGP4`, `regime`, `age(at:)` and `canRise(forLatitudeDeg:minElevationDeg:)`, a conservative visibility test used to skip satellites that can never rise.
 - **`Observer`**, **`Topocentric`**, **`GeodeticPosition`**, **`PassWindow`**, **`GroundTrackPoint`**, **`SkyTrackPoint`**: immutable, `Sendable`, `Hashable`, `Codable` value types.
 - **`CoordinateTransforms`** (caseless enum): geodetic ↔ ECEF, ECI → ECEF (position and state), ECEF → ENU, ENU → azimuth/elevation/range, refraction.
@@ -59,7 +59,7 @@ All observer and tracking features are `Propagator` extensions, so a new propaga
 All public types are immutable structs or enums and are `Sendable`, so whole-catalog propagation can use Swift concurrency safely. `SGP4` is stateless: its deep-space integrator restarts from epoch on each call (results are identical to the caching reference).
 
 ### No network access
-The core `Ephemeris` library never downloads data; callers pass in text or `Data`. All networking lives in `EphemerisCatalog`, whose `CelesTrakClient` enforces caching and rate limits. Tests never touch the network: `EphemerisCatalogTests` uses `FakeCelesTrak` and `ManualClock`.
+The core `Ephemeris` library never downloads data; callers pass in text or `Data`. All networking lives in `EphemerisCatalog`, whose `ElementSetClient` enforces caching and rate limits. Tests never touch the network: `EphemerisCatalogTests` uses `FakeElementSetServer` and `ManualClock`.
 
 ### Errors
 - `TLEParsingError`: malformed text, with field name and value
@@ -86,7 +86,7 @@ XCTest (`swift test`). Test names follow `test[Feature]_[Scenario]_[ExpectedBeha
 - `KeplerianOrbitTests`: published examples plus conservation of energy and angular momentum
 - `TopocentricTests`: range rate against the numerical derivative of range
 - `SatelliteCatalogTests`: catalog queries against per-satellite propagation, and a brute-force check that `canRise` never skips a satellite that rises
-- `CelesTrakClientTests`, `CelesTrakClientFailureTests`: caching, request sharing, pacing, backoff and rate-limit pauses against a fake server and manual clock
+- `ElementSetClientTests`, `ElementSetClientFailureTests`: caching, request sharing, pacing, backoff and rate-limit pauses against a fake server and manual clock
 
 ## Known Limitations
 

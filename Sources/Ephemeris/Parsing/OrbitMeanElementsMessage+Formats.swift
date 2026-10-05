@@ -16,7 +16,7 @@ extension OrbitMeanElementsMessage {
 
     /// The text encodings an OMM can arrive in.
     public enum Format: String, CaseIterable, Sendable {
-        /// JSON array (or single object) of keyword → value, as served by CelesTrak and Space-Track
+        /// JSON array (or single object) of keyword → value, as served by public GP servers
         case json
         /// CCSDS NDM/XML
         case xml
@@ -38,7 +38,7 @@ extension OrbitMeanElementsMessage {
     ///
     /// ## Example
     /// ```swift
-    /// let (data, _) = try await URLSession.shared.data(from: celestrakURL)  // FORMAT=JSON
+    /// let (data, _) = try await URLSession.shared.data(from: gpURL)  // FORMAT=JSON
     /// let satellites = try OrbitMeanElementsMessage.parse(data)
     /// ```
     public static func parse(_ data: Data, format: Format? = nil) throws -> [OrbitMeanElementsMessage] {
@@ -136,7 +136,7 @@ extension OrbitMeanElementsMessage {
         }
     }
 
-    /// CelesTrak sends numbers as JSON numbers; Space-Track sends every value as a string.
+    /// Some servers send numbers as JSON numbers; others send every value as a string.
     /// Both are accepted, as an array of records or a single record.
     private static func jsonRecords(_ text: String) throws -> [[String: String]] {
         let data = Data(text.utf8)

@@ -3,7 +3,7 @@
 //  EphemerisTests
 //
 //  A deterministic, realistic-looking satellite catalog for tests and benchmarks, so no
-//  test ever needs to download data from CelesTrak or Space-Track.
+//  test ever needs to download data from a public server.
 //
 
 import Foundation

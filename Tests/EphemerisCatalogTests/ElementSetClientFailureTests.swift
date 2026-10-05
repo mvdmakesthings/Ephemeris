@@ -1,15 +1,15 @@
 //
-//  CelesTrakClientFailureTests.swift
+//  ElementSetClientFailureTests.swift
 //  EphemerisCatalogTests
 //
 //  Failed requests, rate limits and invalid queries. The point of these tests is that a
-//  failing app never turns into a stream of requests to CelesTrak.
+//  failing app never turns into a stream of requests to the server.
 //
 
 import XCTest
 @testable import EphemerisCatalog
 
-final class CelesTrakClientFailureTests: CelesTrakTestCase {
+final class ElementSetClientFailureTests: ElementSetClientTestCase {
 
     // MARK: - Failed Requests
 
@@ -100,7 +100,7 @@ final class CelesTrakClientFailureTests: CelesTrakTestCase {
     }
 
     func testCatalog_withUnreadableResponse_shouldReportInvalidResponse() async {
-        // Given: something other than CelesTrak answered, such as a captive Wi-Fi portal
+        // Given: something other than the server answered, such as a captive Wi-Fi portal
         await server.respondAlways(.ok("<html><body>Please sign in</body></html>"))
         let client = makeClient()
 
@@ -185,7 +185,7 @@ final class CelesTrakClientFailureTests: CelesTrakTestCase {
     func testCatalog_withInvalidQueries_shouldThrowWithoutSendingRequests() async {
         // Given
         let client = makeClient()
-        let invalid: [CelesTrakQuery] = [
+        let invalid: [ElementSetQuery] = [
             .catalogNumber(0),
             .catalogNumber(1_000_000_000),
             .internationalDesignator("98067"),
@@ -201,7 +201,7 @@ final class CelesTrakClientFailureTests: CelesTrakTestCase {
             do {
                 _ = try await client.catalog(for: query)
                 XCTFail("\(query) should have been rejected")
-            } catch CelesTrakError.invalidQuery {
+            } catch CatalogFetchError.invalidQuery {
                 // expected
             } catch {
                 XCTFail("\(query) threw \(error)")
@@ -213,8 +213,8 @@ final class CelesTrakClientFailureTests: CelesTrakTestCase {
         XCTAssertEqual(requestCount, 0)
     }
 
-    func testCatalog_whenCelesTrakSaysInvalidQuery_shouldThrowInvalidQuery() async {
-        // Given: a group name CelesTrak doesn't know
+    func testCatalog_whenServerSaysInvalidQuery_shouldThrowInvalidQuery() async {
+        // Given: a group name the server doesn't know
         await server.respondAlways(.ok("Invalid query: \"GROUP=not-a-group\""))
         let client = makeClient()
 
@@ -224,8 +224,8 @@ final class CelesTrakClientFailureTests: CelesTrakTestCase {
         }
     }
 
-    func testCatalog_whenCelesTrakSaysInvalidQueryWithCachedCopy_shouldStillThrow() async throws {
-        // Given: a cached answer, then CelesTrak stops recognizing the query (a retired group)
+    func testCatalog_whenServerSaysInvalidQueryWithCachedCopy_shouldStillThrow() async throws {
+        // Given: a cached answer, then the server stops recognizing the query (a retired group)
         await server.respondAlways(.ok(Fixtures.document(Fixtures.iss)))
         let client = makeClient()
         _ = try await client.catalog(for: .group("retired-group"))
