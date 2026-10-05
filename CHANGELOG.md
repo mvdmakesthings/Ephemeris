@@ -27,6 +27,23 @@ It is a breaking release: see **Migrating from 1.x** below.
 - `SGP4` refuses SGP4-XP element sets (ephemeris type 4) with
   `SGP4Error.unsupportedEphemerisType` instead of producing wrong positions.
 - `TwoLineElement.classification`, `.ephemerisType` and `.elementSetNumber`.
+- `SatelliteCatalog`: loads thousands of satellites from a TLE document, an OMM document
+  (any encoding) or parsed element sets. Bad entries are collected in `rejections` with a
+  reason instead of failing the load, and when a satellite appears twice the newest epoch
+  wins. Lookup by catalog number, international designator or name; `filter(_:)` and
+  `excludingStale(olderThan:at:)`.
+- Concurrent whole-catalog queries: `stateVectors(at:)`, `positions(at:)`,
+  `lookAngles(from:at:minElevationDeg:)` and `passes(for:from:to:minElevationDeg:stepSeconds:)`,
+  returning `SatelliteState`, `SatellitePosition`, `SatelliteLookAngles` and `SatellitePass`.
+  Results are identical to a serial loop and in a stable order.
+- `CatalogSatellite` with `regime` (`OrbitRegime`), perigee and apogee radius, `age(at:)`, and
+  `canRise(forLatitudeDeg:minElevationDeg:)`, a conservative geometric test that lets
+  catalog queries skip satellites that can never rise for an observer.
+- `CatalogRejection` describing why an element set was left out of a catalog.
+- `TwoLineElement.parseEach(_:)` and `OrbitMeanElementsMessage.parseEach(_:format:)` parse a
+  multi-satellite document and return one result per entry.
+- `docs/catalogs.md`: whole-catalog guide, including the visibility geometry and how to
+  fetch catalog data without overloading CelesTrak or Space-Track.
 - `docs/element-sets.md`: a guide to what element sets are and how TLE and OMM compare.
 - `GravityModel` with `.wgs72`, `.wgs72old` and `.wgs84`.
 - `SGP4Error` for decay and invalid-element conditions, with the reference error codes.
@@ -64,8 +81,10 @@ It is a breaking release: see **Migrating from 1.x** below.
 ### Changed
 - 2-digit TLE epoch years use the fixed NORAD convention (57-99 → 1957-1999,
   00-56 → 2000-2056) instead of a ±50-year window relative to the current date.
-- Source layout: `Coordinates/`, `Observation/`, `Parsing/`, `Propagation/`, `Time/`,
-  `Tracking/`, `Utilities/`.
+- Source layout: `Catalog/`, `Coordinates/`, `Observation/`, `Parsing/`, `Propagation/`,
+  `Time/`, `Tracking/`, `Utilities/`.
+- Pass prediction and sky tracks compute the observer's Earth-fixed position and local axes
+  once per search instead of at every sample (about 10% faster, identical results).
 
 ### Removed
 - `Orbitable` protocol (one conforming type, no generic consumers).

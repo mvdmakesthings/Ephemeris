@@ -84,21 +84,13 @@ extension Propagator {
     ///
     /// - Note: Reference: Vallado, "Fundamentals of Astrodynamics and Applications", Section 4.4
     public func topocentric(at date: Date, for observer: Observer, applyRefraction: Bool = false) throws -> Topocentric {
+        try topocentric(at: date, from: ObserverFrame(observer), applyRefraction: applyRefraction)
+    }
+
+    /// Look angles using an observer frame built once by the caller, for loops over time.
+    func topocentric(at date: Date, from frame: ObserverFrame, applyRefraction: Bool = false) throws -> Topocentric {
+        // Propagate, then rotate the inertial state into the Earth-fixed frame by GMST
         let satellite = CoordinateTransforms.eciToECEF(try stateVector(at: date), gmst: date.greenwichMeanSiderealTime)
-        let station = observer.geodeticPosition
-
-        let enu = CoordinateTransforms.ecefToENU(satellite.position, observer: station)
-        let (azimuth, elevation, range) = CoordinateTransforms.enuToAzEl(enu)
-
-        // Range rate: Earth-relative velocity projected onto the line of sight
-        let lineOfSight = satellite.position - CoordinateTransforms.geodeticToECEF(station)
-        let rangeRate = lineOfSight.dot(satellite.velocity) / range
-
-        return Topocentric(
-            azimuthDeg: azimuth,
-            elevationDeg: applyRefraction ? CoordinateTransforms.apparentElevation(fromTrueElevationDeg: elevation) : elevation,
-            rangeKm: range,
-            rangeRateKmPerSec: rangeRate
-        )
+        return frame.topocentric(of: satellite, applyRefraction: applyRefraction)
     }
 }

@@ -124,8 +124,10 @@ extension Propagator {
         minElevationDeg: Degrees = 0,
         stepSeconds: Double = 30
     ) throws -> [PassWindow] {
+        // The observer's position and local axes never change, so compute them once
+        let frame = ObserverFrame(observer)
         let times = sampleTimes(from: start, to: end, stepSeconds: stepSeconds)
-        let elevations = try times.map { try elevation(at: $0, for: observer) }
+        let elevations = try times.map { try elevation(at: $0, for: frame) }
         let isUp: (Int) -> Bool = { elevations[$0] >= minElevationDeg }
 
         var passes: [PassWindow] = []
@@ -138,25 +140,25 @@ extension Propagator {
             if !isUp(previous) && isUp(index) {
                 // Rising through the minimum elevation
                 riseTime = try crossingTime(between: times[previous], and: times[index],
-                                            for: observer, elevationDeg: minElevationDeg)
+                                            for: frame, elevationDeg: minElevationDeg)
             } else if isUp(previous) && !isUp(index), let rise = riseTime {
                 // Setting through the minimum elevation
                 let set = try crossingTime(between: times[previous], and: times[index],
-                                           for: observer, elevationDeg: minElevationDeg)
-                passes.append(try makePass(from: rise, to: set, for: observer,
+                                           for: frame, elevationDeg: minElevationDeg)
+                passes.append(try makePass(from: rise, to: set, for: frame,
                                            beginsBeforeSearch: risesBeforeSearch, endsAfterSearch: false))
                 riseTime = nil
                 risesBeforeSearch = false
             } else if index >= 2, !isUp(index), !isUp(previous),
                       elevations[previous] >= elevations[previous - 1], elevations[previous] >= elevations[index] {
                 // A sampled peak below the minimum: a short pass may hide between samples
-                let peak = try culmination(between: times[previous - 1], and: times[index], for: observer)
+                let peak = try culmination(between: times[previous - 1], and: times[index], for: frame)
                 if peak.elevationDeg >= minElevationDeg {
                     let rise = try crossingTime(between: times[previous - 1], and: peak.time,
-                                                for: observer, elevationDeg: minElevationDeg)
+                                                for: frame, elevationDeg: minElevationDeg)
                     let set = try crossingTime(between: peak.time, and: times[index],
-                                               for: observer, elevationDeg: minElevationDeg)
-                    passes.append(try makePass(from: rise, to: set, for: observer,
+                                               for: frame, elevationDeg: minElevationDeg)
+                    passes.append(try makePass(from: rise, to: set, for: frame,
                                                beginsBeforeSearch: false, endsAfterSearch: false))
                 }
             }
@@ -164,7 +166,7 @@ extension Propagator {
 
         // Still up when the window closes
         if let rise = riseTime, let last = times.last {
-            passes.append(try makePass(from: rise, to: last, for: observer,
+            passes.append(try makePass(from: rise, to: last, for: frame,
                                        beginsBeforeSearch: risesBeforeSearch, endsAfterSearch: true))
         }
         return passes
@@ -175,15 +177,15 @@ extension Propagator {
 
 extension Propagator {
     /// Geometric elevation of the satellite from the observer.
-    private func elevation(at time: Date, for observer: Observer) throws -> Degrees {
-        try topocentric(at: time, for: observer).elevationDeg
+    private func elevation(at time: Date, for observer: ObserverFrame) throws -> Degrees {
+        try topocentric(at: time, from: observer).elevationDeg
     }
 
     /// Builds a pass with its culmination and the look angles at each event.
-    private func makePass(from rise: Date, to set: Date, for observer: Observer,
+    private func makePass(from rise: Date, to set: Date, for observer: ObserverFrame,
                           beginsBeforeSearch: Bool, endsAfterSearch: Bool) throws -> PassWindow {
-        let aos = try topocentric(at: rise, for: observer)
-        let los = try topocentric(at: set, for: observer)
+        let aos = try topocentric(at: rise, from: observer)
+        let los = try topocentric(at: set, from: observer)
         return PassWindow(
             aos: PassWindow.Event(time: rise, azimuthDeg: aos.azimuthDeg, elevationDeg: aos.elevationDeg),
             culmination: try culmination(between: rise, and: set, for: observer),
@@ -195,7 +197,7 @@ extension Propagator {
 
     /// Bisection for the time elevation crosses a value, given that it is on opposite
     /// sides of that value at the two ends of the interval. Accurate to 0.1 s.
-    private func crossingTime(between start: Date, and end: Date, for observer: Observer,
+    private func crossingTime(between start: Date, and end: Date, for observer: ObserverFrame,
                               elevationDeg target: Degrees) throws -> Date {
         let tolerance: TimeInterval = 0.1
         var low = start
@@ -216,7 +218,7 @@ extension Propagator {
     /// Golden-section search for the highest elevation in an interval, accurate to 0.1 s.
     ///
     /// Assumes a single peak in the interval, which holds within one pass.
-    private func culmination(between start: Date, and end: Date, for observer: Observer) throws -> PassWindow.Event {
+    private func culmination(between start: Date, and end: Date, for observer: ObserverFrame) throws -> PassWindow.Event {
         let tolerance: TimeInterval = 0.1
         let invPhi = (sqrt(5.0) - 1) / 2   // 1/φ ≈ 0.618
 
@@ -244,7 +246,7 @@ extension Propagator {
         }
 
         let peakTime = low.addingTimeInterval(high.timeIntervalSince(low) / 2)
-        let peak = try topocentric(at: peakTime, for: observer)
+        let peak = try topocentric(at: peakTime, from: observer)
         return PassWindow.Event(time: peakTime, azimuthDeg: peak.azimuthDeg, elevationDeg: peak.elevationDeg)
     }
 }

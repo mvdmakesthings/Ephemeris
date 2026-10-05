@@ -54,8 +54,9 @@ extension Propagator {
     /// - Throws: Any error thrown by the propagator
     public func skyTrack(for observer: Observer, from start: Date, to end: Date,
                          stepSeconds: Double = 60, applyRefraction: Bool = false) throws -> [SkyTrackPoint] {
-        try sampleTimes(from: start, to: end, stepSeconds: stepSeconds).map { time in
-            SkyTrackPoint(time: time, topocentric: try topocentric(at: time, for: observer, applyRefraction: applyRefraction))
+        let frame = ObserverFrame(observer)
+        return try sampleTimes(from: start, to: end, stepSeconds: stepSeconds).map { time in
+            SkyTrackPoint(time: time, topocentric: try topocentric(at: time, from: frame, applyRefraction: applyRefraction))
         }
     }
 }

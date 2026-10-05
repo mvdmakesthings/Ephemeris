@@ -31,6 +31,7 @@ A Swift framework for satellite tracking and orbital mechanics calculations. Eph
 - 🌍 **Position Tracking**: Compute latitude, longitude, and altitude for satellites at any given time
 - 👁️ **Observer-Based Tracking**: Calculate azimuth, elevation, range, and range rate from any location on Earth
 - 🔭 **Pass Prediction**: Predict satellite passes with AOS, maximum elevation, and LOS times
+- 🗂️ **Whole Catalogs**: Load thousands of satellites from a TLE or OMM document and ask what is overhead, where everything is, or what passes over you, using every CPU core
 - 📐 **Orbital Elements**: Support for all standard Keplerian orbital elements:
   - Semi-major axis
   - Eccentricity
@@ -199,29 +200,29 @@ for i in 0..<60 {
 
 ### Multiple Satellites
 
-```swift
-// Track multiple satellites
-let satellites = [
-    ("ISS", issTLEString),
-    ("GOES-16", goes16TLEString),
-    ("GPS BIIF-1", gpsTLEString)
-]
+For a handful of satellites, build one `SGP4` each. For a whole catalog (the 10,000+
+active satellites CelesTrak publishes), use `SatelliteCatalog`, which loads a TLE or OMM
+document, skips bad entries, and runs queries on every CPU core:
 
-for (name, tleString) in satellites {
-    do {
-        let tle = try TwoLineElement(from: tleString)
-        let sgp4 = try SGP4(tle: tle)
-        let position = try sgp4.calculatePosition(at: Date())
-        
-        print("\(name):")
-        print("  Position: \(position.latitudeDeg)°, \(position.longitudeDeg)°")
-        print("  Altitude: \(position.altitudeKm) km")
-        print()
-    } catch {
-        print("Error processing \(name): \(error)")
-    }
+```swift
+// One document with many element sets, such as a cached CelesTrak group file
+let catalog = SatelliteCatalog(tleText: tleDocument)
+print("Loaded \(catalog.satellites.count), rejected \(catalog.rejections.count)")
+
+// What is above 10° right now? (highest first)
+let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
+let overhead = await catalog.lookAngles(from: observer, at: Date(), minElevationDeg: 10)
+for item in overhead {
+    print(item.satellite.name, item.topocentric.azimuthDeg, item.topocentric.elevationDeg)
 }
+
+// Every pass in the next hour, in order of rise time
+let now = Date()
+let passes = await catalog.passes(for: observer, from: now, to: now.addingTimeInterval(3600))
 ```
+
+See [Working With Whole Catalogs](./docs/catalogs.md) for the details, including how to
+download catalog data without overloading the public servers.
 
 ### Error Handling
 
@@ -410,8 +411,9 @@ Ephemeris documentation is designed to teach orbital mechanics through practical
 1. **[Orbital Elements](./docs/orbital-elements.md)** - The six Keplerian elements with math and Swift
 2. **[Element Sets: TLE and OMM](./docs/element-sets.md)** - What a published orbit is, and why OMM is replacing the TLE
 3. **[Observer Geometry](./docs/observer-geometry.md)** - Coordinate transformations and pass prediction
-4. **[Visualization](./docs/visualization.md)** - Ground tracks, sky tracks, and iOS integration
-5. **[Coordinate Transformations](./docs/coordinate-transformations.md)** - Deep dive into ECI, ECEF, and transformations
+4. **[Working With Whole Catalogs](./docs/catalogs.md)** - Thousands of satellites at once, visibility geometry, and fetching data responsibly
+5. **[Visualization](./docs/visualization.md)** - Ground tracks, sky tracks, and iOS integration
+6. **[Coordinate Transformations](./docs/coordinate-transformations.md)** - Deep dive into ECI, ECEF, and transformations
 
 #### 🔍 Reference: "I need specific information"
 - **[LLM.txt](./LLM.txt)** - Project context for AI tools
@@ -422,6 +424,7 @@ Ephemeris documentation is designed to teach orbital mechanics through practical
 - **[Orbital Elements](./docs/orbital-elements.md)** - Keplerian elements, TLE format, Kepler's equation, accuracy considerations
 - **[Element Sets: TLE and OMM](./docs/element-sets.md)** - TLE and OMM formats compared, field by field, and how to load each
 - **[Observer Geometry](./docs/observer-geometry.md)** - Coordinate transformations, topocentric calculations, pass prediction algorithms
+- **[Working With Whole Catalogs](./docs/catalogs.md)** - Catalog loading and queries, which satellites can ever rise, concurrency, performance, and data etiquette
 - **[Visualization](./docs/visualization.md)** - Ground tracks, sky tracks, SwiftUI Charts, and MapKit integration
 
 **Practical Guides** (Code-focused):
@@ -440,6 +443,8 @@ Ephemeris documentation is designed to teach orbital mechanics through practical
 - **`Observer`**: Represents an Earth-based observer location (latitude, longitude, altitude)
 - **`Topocentric`**: Contains azimuth, elevation, range, and range rate for observer-relative coordinates
 - **`PassWindow`**: Describes a satellite pass with AOS, culmination (maximum elevation), and LOS events
+- **`SatelliteCatalog`**: Many satellites loaded from a TLE or OMM document, with lookups and concurrent `positions(at:)`, `lookAngles(from:at:)` and `passes(for:from:to:)` queries
+- **`CatalogSatellite`**: One catalog entry: its element set, `SGP4` propagator, orbit regime and element-set age
 - **`CoordinateTransforms`**: Utility functions for converting between coordinate systems (ECI, ECEF, ENU)
 
 ### Where to Get Orbit Data
@@ -448,6 +453,10 @@ Element sets (as TLE or OMM) can be obtained from:
 - [CelesTrak](https://celestrak.org/NORAD/elements/) - Free, updated frequently. Add `&FORMAT=JSON` to a GP query for OMM
 - [Space-Track.org](https://www.space-track.org/) - Official source (free registration required)
 - [N2YO.com](https://www.n2yo.com/) - Real-time tracking and TLE data
+
+These are free public services. Download whole groups rather than single satellites, cache
+what you download, and don't fetch the same group more than once every couple of hours.
+See [Getting Catalog Data Responsibly](./docs/catalogs.md#getting-catalog-data-responsibly).
 
 ### Key Concepts
 

@@ -56,6 +56,28 @@ extension OrbitMeanElementsMessage {
     /// - Returns: One message per satellite, in document order
     /// - Throws: `OMMParsingError` if the document cannot be read or a record is invalid
     public static func parse(_ text: String, format: Format? = nil) throws -> [OrbitMeanElementsMessage] {
+        return try records(in: text, format: format).map { try OrbitMeanElementsMessage(fields: $0) }
+    }
+
+    /// Parses each OMM record in a document independently, so one invalid record does not
+    /// stop the rest. Use this for large catalogs.
+    ///
+    /// - Parameters:
+    ///   - text: The document
+    ///   - format: The encoding, or `nil` to detect it from the content
+    /// - Returns: One result per record, in document order
+    /// - Throws: `OMMParsingError` only if the document as a whole cannot be read
+    public static func parseEach(_ text: String, format: Format? = nil) throws
+        -> [Result<OrbitMeanElementsMessage, OMMParsingError>] {
+        return try records(in: text, format: format).map { fields in
+            Result { try OrbitMeanElementsMessage(fields: fields) }.mapError { error in
+                error as? OMMParsingError ?? .invalidFormat(error.localizedDescription)
+            }
+        }
+    }
+
+    /// Splits a document into keyword → value records using the right reader.
+    private static func records(in text: String, format: Format?) throws -> [[String: String]] {
         let records: [[String: String]]
         switch format ?? detectFormat(text) {
         case .json: records = try jsonRecords(text)
@@ -66,7 +88,7 @@ extension OrbitMeanElementsMessage {
         guard !records.isEmpty else {
             throw OMMParsingError.invalidFormat("no OMM records found")
         }
-        return try records.map { try OrbitMeanElementsMessage(fields: $0) }
+        return records
     }
 
     /// Guesses the encoding from the first meaningful characters of the document.

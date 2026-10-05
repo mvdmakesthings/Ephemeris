@@ -240,6 +240,65 @@ public struct TwoLineElement: MeanElementSet, Hashable, Codable, Sendable {
     }
 }
 
+// MARK: - Documents With Many Element Sets
+
+extension TwoLineElement {
+    /// Parses every element set in a document of many TLEs, such as a CelesTrak group file.
+    ///
+    /// Each element set is parsed independently, so one malformed entry does not stop the
+    /// rest. Name lines are optional: a non-data line directly before a `1 ` line is taken as
+    /// that satellite's name.
+    ///
+    /// ```
+    /// ISS (ZARYA)
+    /// 1 25544U ...
+    /// 2 25544 ...
+    /// NOAA 19
+    /// 1 33591U ...
+    /// 2 33591 ...
+    /// ```
+    ///
+    /// - Parameter text: The document
+    /// - Returns: One result per element set, in document order
+    public static func parseEach(_ text: String) -> [Result<TwoLineElement, TLEParsingError>] {
+        let lines = text
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        var results: [Result<TwoLineElement, TLEParsingError>] = []
+        var pendingName: String?
+        var index = 0
+        while index < lines.count {
+            let line = lines[index]
+            if line.hasPrefix("1 ") {
+                guard index + 1 < lines.count, lines[index + 1].hasPrefix("2 ") else {
+                    // Line 1 without its line 2: report it and move on
+                    results.append(.failure(.missingLine(expected: 2, actual: 1)))
+                    pendingName = nil
+                    index += 1
+                    continue
+                }
+                let setText = [pendingName, line, lines[index + 1]].compactMap { $0 }.joined(separator: "\n")
+                results.append(Result { try TwoLineElement(from: setText) }.mapError { error in
+                    error as? TLEParsingError ?? .invalidFormat(error.localizedDescription)
+                })
+                pendingName = nil
+                index += 2
+            } else if line.hasPrefix("2 ") {
+                // Line 2 without a preceding line 1
+                results.append(.failure(.missingLine(expected: 2, actual: 1)))
+                pendingName = nil
+                index += 1
+            } else {
+                pendingName = line
+                index += 1
+            }
+        }
+        return results
+    }
+}
+
 // MARK: - Field Conventions
 
 extension TwoLineElement {

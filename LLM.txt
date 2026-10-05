@@ -19,6 +19,7 @@
 
 ```
 Sources/Ephemeris/
+├── Catalog/       SatelliteCatalog, CatalogSatellite, OrbitRegime (+ concurrent queries)
 ├── Coordinates/   CoordinateTransforms, GeodeticPosition, Vector3D
 ├── Observation/   Observer, Topocentric (+ Propagator.topocentric)
 ├── Parsing/       MeanElementSet, TwoLineElement, OrbitMeanElementsMessage (OMM)
@@ -36,6 +37,8 @@ Sources/Ephemeris/
 - **`Propagator`** (protocol): requires only `stateVector(at:)`. Extensions provide `calculatePosition(at:)`, `topocentric(at:for:applyRefraction:)`, `predictPasses(...)`, `groundTrack(...)`, `skyTrack(...)`.
 - **`SGP4`**: The propagator for TLE data. A port of Vallado's `sgp4unit.cpp`, including SDP4 deep-space terms. Output frame is TEME.
 - **`KeplerianOrbit`**: Two-body propagator for teaching. Can be built from a TLE or from chosen elements.
+- **`SatelliteCatalog`**: Many satellites from a TLE or OMM document. Bad entries go in `rejections` instead of failing the load; duplicates keep the newest epoch. Async queries `stateVectors(at:)`, `positions(at:)`, `lookAngles(from:at:)` and `passes(for:from:to:)` run on all cores and return results identical to a serial loop.
+- **`CatalogSatellite`**: One catalog entry with its element set, `SGP4`, `regime`, `age(at:)` and `canRise(forLatitudeDeg:minElevationDeg:)`, a conservative visibility test used to skip satellites that can never rise.
 - **`Observer`**, **`Topocentric`**, **`GeodeticPosition`**, **`PassWindow`**, **`GroundTrackPoint`**, **`SkyTrackPoint`**: immutable, `Sendable`, `Hashable`, `Codable` value types.
 - **`CoordinateTransforms`** (caseless enum): geodetic ↔ ECEF, ECI → ECEF (position and state), ECEF → ENU, ENU → azimuth/elevation/range, refraction.
 
@@ -49,6 +52,9 @@ All observer and tracking features are `Propagator` extensions, so a new propaga
 
 ### Value types everywhere
 All public types are immutable structs or enums and are `Sendable`, so whole-catalog propagation can use Swift concurrency safely. `SGP4` is stateless: its deep-space integrator restarts from epoch on each call (results are identical to the caching reference).
+
+### No network access
+The library never downloads data; callers pass in text or `Data`. Tests never touch the network. Code that fetches from CelesTrak or Space-Track must download groups, cache, and fetch each group at most once per update cycle (see `docs/catalogs.md`).
 
 ### Errors
 - `TLEParsingError`: malformed text, with field name and value
@@ -65,6 +71,7 @@ All public types are immutable structs or enums and are `Sendable`, so whole-cat
 | ECEF → geodetic | `CoordinateTransforms.ecefToGeodetic` | Fixed-point iteration | Vallado Alg. 12 |
 | Refraction | `CoordinateTransforms.apparentElevation` | Sæmundsson | Meeus Eq. 16.4 |
 | Pass events | `Propagator.predictPasses` | Sampling, bisection (0.1 s), golden-section | (none) |
+| Can a satellite rise? | `CatalogSatellite.canRise` | \|φ\| ≤ i + λ, λ = arccos(R cos ε / (R + h)) − ε at apogee | Wertz, SMAD 5.2 |
 
 ## Testing
 
@@ -73,6 +80,7 @@ XCTest (`swift test`). Test names follow `test[Feature]_[Scenario]_[ExpectedBeha
 - `EndToEndCrossCheckTests`, `PassPredictionTests`: agreement with Skyfield
 - `KeplerianOrbitTests`: published examples plus conservation of energy and angular momentum
 - `TopocentricTests`: range rate against the numerical derivative of range
+- `SatelliteCatalogTests`: catalog queries against per-satellite propagation, and a brute-force check that `canRise` never skips a satellite that rises
 
 ## Known Limitations
 

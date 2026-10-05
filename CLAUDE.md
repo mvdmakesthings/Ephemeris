@@ -52,12 +52,17 @@ swiftlint lint --strict
 
 ```
 Sources/Ephemeris/
+├── Catalog/
+│   ├── CatalogSatellite.swift       # One entry: elements, SGP4, regime, canRise visibility test
+│   ├── SatelliteCatalog.swift       # Loading, rejections, lookups, filters
+│   └── SatelliteCatalog+Propagation.swift  # Concurrent whole-catalog queries
 ├── Coordinates/
 │   ├── CoordinateTransforms.swift   # Geodetic ↔ ECEF, ECI → ECEF, ECEF → ENU → az/el, refraction
 │   ├── GeodeticPosition.swift       # WGS-84 latitude, longitude, altitude
 │   └── Vector3D.swift
 ├── Observation/
 │   ├── Observer.swift               # Ground station location
+│   ├── ObserverFrame.swift          # Internal: observer ECEF position + ENU axes, built once per search
 │   └── Topocentric.swift            # Look angles + Propagator.topocentric
 ├── Parsing/
 │   ├── MeanElementSet.swift         # Protocol shared by TLE and OMM
@@ -98,6 +103,20 @@ Sources/Ephemeris/
   - Output frame is TEME. Rotating by GMST gives Earth-fixed coordinates.
   - SGP4 velocity agrees with the derivative of its position to about 2 cm/s; this is a property of the model, not a bug.
 - **`KeplerianOrbit`**: Two-body Keplerian motion, kept for teaching. It ignores J2 and drag, so it is not suitable for tracking.
+
+### Whole Catalogs
+
+- **`SatelliteCatalog`** holds one `CatalogSatellite` (element set + `SGP4`) per catalog number. Bad entries never fail the load; they go in `rejections`. Duplicates keep the newest epoch.
+- Queries run through the internal `concurrentCompactMap`, which splits the catalog into a few chunks per core and reassembles results in chunk order. Results must stay identical to a serial loop; the tests compare them exactly.
+- `CatalogSatellite.canRise(forLatitudeDeg:minElevationDeg:)` lets queries skip satellites that can never rise. It must never return `false` for a satellite that can rise: keep every approximation on the side of returning `true`. `SatelliteCatalogTests` checks this by brute force.
+
+### Network Etiquette
+
+CelesTrak and Space-Track are free public services that block abusive clients. The core library never touches the network. For any code that does (including future fetching modules and documentation examples):
+- No test may make a network request. Use the files in `Tests/EphemerisTests/Resources/` or `SyntheticCatalog`.
+- Download groups (`GROUP=active`), never one satellite per request.
+- Cache every download and check the cache age first; fetch the same group at most once per update cycle (two hours minimum).
+- Send a descriptive `User-Agent`, and follow Space-Track's published rate limits with a reused login session.
 
 ### Coordinate Systems and Transformations
 
@@ -169,6 +188,7 @@ Follow the pattern: `test[Feature]_[Scenario]_[ExpectedBehavior]`
 
 ### Test Data and References
 
+- `SyntheticCatalog.swift` generates a deterministic, realistic catalog (seeded) for catalog tests and the opt-in benchmark (`EPHEMERIS_BENCHMARK=1 swift test -c release --filter CatalogBenchmarkTests`)
 - Shared TLEs live in `MockTLEs.swift` (ISS, NOAA, synthetic equatorial/polar/GEO); `MockTLEs.fixChecksum(for:)` repairs checksums for hand-built lines
 - Prefer independent references over self-consistency: published worked examples (Vallado), the SGP4 verification set in `Resources/`, python-sgp4, and Skyfield
 - When a test reveals a mismatch, find the cause before loosening a tolerance, and explain the tolerance in a comment
@@ -219,6 +239,7 @@ The `docs/` directory follows a "theory-first" approach: math foundations first,
 - `orbital-elements.md` - Keplerian elements theory + Swift code
 - `element-sets.md` - What TLE and OMM are, why both exist, and how they map to each other
 - `observer-geometry.md` - Coordinate transformations + pass prediction
+- `catalogs.md` - Whole-catalog loading and queries, visibility geometry, concurrency, data etiquette
 - `visualization.md` - SwiftUI and MapKit integration
 - `inertial-frames.md`, `earth-fixed-frames.md`, `observer-frames.md`, `coordinate-transformations.md` - Frame math
 - `time-systems.md` - Julian Day, GMST, and time conversions
