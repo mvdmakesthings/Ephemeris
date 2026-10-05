@@ -33,6 +33,9 @@ public enum SGP4Error: Error, Equatable, Sendable {
     case semiLatusRectumNegative(Double)
     /// Orbital radius dropped below one Earth radius: the satellite has decayed (code 6)
     case decayed(radiusEarthRadii: Double)
+    /// The elements were fitted with a different theory (ephemeris type 4 is SGP4-XP), so
+    /// standard SGP4 cannot propagate them (code 0: not a reference implementation error)
+    case unsupportedEphemerisType(Int)
 
     /// Error code used by the reference implementation
     public var code: Int {
@@ -42,6 +45,7 @@ public enum SGP4Error: Error, Equatable, Sendable {
         case .perturbedEccentricityOutOfRange: return 3
         case .semiLatusRectumNegative: return 4
         case .decayed: return 6
+        case .unsupportedEphemerisType: return 0
         }
     }
 }
@@ -59,6 +63,8 @@ extension SGP4Error: LocalizedError {
             return "SGP4: semi-latus rectum \(value) is negative"
         case .decayed(let radius):
             return "SGP4: orbit radius \(radius) Earth radii is below the surface; the satellite has decayed"
+        case .unsupportedEphemerisType(let type):
+            return "SGP4: ephemeris type \(type) elements need a different propagator (type 4 is SGP4-XP)"
         }
     }
 }
@@ -90,6 +96,8 @@ struct SGP4Elements: Sendable {
     var xlcof = 0.0, xmcof = 0.0, nodecf = 0.0
     /// Greenwich sidereal time at epoch (rad)
     var gsto = 0.0
+    /// Epoch as days since 1949 December 31 00:00 UT
+    var epochDaysSince1950 = 0.0
 
     // Deep-space terms (only used when isDeepSpace)
     var lunarSolar = SGP4LunarSolarTerms()
@@ -116,8 +124,8 @@ struct SGP4Elements: Sendable {
 ///
 /// ## Example
 /// ```swift
-/// let tle = try TwoLineElement(from: tleString)
-/// let sgp4 = try SGP4(tle: tle)
+/// let tle = try TwoLineElement(from: tleString)      // or an OrbitMeanElementsMessage
+/// let sgp4 = try SGP4(elements: tle)
 ///
 /// // Inertial (TEME) state 90 minutes after the TLE epoch
 /// let state = try sgp4.propagate(minutesSinceEpoch: 90)
@@ -167,38 +175,70 @@ public struct SGP4: Propagator, Sendable {
 
     // MARK: - Initialization
 
+    /// Creates an SGP4 propagator from any SGP4 element set: a TLE or an OMM.
+    ///
+    /// - Parameters:
+    ///   - elements: The mean elements to propagate (`TwoLineElement` or `OrbitMeanElementsMessage`)
+    ///   - gravity: Gravity constants (default `.wgs72`, which published elements are fitted with)
+    ///   - operationMode: `.improved` (default) or `.afspc` for legacy behavior
+    /// - Throws: `SGP4Error.unsupportedEphemerisType` for SGP4-XP elements, or another
+    ///           `SGP4Error` if the elements cannot be propagated even at epoch
+    public init(elements: some MeanElementSet, gravity: GravityModel = .wgs72,
+                operationMode: OperationMode = .improved) throws {
+        // SGP4-XP (ephemeris type 4) elements are fitted with a different model. Standard
+        // SGP4 would run without complaint but put the satellite in the wrong place.
+        guard elements.ephemerisType != 4 else {
+            throw SGP4Error.unsupportedEphemerisType(elements.ephemerisType)
+        }
+
+        // Minutes per day / radians per revolution: converts rev/day to rad/min
+        let xpdotp = 1440.0 / (2.0 * Double.pi)
+
+        // Days since 1949 December 31 00:00 UT, the time base SGP4 uses internally
+        let daysSince1950: Double
+        if let tle = elements as? TwoLineElement {
+            // Reproduce the reference implementation's epoch arithmetic exactly, so TLE
+            // results stay comparable with the published verification vectors
+            daysSince1950 = Self.referenceJulianDate(year: tle.epochYear, dayOfYear: tle.epochDayOfYear) - 2433281.5
+        } else {
+            // Counted directly from the Unix epoch (1949-12-31 is 7306 days before
+            // 1970-01-01), the same exact elapsed-time computation python-sgp4 uses for OMM
+            daysSince1950 = elements.epoch.timeIntervalSince1970 / PhysicalConstants.Time.secondsPerDay + 7306.0
+        }
+
+        self.epoch = elements.epoch
+        self.gravity = gravity
+        self.operationMode = operationMode
+
+        var rec = SGP4Elements(gravity: gravity)
+        rec.bstar = elements.bstarDragTerm
+        rec.ecco = elements.eccentricity
+        rec.argpo = elements.argumentOfPerigee * deg2rad
+        rec.inclo = elements.inclination * deg2rad
+        rec.mo = elements.meanAnomaly * deg2rad
+        rec.noKozai = elements.meanMotion / xpdotp
+        rec.nodeo = elements.rightAscensionOfAscendingNode * deg2rad
+
+        rec.epochDaysSince1950 = daysSince1950
+        self.elements = Self.sgp4init(rec, epoch: daysSince1950, mode: operationMode)
+
+        // The reference implementation propagates to epoch during initialization to
+        // catch element sets that are invalid from the start
+        _ = try propagate(minutesSinceEpoch: 0.0)
+    }
+
     /// Creates an SGP4 propagator from a parsed TLE.
+    ///
+    /// Equivalent to `init(elements:gravity:operationMode:)`; provided because it reads
+    /// naturally in the most common case.
     ///
     /// - Parameters:
     ///   - tle: The Two-Line Element set to propagate
     ///   - gravity: Gravity constants (default `.wgs72`, which TLEs are fitted with)
     ///   - operationMode: `.improved` (default) or `.afspc` for legacy behavior
-    /// - Throws: `SGP4Error` if the elements cannot be propagated even at epoch
+    /// - Throws: `SGP4Error` if the elements cannot be propagated
     public init(tle: TwoLineElement, gravity: GravityModel = .wgs72, operationMode: OperationMode = .improved) throws {
-        // Minutes per day / radians per revolution: converts rev/day to rad/min
-        let xpdotp = 1440.0 / (2.0 * Double.pi)
-
-        // Days since 1949 December 31 00:00 UT, the time base SGP4 uses internally
-        let daysSince1950 = Self.referenceJulianDate(year: tle.epochYear, dayOfYear: tle.epochDayOfYear) - 2433281.5
-
-        self.epoch = tle.epoch
-        self.gravity = gravity
-        self.operationMode = operationMode
-
-        var elements = SGP4Elements(gravity: gravity)
-        elements.bstar = tle.bstarDragTerm
-        elements.ecco = tle.eccentricity
-        elements.argpo = tle.argumentOfPerigee * deg2rad
-        elements.inclo = tle.inclination * deg2rad
-        elements.mo = tle.meanAnomaly * deg2rad
-        elements.noKozai = tle.meanMotion / xpdotp
-        elements.nodeo = tle.rightAscensionOfAscendingNode * deg2rad
-
-        self.elements = Self.sgp4init(elements, epoch: daysSince1950, mode: operationMode)
-
-        // The reference implementation propagates to epoch during initialization to
-        // catch element sets that are invalid from the start
-        _ = try propagate(minutesSinceEpoch: 0.0)
+        try self.init(elements: tle, gravity: gravity, operationMode: operationMode)
     }
 
     // MARK: - Propagation

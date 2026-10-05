@@ -397,6 +397,8 @@ TLE files provide **Mean Anomaly** instead of True Anomaly because:
 
 A **Two-Line Element (TLE)** is a compact, fixed-width data representation of a satellite's orbit used for propagation models like SGP4. It's composed of two lines (plus an optional title line) that contain all necessary orbital parameters.
 
+> **TLE or OMM?** The same elements are also published as an Orbit Mean-Elements Message (OMM), a standardized format with named fields and no catalog-number limit. [Element Sets: TLE and OMM](element-sets.md) compares them field by field.
+
 ### TLE Example: International Space Station
 
 ```
@@ -1084,14 +1086,13 @@ Orbital element diagrams in this document are sourced from Wikimedia Commons und
 **Learning Path:**
 - **Next**: [Observer Geometry](observer-geometry.md) - Coordinate transformations and pass prediction
 - [Visualization](visualization.md) - Ground tracks and sky tracks
-- [API Reference](api-reference.md) - Complete API documentation
 
 **Quick Start:**
 - [Getting Started Guide](getting-started.md) - Build your first satellite tracker
 - [README](../README.md) - Installation and usage examples
 
 **Reference:**
-- [Coordinate Systems](coordinate-systems.md) - Deep dive on ECI, ECEF, and transformations
+- [Coordinate Transformations](coordinate-transformations.md) - Deep dive on ECI, ECEF, and transformations
 
 ---
 

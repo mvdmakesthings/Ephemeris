@@ -55,11 +55,14 @@ extension TLEParsingError: LocalizedError {
 /// | Line | Columns | Field                                              |
 /// |------|---------|----------------------------------------------------|
 /// | 1    | 3-7     | Catalog number (Alpha-5 allowed)                   |
+/// | 1    | 8       | Classification (U = unclassified)                  |
 /// | 1    | 10-17   | International designator                           |
 /// | 1    | 19-32   | Epoch: 2-digit year, day of year with fraction     |
 /// | 1    | 34-43   | First derivative of mean motion ÷ 2                |
 /// | 1    | 45-52   | Second derivative of mean motion ÷ 6 (exponential) |
 /// | 1    | 54-61   | B* drag term (exponential)                         |
+/// | 1    | 63      | Ephemeris type (0 = SGP4)                          |
+/// | 1    | 65-68   | Element set number                                 |
 /// | 1, 2 | 69      | Modulo-10 checksum                                 |
 /// | 2    | 9-16    | Inclination (°)                                    |
 /// | 2    | 18-25   | Right ascension of the ascending node (°)          |
@@ -76,12 +79,17 @@ extension TLEParsingError: LocalizedError {
 /// let sgp4 = try SGP4(tle: tle)
 /// ```
 ///
+/// ## TLE or OMM?
+/// A TLE and an OMM (`OrbitMeanElementsMessage`) carry the same SGP4 elements. TLEs are
+/// compact and universal, but their 5-character catalog field cannot hold numbers above
+/// 339999 even with Alpha-5, and their 2-digit years end in 2056. Prefer OMM for new data.
+///
 /// ## Where to Get TLE Data
 /// - [CelesTrak](https://celestrak.org/NORAD/elements/)
 /// - [Space-Track.org](https://www.space-track.org/) (requires registration)
 ///
 /// - Note: Reference: https://celestrak.org/columns/v04n03/
-public struct TwoLineElement: Hashable, Codable, Sendable {
+public struct TwoLineElement: MeanElementSet, Hashable, Codable, Sendable {
 
     // MARK: - Identification
 
@@ -93,6 +101,12 @@ public struct TwoLineElement: Hashable, Codable, Sendable {
 
     /// International designator: launch year, launch number and piece (e.g. "98067A")
     public let internationalDesignator: String
+
+    /// Security classification: "U" (unclassified), "C" or "S"
+    public let classification: String
+
+    /// Running count of element sets published for this object (wraps at 9999)
+    public let elementSetNumber: Int
 
     // MARK: - Epoch
 
@@ -117,6 +131,9 @@ public struct TwoLineElement: Hashable, Codable, Sendable {
 
     /// B* drag term (1 / Earth radii). SGP4's measure of atmospheric drag.
     public let bstarDragTerm: Double
+
+    /// Theory the elements were fitted with: 0 for standard SGP4/SDP4, 4 for SGP4-XP
+    public let ephemerisType: Int
 
     // MARK: - Orbital Elements
 
@@ -196,6 +213,7 @@ public struct TwoLineElement: Hashable, Codable, Sendable {
             )
         }
         self.catalogNumber = catalogNumber
+        self.classification = line1.text(8...8)
         self.internationalDesignator = line1.text(10...17)
 
         self.epochYear = Self.parse2DigitYear(try line1.integer(19...20, field: "epochYear"))
@@ -205,6 +223,8 @@ public struct TwoLineElement: Hashable, Codable, Sendable {
         self.meanMotionFirstDerivative = try line1.decimal(34...43, field: "meanMotionFirstDerivative")
         self.meanMotionSecondDerivative = try line1.exponential(45...52, field: "meanMotionSecondDerivative")
         self.bstarDragTerm = try line1.exponential(54...61, field: "bstarDragTerm")
+        self.ephemerisType = try line1.integer(63...63, field: "ephemerisType")
+        self.elementSetNumber = try line1.integer(65...68, field: "elementSetNumber")
 
         // ---------------------------- Line 2 ----------------------------
         self.inclination = try line2.decimal(9...16, field: "inclination")

@@ -60,7 +60,10 @@ Sources/Ephemeris/
 │   ├── Observer.swift               # Ground station location
 │   └── Topocentric.swift            # Look angles + Propagator.topocentric
 ├── Parsing/
-│   └── TwoLineElement.swift         # TLE parser (byte/column based)
+│   ├── MeanElementSet.swift         # Protocol shared by TLE and OMM
+│   ├── TwoLineElement.swift         # TLE parser (byte/column based)
+│   ├── OrbitMeanElementsMessage.swift          # OMM fields and epoch parsing
+│   └── OrbitMeanElementsMessage+Formats.swift  # JSON, XML, KVN, CSV readers
 ├── Propagation/
 │   ├── Propagator.swift             # Protocol, StateVector, calculatePosition
 │   ├── KeplerianOrbit.swift         # Two-body propagator (teaching)
@@ -86,7 +89,8 @@ Sources/Ephemeris/
 
 ### Propagators: SGP4 and Two-Body
 
-- **`SGP4`** (`Propagation/SGP4*.swift`): A port of Vallado's `sgp4unit.cpp`. It is the correct model for TLE data and the default for real tracking.
+- **`SGP4`** (`Propagation/SGP4*.swift`): A port of Vallado's `sgp4unit.cpp`. It is the correct model for TLE and OMM data and the default for real tracking. It takes any `MeanElementSet`.
+  - For TLEs, the epoch goes through the reference `days2mdhms` + `jday` arithmetic; for OMM it is the exact elapsed time since 1949-12-31, as python-sgp4 does.
   - Internal variable names deliberately match the reference so code can be checked line by line. Do not rename them.
   - Keep operation order identical to the reference. `SGP4VerificationTests` compares against `tcppver.out` at a 1 mm tolerance, and the current max error is 0.12 mm.
   - The TLE epoch is converted with the reference `days2mdhms` + `jday` arithmetic on purpose (see `referenceJulianDate`).
@@ -213,6 +217,7 @@ The `docs/` directory follows a "theory-first" approach: math foundations first,
 
 - `getting-started.md` - Quick-start tutorial
 - `orbital-elements.md` - Keplerian elements theory + Swift code
+- `element-sets.md` - What TLE and OMM are, why both exist, and how they map to each other
 - `observer-geometry.md` - Coordinate transformations + pass prediction
 - `visualization.md` - SwiftUI and MapKit integration
 - `inertial-frames.md`, `earth-fixed-frames.md`, `observer-frames.md`, `coordinate-transformations.md` - Frame math

@@ -19,6 +19,15 @@ It is a breaking release: see **Migrating from 1.x** below.
   Verified against Vallado's 666-point test set (max error 0.12 mm).
 - `Propagator` protocol and `StateVector`. Position, look angles, pass prediction, ground
   tracks and sky tracks are written once and work with any propagator.
+- `OrbitMeanElementsMessage`: CCSDS Orbit Mean-Elements Message (OMM) support. Parses
+  JSON, XML, KVN and CSV as served by CelesTrak and Space-Track, with encoding detection.
+  OMM has no catalog-number limit, a microsecond epoch, and states its frame and model.
+- `MeanElementSet` protocol, adopted by `TwoLineElement` and `OrbitMeanElementsMessage`.
+  `SGP4(elements:)` and `KeplerianOrbit(elements:)` accept either format.
+- `SGP4` refuses SGP4-XP element sets (ephemeris type 4) with
+  `SGP4Error.unsupportedEphemerisType` instead of producing wrong positions.
+- `TwoLineElement.classification`, `.ephemerisType` and `.elementSetNumber`.
+- `docs/element-sets.md`: a guide to what element sets are and how TLE and OMM compare.
 - `GravityModel` with `.wgs72`, `.wgs72old` and `.wgs84`.
 - `SGP4Error` for decay and invalid-element conditions, with the reference error codes.
 - `KeplerianOrbit` can be created from orbital elements directly, and has

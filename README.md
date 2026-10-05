@@ -25,7 +25,7 @@ A Swift framework for satellite tracking and orbital mechanics calculations. Eph
 
 ## Features
 
-- 📡 **TLE Parsing**: Parse NORAD Two-Line Element (TLE) format satellite data
+- 📡 **TLE and OMM Parsing**: Read NORAD Two-Line Elements and CCSDS Orbit Mean-Elements Messages (JSON, XML, KVN, CSV), the modern format with no catalog-number limit
 - 🛰️ **SGP4/SDP4 Propagation**: Pure Swift port of the standard TLE propagator, including deep-space lunar-solar and resonance terms, verified against Vallado's published test vectors
 - 📘 **Two-Body Orbits**: A simple Keplerian propagator for learning the underlying math
 - 🌍 **Position Tracking**: Compute latitude, longitude, and altitude for satellites at any given time
@@ -404,34 +404,31 @@ Ephemeris documentation is designed to teach orbital mechanics through practical
 
 #### 🚀 Quick Start: "I want to build an app NOW"
 1. **[Getting Started Guide](./docs/getting-started.md)** - Build your first satellite tracker in 30 minutes
-2. **[API Reference](./docs/api-reference.md)** - Complete API documentation
-3. Jump to specific guides as needed
+2. Jump to specific guides as needed
 
 #### 🎓 Deep Dive: "I want to understand orbital mechanics"
 1. **[Orbital Elements](./docs/orbital-elements.md)** - The six Keplerian elements with math and Swift
-2. **[Observer Geometry](./docs/observer-geometry.md)** - Coordinate transformations and pass prediction
-3. **[Visualization](./docs/visualization.md)** - Ground tracks, sky tracks, and iOS integration
-4. **[Coordinate Systems](./docs/coordinate-systems.md)** - Deep dive into ECI, ECEF, and transformations
+2. **[Element Sets: TLE and OMM](./docs/element-sets.md)** - What a published orbit is, and why OMM is replacing the TLE
+3. **[Observer Geometry](./docs/observer-geometry.md)** - Coordinate transformations and pass prediction
+4. **[Visualization](./docs/visualization.md)** - Ground tracks, sky tracks, and iOS integration
+5. **[Coordinate Transformations](./docs/coordinate-transformations.md)** - Deep dive into ECI, ECEF, and transformations
 
 #### 🔍 Reference: "I need specific information"
-- **[API Reference](./docs/api-reference.md)** - All types, methods, and properties
-- **[Testing Guide](./docs/testing-guide.md)** - Testing patterns with XCTest
 - **[LLM.txt](./LLM.txt)** - Project context for AI tools
 
 ### 📖 Documentation Overview
 
 **Theory + Practice Documents** (Math → Swift implementation):
 - **[Orbital Elements](./docs/orbital-elements.md)** - Keplerian elements, TLE format, Kepler's equation, accuracy considerations
+- **[Element Sets: TLE and OMM](./docs/element-sets.md)** - TLE and OMM formats compared, field by field, and how to load each
 - **[Observer Geometry](./docs/observer-geometry.md)** - Coordinate transformations, topocentric calculations, pass prediction algorithms
 - **[Visualization](./docs/visualization.md)** - Ground tracks, sky tracks, SwiftUI Charts, and MapKit integration
 
 **Practical Guides** (Code-focused):
 - **[Getting Started](./docs/getting-started.md)** - Quick-start tutorial with complete examples
-- **[Testing Guide](./docs/testing-guide.md)** - Unit testing patterns for orbital mechanics
 
 **Reference**:
-- **[API Reference](./docs/api-reference.md)** - Complete API documentation
-- **[Coordinate Systems](./docs/coordinate-systems.md)** - Mathematical foundations of coordinate transformations
+- **[Coordinate Transformations](./docs/coordinate-transformations.md)** - Mathematical foundations of coordinate transformations
 
 ### Core Types
 
@@ -445,16 +442,18 @@ Ephemeris documentation is designed to teach orbital mechanics through practical
 - **`PassWindow`**: Describes a satellite pass with AOS, culmination (maximum elevation), and LOS events
 - **`CoordinateTransforms`**: Utility functions for converting between coordinate systems (ECI, ECEF, ENU)
 
-### Where to Get TLE Data
+### Where to Get Orbit Data
 
-TLE data for satellites can be obtained from:
-- [CelesTrak](https://celestrak.com/NORAD/elements/) - Free, updated frequently
+Element sets (as TLE or OMM) can be obtained from:
+- [CelesTrak](https://celestrak.org/NORAD/elements/) - Free, updated frequently. Add `&FORMAT=JSON` to a GP query for OMM
 - [Space-Track.org](https://www.space-track.org/) - Official source (free registration required)
 - [N2YO.com](https://www.n2yo.com/) - Real-time tracking and TLE data
 
 ### Key Concepts
 
-**TLE Format**: Accepts both the three-line (name + data) and bare two-line forms, with any line endings. 2-digit epoch years follow the NORAD convention (57–99 → 1957–1999, 00–56 → 2000–2056), and Alpha-5 catalog numbers (e.g. `A0001` = 100001) are supported.
+**TLE Format**: Accepts both the three-line (name + data) and bare two-line forms, with any line endings. 2-digit epoch years follow the NORAD convention (57-99 → 1957-1999, 00-56 → 2000-2056), and Alpha-5 catalog numbers (e.g. `A0001` = 100001) are supported.
+
+**OMM Format**: `OrbitMeanElementsMessage.parse(_:)` reads CelesTrak and Space-Track OMM data in JSON, XML, KVN or CSV and detects the encoding. An OMM carries the same SGP4 elements as a TLE but has no catalog-number limit, a full-precision epoch, and states its frame and model. Both conform to `MeanElementSet`, so `SGP4(elements:)` accepts either. See [Element Sets](./docs/element-sets.md).
 
 **Accuracy**: With `SGP4`, expect about 1 km of error at the TLE epoch, growing by roughly 1-3 km per day for low Earth orbit. TLE age is the main error source, so refresh TLEs every day or two for antenna pointing.
 

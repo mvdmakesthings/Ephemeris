@@ -611,11 +611,9 @@ try trackSatelliteInRealTime(propagator: sgp4, observer: observer, duration: 600
 
 **Practical Guides:**
 - [Getting Started](getting-started.md) - Quick-start tutorial
-- [API Reference](api-reference.md) - Complete API documentation
 
 **Deep Dives:**
-- [Coordinate Systems](coordinate-systems.md) - Mathematical foundations
-- [Testing Guide](testing-guide.md) - Testing observer geometry code
+- [Coordinate Transformations](coordinate-transformations.md) - Mathematical foundations
 
 ---
 

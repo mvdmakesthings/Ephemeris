@@ -132,21 +132,28 @@ public struct KeplerianOrbit: Propagator, Hashable, Codable, Sendable {
         self.epoch = epoch
     }
 
-    /// Creates an orbit from a TLE's elements, treating them as osculating Keplerian
-    /// elements.
+    /// Creates an orbit from a TLE's or OMM's elements, treating them as osculating
+    /// Keplerian elements.
     ///
-    /// The semi-major axis is derived from the TLE's mean motion with Kepler's third law.
+    /// The semi-major axis is derived from the mean motion with Kepler's third law.
+    ///
+    /// - Parameter elements: A parsed element set (`TwoLineElement` or `OrbitMeanElementsMessage`)
+    public init(elements: some MeanElementSet) {
+        self.semimajorAxis = Self.semimajorAxis(meanMotion: elements.meanMotion)
+        self.eccentricity = elements.eccentricity
+        self.inclination = elements.inclination
+        self.rightAscensionOfAscendingNode = elements.rightAscensionOfAscendingNode
+        self.argumentOfPerigee = elements.argumentOfPerigee
+        self.meanAnomaly = elements.meanAnomaly
+        self.meanMotion = elements.meanMotion
+        self.epoch = elements.epoch
+    }
+
+    /// Creates an orbit from a TLE's elements. Equivalent to `init(elements:)`.
     ///
     /// - Parameter tle: A parsed Two-Line Element set
     public init(tle: TwoLineElement) {
-        self.semimajorAxis = Self.semimajorAxis(meanMotion: tle.meanMotion)
-        self.eccentricity = tle.eccentricity
-        self.inclination = tle.inclination
-        self.rightAscensionOfAscendingNode = tle.rightAscensionOfAscendingNode
-        self.argumentOfPerigee = tle.argumentOfPerigee
-        self.meanAnomaly = tle.meanAnomaly
-        self.meanMotion = tle.meanMotion
-        self.epoch = tle.epoch
+        self.init(elements: tle)
     }
 
     // MARK: - Anomalies Over Time

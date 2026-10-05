@@ -21,7 +21,7 @@
 Sources/Ephemeris/
 ├── Coordinates/   CoordinateTransforms, GeodeticPosition, Vector3D
 ├── Observation/   Observer, Topocentric (+ Propagator.topocentric)
-├── Parsing/       TwoLineElement
+├── Parsing/       MeanElementSet, TwoLineElement, OrbitMeanElementsMessage (OMM)
 ├── Propagation/   Propagator, StateVector, KeplerianOrbit, SGP4 (+ deep space), GravityModel
 ├── Time/          Date.julianDate, Date.greenwichMeanSiderealTime
 ├── Tracking/      GroundTrack, SkyTrack, PassPrediction (+ Propagator extensions)
@@ -30,7 +30,9 @@ Sources/Ephemeris/
 
 ### Core Types
 
+- **`MeanElementSet`** (protocol): the SGP4 mean elements shared by TLE and OMM. `SGP4(elements:)` and `KeplerianOrbit(elements:)` accept any conforming type.
 - **`TwoLineElement`**: Parses and validates NORAD TLEs (2- or 3-line, any line endings, Alpha-5 catalog numbers, checksums). All fields public; epoch is a `Date`.
+- **`OrbitMeanElementsMessage`**: CCSDS OMM in JSON, XML, KVN or CSV (encoding detected). No catalog-number limit; states frame, time system and theory. SGP4-XP sets (ephemeris type 4) are parsed but refused by `SGP4`.
 - **`Propagator`** (protocol): requires only `stateVector(at:)`. Extensions provide `calculatePosition(at:)`, `topocentric(at:for:applyRefraction:)`, `predictPasses(...)`, `groundTrack(...)`, `skyTrack(...)`.
 - **`SGP4`**: The propagator for TLE data. A port of Vallado's `sgp4unit.cpp`, including SDP4 deep-space terms. Output frame is TEME.
 - **`KeplerianOrbit`**: Two-body propagator for teaching. Can be built from a TLE or from chosen elements.

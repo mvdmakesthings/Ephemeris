@@ -886,7 +886,6 @@ class GroundTrackCache {
 
 **Practical Guides:**
 - [Getting Started](getting-started.md) - Quick-start tutorial
-- [API Reference](api-reference.md) - Complete API documentation
 
 **iOS Development:**
 - [SwiftUI Charts Documentation](https://developer.apple.com/documentation/charts)

@@ -38,7 +38,7 @@ dependencies: [
 
 ## Step 2: Parse Your First TLE (5 minutes)
 
-TLE (Two-Line Element) data describes a satellite's orbit. Get fresh TLE data from [CelesTrak](https://celestrak.com/NORAD/elements/).
+TLE (Two-Line Element) data describes a satellite's orbit. Get fresh TLE data from [CelesTrak](https://celestrak.org/NORAD/elements/). The same data is also published as an OMM (Orbit Mean-Elements Message), the modern format with no catalog-number limit; Ephemeris reads both, and [Element Sets](element-sets.md) explains the difference.
 
 ### Create a Playground or Swift File
 
@@ -412,7 +412,7 @@ Now that you have working code, learn the orbital mechanics:
 
 1. **[Orbital Elements](orbital-elements.md)** - What do those TLE numbers mean?
 2. **[Observer Geometry](observer-geometry.md)** - How does pass prediction work?
-3. **[Coordinate Systems](coordinate-systems.md)** - Deep dive into transformations
+3. **[Coordinate Transformations](coordinate-transformations.md)** - Deep dive into transformations
 
 ### Production Checklist
 
@@ -455,7 +455,6 @@ Before shipping your app:
 - [N2YO.com](https://www.n2yo.com/) - Real-time tracking
 
 **Further Reading:**
-- [API Reference](api-reference.md) - Complete method documentation
 - [Orbital Elements](orbital-elements.md) - Theory behind the calculations
 - [Visualization](visualization.md) - Add charts and maps
 
