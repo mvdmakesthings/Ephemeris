@@ -10,9 +10,9 @@ import Foundation
 /// A satellite's position and velocity in an Earth-centered inertial frame.
 ///
 /// For `SGP4` the frame is TEME (True Equator, Mean Equinox of date), which is the frame
-/// TLEs are defined in. For the two-body `Orbit` propagator it is a generic ECI frame.
+/// TLEs are defined in. For the two-body `KeplerianOrbit` it is a generic ECI frame.
 /// Either way, rotating by Greenwich Mean Sidereal Time gives Earth-fixed coordinates.
-public struct StateVector: Equatable, Sendable {
+public struct StateVector: Hashable, Codable, Sendable {
 
     /// Position vector (km)
     public let position: Vector3D
@@ -39,7 +39,7 @@ public struct StateVector: Equatable, Sendable {
 ///
 /// ## Conforming Types
 /// - `SGP4`: The standard model for TLE data. Use this for real tracking.
-/// - `Orbit`: Two-body Keplerian motion. Simple and educational, but it ignores
+/// - `KeplerianOrbit`: Two-body Keplerian motion. Simple and educational, but it ignores
 ///   Earth's oblateness and drag, so it drifts quickly from reality.
 ///
 /// ## Example
@@ -66,31 +66,22 @@ extension Propagator {
     /// 2. Rotating into the Earth-fixed (ECEF) frame using Greenwich Mean Sidereal Time
     /// 3. Converting ECEF to WGS-84 geodetic latitude, longitude, and ellipsoidal height
     ///
-    /// - Parameter date: The date and time for which to calculate the position.
-    ///                   If `nil`, uses the current date and time.
+    /// - Parameter date: The date and time for which to calculate the position
     /// - Returns: A `GeodeticPosition` object containing latitude, longitude, and altitude
     /// - Throws: Any error thrown by the propagator
     ///
     /// ## Example
     /// ```swift
     /// let position = try propagator.calculatePosition(at: Date())
-    /// print("Satellite is at \(position.latitude)°N, \(position.longitude)°E")
-    /// print("Altitude: \(position.altitude) km")
+    /// print("Satellite is at \(position.latitudeDeg)°N, \(position.longitudeDeg)°E")
+    /// print("Altitude: \(position.altitudeKm) km")
     /// ```
     ///
     /// - Note: Latitude is geodetic (measured to the ellipsoid normal) and altitude is the
     ///         height above the WGS-84 ellipsoid, matching what GPS and maps report.
-    public func calculatePosition(at date: Date?) throws -> GeodeticPosition {
-        let date = date ?? Date()
-
-        // Satellite position in the inertial frame
-        let state = try stateVector(at: date)
-
-        // Rotate into the Earth-fixed frame using sidereal time
-        let gmst = Date.greenwichSideRealTime(from: date.julianDate)
-        let ecefPosition = CoordinateTransforms.eciToECEF(eciPosition: state.position, gmst: gmst)
-
-        // Convert to WGS-84 geodetic latitude, longitude, and height above the ellipsoid
-        return CoordinateTransforms.ecefToGeodetic(ecef: ecefPosition)
+    public func calculatePosition(at date: Date) throws -> GeodeticPosition {
+        let inertial = try stateVector(at: date).position
+        let earthFixed = CoordinateTransforms.eciToECEF(inertial, gmst: date.greenwichMeanSiderealTime)
+        return CoordinateTransforms.ecefToGeodetic(earthFixed)
     }
 }

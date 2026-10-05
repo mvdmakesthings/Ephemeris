@@ -59,10 +59,10 @@ final class EndToEndCrossCheckTests: XCTestCase {
             let position = try sgp4.calculatePosition(at: try date(expected.time))
 
             // Then
-            XCTAssertEqual(position.latitude, expected.latitude, accuracy: 1e-5, expected.time)
+            XCTAssertEqual(position.latitudeDeg, expected.latitude, accuracy: 1e-5, expected.time)
             // UT1 − UTC accounts for 0.00096° of longitude
-            XCTAssertEqual(position.longitude, expected.longitude, accuracy: 0.002, expected.time)
-            XCTAssertEqual(position.altitude, expected.heightKm, accuracy: 0.001, expected.time)
+            XCTAssertEqual(position.longitudeDeg, expected.longitude, accuracy: 0.002, expected.time)
+            XCTAssertEqual(position.altitudeKm, expected.heightKm, accuracy: 0.001, expected.time)
         }
     }
 

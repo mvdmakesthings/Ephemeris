@@ -8,44 +8,35 @@
 
 import Foundation
 
-/// Represents topocentric (observer-relative) coordinates of a satellite.
-///
-/// `Topocentric` describes a satellite's position as seen from a specific observer
-/// location on Earth. The coordinates use the horizontal coordinate system, which
-/// is intuitive for tracking and pointing antennas or telescopes.
+/// Where a satellite appears from an observer's location: the values an antenna needs.
 ///
 /// ## Coordinate System
-/// - **Azimuth**: Horizontal angle measured clockwise from north (0° = North, 90° = East, 180° = South, 270° = West)
-/// - **Elevation**: Vertical angle above the horizon (0° = horizon, 90° = zenith, negative = below horizon)
-/// - **Range**: Straight-line distance from observer to satellite in kilometers
-/// - **Range Rate**: Rate of change of range in km/s (positive = moving away, negative = approaching)
+/// - **Azimuth**: Clockwise from true north (0° = N, 90° = E, 180° = S, 270° = W)
+/// - **Elevation**: Above the horizon (0° = horizon, 90° = zenith, negative = below)
+/// - **Range**: Straight-line distance from observer to satellite
+/// - **Range rate**: How fast the range is changing (positive = receding, negative =
+///   approaching). Multiply by −f/c for the Doppler shift at frequency f.
 ///
 /// ## Example Usage
 /// ```swift
-/// let topo = try orbit.topocentric(at: Date(), for: observer)
+/// let topo = try sgp4.topocentric(at: Date(), for: observer)
 /// print("Az: \(topo.azimuthDeg)°, El: \(topo.elevationDeg)°")
 /// print("Range: \(topo.rangeKm) km, Rate: \(topo.rangeRateKmPerSec) km/s")
 /// ```
-///
-/// - Note: This type is frozen for ABI stability. New functionality will be added
-///         through extension methods rather than new stored properties.
-@frozen public struct Topocentric {
+public struct Topocentric: Hashable, Codable, Sendable {
+
     // MARK: - Properties
 
-    /// Azimuth angle in degrees (0-360).
-    /// Measured clockwise from true north: 0° = North, 90° = East, 180° = South, 270° = West.
-    public let azimuthDeg: Double
+    /// Azimuth in degrees clockwise from true north (0 to 360)
+    public let azimuthDeg: Degrees
 
-    /// Elevation angle in degrees (-90 to 90).
-    /// Angle above the horizon: 0° = horizon, 90° = zenith, negative = below horizon.
-    public let elevationDeg: Double
+    /// Elevation in degrees above the horizon (-90 to 90)
+    public let elevationDeg: Degrees
 
-    /// Slant range (distance) from observer to satellite in kilometers.
+    /// Distance from observer to satellite in kilometers
     public let rangeKm: Double
 
-    /// Range rate (rate of change of distance) in kilometers per second.
-    /// Positive values indicate the satellite is moving away from the observer,
-    /// negative values indicate the satellite is approaching.
+    /// Rate of change of range in km/s (positive = moving away)
     public let rangeRateKmPerSec: Double
 
     // MARK: - Initialization
@@ -53,11 +44,11 @@ import Foundation
     /// Creates topocentric coordinates.
     ///
     /// - Parameters:
-    ///   - azimuthDeg: Azimuth angle in degrees (0-360)
-    ///   - elevationDeg: Elevation angle in degrees (-90 to 90)
-    ///   - rangeKm: Distance in kilometers
-    ///   - rangeRateKmPerSec: Range rate in km/s
-    public init(azimuthDeg: Double, elevationDeg: Double, rangeKm: Double, rangeRateKmPerSec: Double) {
+    ///   - azimuthDeg: Azimuth in degrees clockwise from true north (0 to 360)
+    ///   - elevationDeg: Elevation in degrees above the horizon (-90 to 90)
+    ///   - rangeKm: Distance from observer to satellite in kilometers
+    ///   - rangeRateKmPerSec: Rate of change of range in km/s (positive = moving away)
+    public init(azimuthDeg: Degrees, elevationDeg: Degrees, rangeKm: Double, rangeRateKmPerSec: Double) {
         self.azimuthDeg = azimuthDeg
         self.elevationDeg = elevationDeg
         self.rangeKm = rangeKm
@@ -65,80 +56,47 @@ import Foundation
     }
 }
 
-// MARK: - Codable Conformance
-
-extension Topocentric: Codable {}
-
-// MARK: - Equatable Conformance
-
-extension Topocentric: Equatable {}
-
-// MARK: - Propagator Topocentric Calculation
+// MARK: - Propagator Look Angles
 
 extension Propagator {
-    /// Calculates topocentric (observer-relative) coordinates for the satellite.
-    ///
-    /// This method computes the satellite's position as seen from a specific observer
-    /// location on Earth, returning azimuth, elevation, range, and range rate.
+    /// Calculates where the satellite appears from an observer's location.
     ///
     /// - Parameters:
-    ///   - date: The date and time for the calculation
-    ///   - observer: The observer's location on Earth
-    ///   - applyRefraction: Whether to apply atmospheric refraction correction (default: false)
-    /// - Returns: Topocentric coordinates (azimuth, elevation, range, range rate)
+    ///   - date: The time of interest
+    ///   - observer: The observer's location
+    ///   - applyRefraction: Whether to report apparent (refracted) elevation instead of
+    ///     geometric elevation (default `false`)
+    /// - Returns: Azimuth, elevation, range and range rate
     /// - Throws: Any error thrown by the propagator
+    ///
+    /// ## Algorithm
+    /// 1. Propagate the inertial state vector and rotate it into ECEF using GMST
+    /// 2. Express the satellite's position relative to the observer in East-North-Up
+    /// 3. Convert ENU to azimuth, elevation and range
+    /// 4. Project the Earth-relative velocity onto the line of sight for range rate
     ///
     /// ## Example
     /// ```swift
     /// let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
-    /// let topo = try orbit.topocentric(at: Date(), for: observer)
+    /// let topo = try sgp4.topocentric(at: Date(), for: observer)
     /// print("Az: \(topo.azimuthDeg)°, El: \(topo.elevationDeg)°")
     /// ```
     ///
-    /// - Note: Coordinate transformations follow Vallado, "Fundamentals of Astrodynamics"
+    /// - Note: Reference: Vallado, "Fundamentals of Astrodynamics and Applications", Section 4.4
     public func topocentric(at date: Date, for observer: Observer, applyRefraction: Bool = false) throws -> Topocentric {
-        // Get Julian date and GMST
-        let julianDate = date.julianDate
-        let gmst = Date.greenwichSideRealTime(from: julianDate)
+        let satellite = CoordinateTransforms.eciToECEF(try stateVector(at: date), gmst: date.greenwichMeanSiderealTime)
+        let station = observer.geodeticPosition
 
-        // Calculate satellite position and velocity in ECI frame
-        let state = try stateVector(at: date)
-        let eciPosition = state.position
-        let eciVelocity = state.velocity
+        let enu = CoordinateTransforms.ecefToENU(satellite.position, observer: station)
+        let (azimuth, elevation, range) = CoordinateTransforms.enuToAzEl(enu)
 
-        // Transform satellite position and velocity to ECEF
-        let satECEF = CoordinateTransforms.eciToECEF(eciPosition: eciPosition, gmst: gmst)
-        let satVelECEF = CoordinateTransforms.eciVelocityToECEF(eciPosition: eciPosition, eciVelocity: eciVelocity, gmst: gmst)
-
-        // Calculate observer position in ECEF
-        let obsECEF = CoordinateTransforms.geodeticToECEF(
-            latitudeDeg: observer.latitudeDeg,
-            longitudeDeg: observer.longitudeDeg,
-            altitudeMeters: observer.altitudeMeters
-        )
-
-        // Transform to ENU (local observer frame)
-        let enu = CoordinateTransforms.ecefToENU(
-            ecefPosition: satECEF,
-            observerECEF: obsECEF,
-            observerLatDeg: observer.latitudeDeg,
-            observerLonDeg: observer.longitudeDeg
-        )
-
-        // Calculate azimuth, elevation, and range
-        let (azimuth, elevation, range) = CoordinateTransforms.enuToAzEl(enu: enu)
-
-        // Apply refraction correction if requested
-        let correctedElevation = applyRefraction ? CoordinateTransforms.applyRefraction(elevationDeg: elevation) : elevation
-
-        // Calculate range rate (rate of change of distance)
-        // Project velocity onto the line-of-sight vector
-        let relativePos = satECEF.subtract(obsECEF)
-        let rangeRate = relativePos.dot(satVelECEF) / range
+        // Range rate: Earth-relative velocity projected onto the line of sight
+        let lineOfSight = satellite.position - CoordinateTransforms.geodeticToECEF(station)
+        let rangeRate = lineOfSight.dot(satellite.velocity) / range
 
         return Topocentric(
             azimuthDeg: azimuth,
-            elevationDeg: correctedElevation,
+            elevationDeg: applyRefraction ? CoordinateTransforms.apparentElevation(fromTrueElevationDeg: elevation) : elevation,
             rangeKm: range,
             rangeRateKmPerSec: rangeRate
         )

@@ -25,16 +25,19 @@ final class TwoLineElementTests: XCTestCase {
         XCTAssertEqual(ISSTLE.catalogNumber, 25544)
         XCTAssertEqual(ISSTLE.internationalDesignator, "98067A")
         XCTAssertEqual(ISSTLE.epochYear, 2020)
-        XCTAssertEqual(ISSTLE.epochDay, 97.82871450)
-        XCTAssertEqual(ISSTLE.elementSetEpochUTC, "20097.82871450")
+        XCTAssertEqual(ISSTLE.epochDayOfYear, 97.82871450)
+        // Day 97 of 2020 is April 6; 0.82871450 day = 19:53:20.9328 UTC
+        let expectedEpoch = try XCTUnwrap(ISO8601DateFormatter().date(from: "2020-04-06T19:53:20Z")).addingTimeInterval(0.9328)
+        XCTAssertEqual(ISSTLE.epoch.timeIntervalSince1970, expectedEpoch.timeIntervalSince1970, accuracy: 1e-4)
 
         // Then - Line 2
         XCTAssertEqual(ISSTLE.inclination, 51.6465)
-        XCTAssertEqual(ISSTLE.rightAscension, 341.5807)
+        XCTAssertEqual(ISSTLE.rightAscensionOfAscendingNode, 341.5807)
         XCTAssertEqual(ISSTLE.eccentricity, 0.0003880)
         XCTAssertEqual(ISSTLE.meanAnomaly, 26.1197)
         XCTAssertEqual(ISSTLE.meanMotion, 15.48685836)
-        XCTAssertEqual(ISSTLE.revolutionsAtEpoch, 22095)
+        XCTAssertEqual(ISSTLE.argumentOfPerigee, 94.4223)
+        XCTAssertEqual(ISSTLE.revolutionNumberAtEpoch, 22095)
     }
 
     // MARK: - Year Parsing Tests
@@ -473,7 +476,7 @@ final class TwoLineElementTests: XCTestCase {
         // Then
         XCTAssertEqual(tle.catalogNumber, 1)
         XCTAssertEqual(tle.inclination, 0.0)
-        XCTAssertEqual(tle.rightAscension, 0.0)
+        XCTAssertEqual(tle.rightAscensionOfAscendingNode, 0.0)
         XCTAssertEqual(tle.eccentricity, 0.0)
         XCTAssertEqual(tle.argumentOfPerigee, 0.0)
         XCTAssertEqual(tle.meanAnomaly, 0.0)

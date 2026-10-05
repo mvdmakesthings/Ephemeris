@@ -7,36 +7,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - Unreleased
+
+2.0 makes the library accurate enough for antenna pointing and cleans up the public API.
+It is a breaking release: see **Migrating from 1.x** below.
+
 ### Added
 - `SGP4`: pure Swift SGP4/SDP4 propagator for TLE data, ported from Vallado's reference
   implementation, including deep-space lunar-solar periodics and 12h/24h resonance.
   Supports WGS-72 (default), WGS-72 old and WGS-84 constants, and AFSPC or improved mode.
   Verified against Vallado's 666-point test set (max error 0.12 mm).
-- `Propagator` protocol and `StateVector`. Position, topocentric look angles, pass
-  prediction, ground tracks and sky tracks now work with any propagator.
+- `Propagator` protocol and `StateVector`. Position, look angles, pass prediction, ground
+  tracks and sky tracks are written once and work with any propagator.
 - `GravityModel` with `.wgs72`, `.wgs72old` and `.wgs84`.
 - `SGP4Error` for decay and invalid-element conditions, with the reference error codes.
-- `Vector3D` is now `Equatable` and `Sendable`.
-- `CoordinateTransforms.ecefToGeodetic(ecef:)` for WGS-84 ECEF to geodetic conversion
-- TLE parser accepts the bare two-line form, `\r\n` and `\r` line endings, blank lines,
-  trailing newlines, and Space-Track's `0 `-prefixed name line
-- Alpha-5 catalog number support (e.g. `A0001` = 100001)
-- TLE parser rejects element sets whose line 1 and line 2 catalog numbers differ
+- `KeplerianOrbit` can be created from orbital elements directly, and has
+  `meanAnomaly(at:)` and `trueAnomaly(at:)`.
+- `PassWindow` reports passes already in progress at the start or still in progress at the
+  end of the search window (`beginsBeforeSearch`, `endsAfterSearch`), and finds passes
+  shorter than the sampling step. AOS and LOS are refined to 0.1 s.
+- `GroundTrackPoint` carries altitude; `SkyTrackPoint` carries range and range rate.
+- `CoordinateTransforms.ecefToGeodetic(_:)` and `eciToECEF(_:gmst:)` for state vectors.
+- `Vector3D` operators `+`, `-`, `*` (scalar).
+- TLE parser accepts the bare two-line form, any line endings, blank lines, and
+  Space-Track's `0 `-prefixed name line; supports Alpha-5 catalog numbers; rejects element
+  sets whose two lines have different catalog numbers.
+- All public value types are `Sendable`, `Hashable` and `Codable`.
 
 ### Fixed
 - Greenwich Mean Sidereal Time ignored the time of day, so Earth-fixed positions, azimuth,
-  elevation, and pass times were only correct near 0h UTC. Now uses the full IAU-82 GMST
-  expression (verified against Vallado Example 3-5).
+  elevation, and pass times were only correct near 0h UTC. Now uses the full IAU-82
+  expression (verified against Vallado Example 3-5), computed from the timestamp in seconds
+  for sub-microsecond precision.
 - Kepler's equation solver could stop after one Newton iteration when the step was negative,
   causing errors of several degrees for high-eccentricity orbits.
-- `calculatePosition(at:)` returned geocentric latitude and altitude above a sphere. It now
-  returns WGS-84 geodetic latitude and height above the ellipsoid, consistent with
-  `Observer` and the topocentric calculations (up to ~0.19° / ~21 km difference).
+- True anomaly used `sin E` and `cos E` where the formula needs `sin(E/2)` and `cos(E/2)`,
+  so two-body positions were placed at the wrong point along the orbit (for a circular
+  orbit the anomaly came out doubled).
+- Position returned geocentric latitude and altitude above a sphere. It now returns WGS-84
+  geodetic latitude and height above the ellipsoid (up to ~0.19° / ~21 km difference).
+- Atmospheric refraction applied Bennett's formula, which expects apparent elevation, to the
+  true elevation. Now uses Sæmundsson's formula for true elevation (about 0.08° at the
+  horizon).
+- Earth's rotation rate constant was mistyped (7.2921076e-5 instead of the WGS-84
+  7.292115e-5 rad/s).
 
 ### Changed
-- 2-digit TLE epoch years now use the fixed NORAD convention (57–99 → 1957–1999,
-  00–56 → 2000–2056) instead of a ±50-year window relative to the current date, so the
-  same TLE always parses to the same epoch.
+- 2-digit TLE epoch years use the fixed NORAD convention (57-99 → 1957-1999,
+  00-56 → 2000-2056) instead of a ±50-year window relative to the current date.
+- Source layout: `Coordinates/`, `Observation/`, `Parsing/`, `Propagation/`, `Time/`,
+  `Tracking/`, `Utilities/`.
+
+### Removed
+- `Orbitable` protocol (one conforming type, no generic consumers).
+- `CalculationError` (unreachable: the TLE parser already rejects e ≥ 1).
+- `@frozen` and `@inlinable` annotations, which only matter for ABI-stable binary
+  frameworks.
+- String subscripting helpers and `Double.round(to:)` (the parser now reads bytes by column).
+- Unused constants: `Earth.meanRadius`, `semiMinorAxis`, `flattening`, `Time.secondsPerMinute`,
+  and the `Angle` and `Calculation` namespaces.
+
+### Migrating from 1.x
+
+| 1.x | 2.0 |
+|-----|-----|
+| `Orbit(from: tle)` | `try SGP4(tle: tle)` for tracking, or `KeplerianOrbit(tle: tle)` for two-body |
+| `Orbitable` | removed; use `KeplerianOrbit` or `Propagator` |
+| `orbit.trueAnomaly` | `orbit.trueAnomaly(at: date)` |
+| `calculatePosition(at: Date?)` | `calculatePosition(at: Date)` |
+| `position.latitude` / `.longitude` / `.altitude` | `position.latitudeDeg` / `.longitudeDeg` / `.altitudeKm` |
+| `groundPoint.latitudeDeg` | `groundPoint.position.latitudeDeg` |
+| `skyPoint.azimuthDeg` / `.elevationDeg` | `skyPoint.topocentric.azimuthDeg` / `.elevationDeg` |
+| `pass.max.time` / `.elevationDeg` / `.azimuthDeg` | `pass.culmination.time` / `.elevationDeg` / `.azimuthDeg` |
+| `PassWindow.Point` | `PassWindow.Event` (adds `elevationDeg`) |
+| `Date.julianDay(from: date)!` | `date.julianDate` |
+| `Date.greenwichSideRealTime(from: jd)` | `Date.greenwichMeanSiderealTime(julianDate: jd)` or `date.greenwichMeanSiderealTime` |
+| `Date.toJ2000(from: jd)` | `Date.julianCenturiesSinceJ2000(julianDate: jd)` |
+| `JulianDay`, `J2000` type aliases | `JulianDate` |
+| `PhysicalConstants.Earth.µ` / `.radius` / `.radsPerDay` | `.mu` / `.semiMajorAxis` / `.rotationRate` (rad/s) |
+| `PhysicalConstants.Julian.j2000Epoch` | `PhysicalConstants.Julian.j2000` |
+| `geodeticToECEF(latitudeDeg:longitudeDeg:altitudeMeters:)` | `geodeticToECEF(_: GeodeticPosition)` |
+| `ecefToGeodetic(ecef:)` | `ecefToGeodetic(_:)` |
+| `eciToECEF(eciPosition:gmst:)` | `eciToECEF(_:gmst:)` |
+| `eciVelocityToECEF(eciPosition:eciVelocity:gmst:)` | `eciToECEF(_: StateVector, gmst:)` |
+| `ecefToENU(ecefPosition:observerECEF:observerLatDeg:observerLonDeg:)` | `ecefToENU(_:observer:)` |
+| `enuToAzEl(enu:)` | `enuToAzEl(_:)` |
+| `applyRefraction(elevationDeg:)` | `apparentElevation(fromTrueElevationDeg:)` |
+| `vectorA.subtract(vectorB)` | `vectorA - vectorB` |
+| `tle.rightAscension` | `tle.rightAscensionOfAscendingNode` |
+| `tle.epochYear`, `tle.epochDay`, `tle.elementSetEpochUTC` | `tle.epoch` (`Date`) |
+| `tle.revolutionsAtEpoch` | `tle.revolutionNumberAtEpoch` |
 
 ## [1.0.0] - 2025-10-21
 

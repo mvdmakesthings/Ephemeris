@@ -58,13 +58,13 @@ final class PerformanceTests: XCTestCase {
     func testPerformance_PositionCalculation() throws {
         // Given
         let tle = try MockTLEs.ISSSample()
-        let orbit = Orbit(from: tle)
-        let date = Date()
+        let sgp4 = try SGP4(tle: tle)
+        let date = tle.epoch
 
         // When / Then
         measure {
             for _ in 0..<1000 {
-                _ = try? orbit.calculatePosition(at: date)
+                _ = try? sgp4.calculatePosition(at: date)
             }
         }
     }
@@ -74,14 +74,14 @@ final class PerformanceTests: XCTestCase {
     func testPerformance_PassPrediction() throws {
         // Given
         let tle = try MockTLEs.ISSSample()
-        let orbit = Orbit(from: tle)
+        let sgp4 = try SGP4(tle: tle)
         let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
-        let now = Date()
+        let now = tle.epoch
         let tomorrow = now.addingTimeInterval(86400) // 24 hours
 
         // When / Then
         measure {
-            _ = try? orbit.predictPasses(
+            _ = try? sgp4.predictPasses(
                 for: observer,
                 from: now,
                 to: tomorrow,
@@ -95,13 +95,13 @@ final class PerformanceTests: XCTestCase {
     func testPerformance_GroundTrackGeneration() throws {
         // Given
         let tle = try MockTLEs.ISSSample()
-        let orbit = Orbit(from: tle)
-        let now = Date()
-        let oneOrbit = now.addingTimeInterval(orbit.orbitalPeriod)
+        let sgp4 = try SGP4(tle: tle)
+        let now = tle.epoch
+        let oneOrbit = now.addingTimeInterval(93 * 60)
 
         // When / Then
         measure {
-            _ = try? orbit.groundTrack(from: now, to: oneOrbit, stepSeconds: 60)
+            _ = try? sgp4.groundTrack(from: now, to: oneOrbit, stepSeconds: 60)
         }
     }
 
@@ -110,14 +110,14 @@ final class PerformanceTests: XCTestCase {
     func testPerformance_TopoCentricCalculation() throws {
         // Given
         let tle = try MockTLEs.ISSSample()
-        let orbit = Orbit(from: tle)
+        let sgp4 = try SGP4(tle: tle)
         let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
-        let date = Date()
+        let date = tle.epoch
 
         // When / Then
         measure {
             for _ in 0..<1000 {
-                _ = try? orbit.topocentric(at: date, for: observer)
+                _ = try? sgp4.topocentric(at: date, for: observer)
             }
         }
     }
@@ -132,10 +132,7 @@ final class PerformanceTests: XCTestCase {
         // When / Then
         measure {
             for _ in 0..<10000 {
-                _ = Orbit.calculateEccentricAnomaly(
-                    eccentricity: eccentricity,
-                    meanAnomaly: meanAnomaly
-                )
+                _ = KeplerianOrbit.solveKeplersEquation(meanAnomaly: meanAnomaly, eccentricity: eccentricity)
             }
         }
     }
@@ -145,14 +142,14 @@ final class PerformanceTests: XCTestCase {
     func testPerformance_SkyTrackGeneration() throws {
         // Given
         let tle = try MockTLEs.ISSSample()
-        let orbit = Orbit(from: tle)
+        let sgp4 = try SGP4(tle: tle)
         let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
-        let now = Date()
+        let now = tle.epoch
         let tenMinutes = now.addingTimeInterval(600)
 
         // When / Then
         measure {
-            _ = try? orbit.skyTrack(for: observer, from: now, to: tenMinutes, stepSeconds: 10)
+            _ = try? sgp4.skyTrack(for: observer, from: now, to: tenMinutes, stepSeconds: 10)
         }
     }
 }

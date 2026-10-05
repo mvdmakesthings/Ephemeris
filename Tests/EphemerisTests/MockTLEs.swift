@@ -35,6 +35,33 @@ struct MockTLEs {
         return try TwoLineElement(from: tleString)
     }
     
+    /// Synthetic near-circular orbit at 0.1° inclination (15 rev/day)
+    static func equatorialSample() throws -> TwoLineElement {
+        try TwoLineElement(from: """
+            TEST EQUATORIAL
+            1 99999U 20001A   20097.50000000  .00000000  00000-0  00000-0 0  9991
+            2 99999   0.1000   0.0000 0001000   0.0000   0.0000 15.00000000000016
+            """)
+    }
+
+    /// Synthetic near-circular polar orbit (14 rev/day)
+    static func polarSample() throws -> TwoLineElement {
+        try TwoLineElement(from: """
+            TEST POLAR
+            1 88888U 20001A   20097.50000000  .00000000  00000-0  00000-0 0  9996
+            2 88888  90.0000   0.0000 0001000   0.0000   0.0000 14.00000000000018
+            """)
+    }
+
+    /// Synthetic geostationary orbit (one revolution per sidereal day)
+    static func geostationarySample() throws -> TwoLineElement {
+        try TwoLineElement(from: """
+            TEST GEO
+            1 77777U 20001A   20097.50000000  .00000000  00000-0  00000-0 0  9991
+            2 77777   0.0500   0.0000 0000100   0.0000   0.0000  1.00273790000013
+            """)
+    }
+
     static func NOAASample() throws -> TwoLineElement {
         let tleString =
             """

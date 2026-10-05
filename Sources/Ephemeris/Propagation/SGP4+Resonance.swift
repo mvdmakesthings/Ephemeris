@@ -6,6 +6,15 @@
 //  orbits: a port of dsinit and dspace from Vallado's sgp4unit.cpp.
 //  Variable names match the reference so each line can be checked against it.
 //
+//  Why resonance matters: Earth's gravity is not perfectly symmetric about its axis.
+//  The "tesseral" harmonics (J22, J31, J33, ...) vary with longitude. For most orbits
+//  their tugs average out because the satellite passes over every longitude. But a
+//  geosynchronous satellite (1 revolution per sidereal day) always sees the same
+//  longitudes, and a 12-hour orbit sees the same pattern every two revolutions. Then
+//  the tugs add up, and the orbit slowly drifts in longitude, which is why geostationary
+//  satellites need station-keeping. These terms cannot be averaged analytically, so
+//  SDP4 integrates them numerically.
+//
 
 import Foundation
 
@@ -13,6 +22,14 @@ import Foundation
 
 extension SGP4 {
     /// Computes deep-space secular rates and, for resonant orbits, the resonance coefficients.
+    ///
+    /// - Secular rates (`dedt`, `didt`, `dmdt`, `domdt`, `dnodt`): steady drifts of the
+    ///   elements caused by the Sun (`ss…`, `sz…` terms) and Moon (`s…`, `z…` terms).
+    /// - `irez = 1`: synchronous resonance for periods near one sidereal day. Coefficients
+    ///   `del1`…`del3` come from the J22, J31 and J33 harmonics.
+    /// - `irez = 2`: half-day resonance for eccentric (e ≥ 0.5) 12-hour orbits such as
+    ///   Molniya. Coefficients `dlmpq` are for the J22, J32, J44, J52 and J54 harmonics,
+    ///   with eccentricity functions `g…` fitted as polynomials in e.
     ///
     /// Port of `dsinit` from sgp4unit.cpp. Only called at initialization (t = 0, tc = 0).
     ///
@@ -205,6 +222,15 @@ extension SGP4 {
 
 extension SGP4 {
     /// Applies deep-space secular effects and integrates the resonance equations.
+    ///
+    /// The resonance state is a mean longitude `xli` relative to the rotating Earth and a
+    /// mean motion `xni`. They are stepped from epoch in fixed 720-minute steps with a
+    /// second-order Taylor series,
+    /// ```
+    /// xli ← xli + xldot·Δt + xndt·Δt²/2
+    /// xni ← xni + xndt·Δt + xnddt·Δt²/2       (step2 = Δt²/2 = 259200)
+    /// ```
+    /// and the final partial step to `t` uses the same expansion.
     ///
     /// Port of `dspace` from sgp4unit.cpp. The reference implementation caches the
     /// integrator state (`atime`, `xli`, `xni`) between calls; this version always

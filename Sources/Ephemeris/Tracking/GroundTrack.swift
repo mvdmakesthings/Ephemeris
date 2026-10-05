@@ -8,120 +8,63 @@
 
 import Foundation
 
-/// Represents a single point along a satellite's ground track.
-///
-/// A ground track shows the path traced by the satellite's sub-satellite point
-/// (the point on Earth's surface directly below the satellite) over time.
-/// This is useful for visualizing satellite coverage, planning observations,
-/// and understanding orbital mechanics.
+/// A point on a satellite's ground track: the spot on Earth directly beneath it.
 ///
 /// ## Example Usage
 /// ```swift
-/// let groundTrack = orbit.groundTrack(from: start, to: end, stepSeconds: 60)
-/// for point in groundTrack {
-///     print("\(point.time): \(point.latitudeDeg)°N, \(point.longitudeDeg)°E")
-/// }
+/// let track = try sgp4.groundTrack(from: start, to: end, stepSeconds: 30)
+/// let coordinates = track.map { CLLocationCoordinate2D(latitude: $0.position.latitudeDeg,
+///                                                      longitude: $0.position.longitudeDeg) }
 /// ```
-///
-/// - Note: This type is frozen for ABI stability. New functionality will be added
-///         through extension methods rather than new stored properties.
-@frozen public struct GroundTrackPoint {
-    // MARK: - Properties
+public struct GroundTrackPoint: Hashable, Codable, Sendable {
 
-    /// The time of this ground track point
+    /// The time of this point
     public let time: Date
 
-    /// Geodetic latitude in degrees (-90 to 90)
-    public let latitudeDeg: Double
-
-    /// Geodetic longitude in degrees (-180 to 180)
-    public let longitudeDeg: Double
-
-    // MARK: - Initialization
+    /// The satellite's geodetic position (latitude, longitude, and altitude above the ellipsoid)
+    public let position: GeodeticPosition
 
     /// Creates a ground track point.
     ///
     /// - Parameters:
     ///   - time: The time of this point
-    ///   - latitudeDeg: Geodetic latitude in degrees
-    ///   - longitudeDeg: Geodetic longitude in degrees
-    ///
-    /// - Note: Marked as `@inlinable` for performance in hot paths such as
-    ///         ground track generation loops.
-    @inlinable
-    public init(time: Date, latitudeDeg: Double, longitudeDeg: Double) {
+    ///   - position: The satellite's geodetic position
+    public init(time: Date, position: GeodeticPosition) {
         self.time = time
-        self.latitudeDeg = latitudeDeg
-        self.longitudeDeg = longitudeDeg
+        self.position = position
     }
 }
 
-// MARK: - Codable Conformance
-
-extension GroundTrackPoint: Codable {}
-
-// MARK: - Propagator Ground Track Generation
+// MARK: - Propagator Ground Track
 
 extension Propagator {
-    /// Generates a ground track (latitude/longitude trace) for the satellite over time.
-    ///
-    /// This method calculates the satellite's sub-satellite point (the point on Earth's
-    /// surface directly below the satellite) at regular intervals across a specified
-    /// time window. The resulting array of points can be used for visualization,
-    /// coverage analysis, or debugging orbital propagation.
+    /// Samples the satellite's geodetic position at regular intervals.
     ///
     /// - Parameters:
-    ///   - start: Start time for the ground track
-    ///   - end: End time for the ground track
-    ///   - stepSeconds: Time step between points in seconds (default: 60)
-    /// - Returns: Array of GroundTrackPoint objects representing the satellite's path
+    ///   - start: First sample time
+    ///   - end: Last sample time (included even if it does not fall on a step)
+    ///   - stepSeconds: Time between samples (default 60). Use 10-30 s for smooth map lines.
+    /// - Returns: Points in time order
     /// - Throws: Any error thrown by the propagator
     ///
-    /// ## Algorithm
-    /// For each time step from start to end:
-    /// 1. Calculate the satellite's position using orbital propagation
-    /// 2. Extract latitude and longitude from the position
-    /// 3. Store as a GroundTrackPoint
-    ///
-    /// ## Example
-    /// ```swift
-    /// let now = Date()
-    /// let oneHourLater = now.addingTimeInterval(3600)
-    /// let groundTrack = try orbit.groundTrack(
-    ///     from: now,
-    ///     to: oneHourLater,
-    ///     stepSeconds: 60
-    /// )
-    ///
-    /// // Visualize or export the ground track
-    /// for point in groundTrack {
-    ///     print("\(point.time): \(point.latitudeDeg)°, \(point.longitudeDeg)°")
-    /// }
-    /// ```
-    ///
-    /// ## Use Cases
-    /// - Visualizing satellite coverage on a map
-    /// - Planning ground station contacts
-    /// - Educational demonstrations of orbital mechanics
-    /// - Validating orbital propagation accuracy
-    ///
-    /// - Note: For high-precision applications, use smaller step sizes (e.g., 10-30 seconds).
-    ///         For overview visualizations, larger steps (60-120 seconds) may be sufficient.
+    /// - Note: Longitude wraps from +180° to −180°. Split the line where consecutive points
+    ///         jump by more than 180° before drawing it on a map.
     public func groundTrack(from start: Date, to end: Date, stepSeconds: Double = 60) throws -> [GroundTrackPoint] {
-        var points: [GroundTrackPoint] = []
-        var currentTime = start
-
-        while currentTime <= end {
-            let position = try calculatePosition(at: currentTime)
-            let point = GroundTrackPoint(
-                time: currentTime,
-                latitudeDeg: position.latitude,
-                longitudeDeg: position.longitude
-            )
-            points.append(point)
-            currentTime = currentTime.addingTimeInterval(stepSeconds)
+        try sampleTimes(from: start, to: end, stepSeconds: stepSeconds).map { time in
+            GroundTrackPoint(time: time, position: try calculatePosition(at: time))
         }
+    }
 
-        return points
+    /// Evenly spaced times from `start` to `end`, always including `end`.
+    func sampleTimes(from start: Date, to end: Date, stepSeconds: Double) -> [Date] {
+        precondition(stepSeconds > 0, "stepSeconds must be positive")
+        guard end >= start else { return [] }
+        let duration = end.timeIntervalSince(start)
+        let fullSteps = Int((duration / stepSeconds).rounded(.down))
+        var times = (0...fullSteps).map { start.addingTimeInterval(Double($0) * stepSeconds) }
+        if let last = times.last, last < end {
+            times.append(end)
+        }
+        return times
     }
 }

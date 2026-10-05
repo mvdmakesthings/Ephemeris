@@ -80,6 +80,21 @@ extension SGP4 {
     ///
     /// Port of `dscom` from sgp4unit.cpp. Only called at initialization, so `tc` is 0.
     ///
+    /// The Sun and Moon pull on a high satellite differently at different points of its
+    /// orbit. SDP4 expands that third-body pull to first order and averages it over the
+    /// satellite's orbit, which leaves terms that depend only on where the Sun and Moon are
+    /// in their own orbits. This routine:
+    /// 1. Places the Moon's orbit relative to the equator at epoch (its node regresses
+    ///    over 18.6 years) and gets the mean anomalies of the Moon (`zmol`) and Sun (`zmos`)
+    /// 2. Runs the same geometry twice, once for the Sun and once for the Moon, projecting
+    ///    each body's orbit onto the satellite's orbit plane (`a1`…`a10`, `x1`…`x8`)
+    /// 3. Turns the projections into coefficients: secular rates (`s1`…`s7`, `z…`) used by
+    ///    `dsinit`, and periodic amplitudes (`se2`, `si2`, `sl2`, …) used by `dpper`
+    ///
+    /// Constants: `zes`/`zel` are the eccentricities of the Sun's and Moon's apparent orbits,
+    /// `c1ss`/`c1l` their gravitational strengths, and `zsinis`/`zcosis` the sine and cosine
+    /// of the obliquity of the ecliptic (23.44°).
+    ///
     /// - Parameters:
     ///   - epoch: Days since 1949 December 31 00:00 UT
     ///   - elements: Elements after `initl` (uses ecco, argpo, inclo, nodeo, noUnkozai)
@@ -109,6 +124,8 @@ extension SGP4 {
         let rtemsq = sqrt(betasq)
 
         // ----------------- initialize lunar solar terms ---------------
+        // Days since 1900 January 0.5, the epoch of the lunar theory constants. xnodce is the
+        // longitude of the Moon's ascending node, which regresses once every 18.6 years.
         let day = epoch + 18261.5 + tc / 1440.0
         let xnodce = (4.5236020 - 9.2422029e-4 * day).truncatingRemainder(dividingBy: twoPi)
         let stem = sin(xnodce)
@@ -264,6 +281,12 @@ extension SGP4 {
 
 extension SGP4 {
     /// Applies lunar and solar long-period periodics to the mean elements.
+    ///
+    /// The periodic terms vary with the Sun's and Moon's positions in their orbits, so
+    /// their periods are about a year and about a month. Each body's true anomaly is
+    /// approximated from its mean anomaly with the first-order equation of the center,
+    /// `zf = zm + 2·e·sin(zm)`, and the terms are built from `sin²(zf)` and
+    /// `sin(zf)·cos(zf)` (`f2`, `f3`).
     ///
     /// Port of `dpper` from sgp4unit.cpp with `init == 'n'`. (The initialization call in
     /// `sgp4init` leaves the elements unchanged, so it is omitted.) The `peo`, `pinco`,

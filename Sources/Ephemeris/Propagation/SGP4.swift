@@ -111,7 +111,7 @@ struct SGP4Elements: Sendable {
 /// - For periods of 225 minutes or more (SDP4): lunar and solar gravity, plus
 ///   resonance effects for 12-hour and 24-hour orbits
 ///
-/// Expect about 1 km of error at epoch, growing by roughly 1–3 km per day in low
+/// Expect about 1 km of error at epoch, growing by roughly 1-3 km per day in low
 /// Earth orbit. Refresh TLEs often for antenna pointing.
 ///
 /// ## Example
@@ -127,6 +127,9 @@ struct SGP4Elements: Sendable {
 /// let passes = try sgp4.predictPasses(for: observer, from: start, to: end)
 /// ```
 ///
+/// - Note: Velocity comes from SGP4's own analytic expressions, not from differentiating
+///         position, and the two agree to about 2 cm/s. That is negligible for Doppler
+///         (about 0.03 Hz at 437 MHz).
 /// - Note: Output is in the TEME (True Equator, Mean Equinox) frame. Rotating by
 ///         Greenwich Mean Sidereal Time converts TEME to Earth-fixed coordinates.
 public struct SGP4: Propagator, Sendable {
@@ -176,10 +179,9 @@ public struct SGP4: Propagator, Sendable {
         let xpdotp = 1440.0 / (2.0 * Double.pi)
 
         // Days since 1949 December 31 00:00 UT, the time base SGP4 uses internally
-        let daysSince1950 = Self.referenceJulianDate(year: tle.epochYear, dayOfYear: tle.epochDay) - 2433281.5
-        let daysSinceUnixEpoch = Double(Self.daysFromCivil(year: tle.epochYear, month: 1, day: 1)) + tle.epochDay - 1.0
+        let daysSince1950 = Self.referenceJulianDate(year: tle.epochYear, dayOfYear: tle.epochDayOfYear) - 2433281.5
 
-        self.epoch = Date(timeIntervalSince1970: daysSinceUnixEpoch * PhysicalConstants.Time.secondsPerDay)
+        self.epoch = tle.epoch
         self.gravity = gravity
         self.operationMode = operationMode
 
@@ -190,7 +192,7 @@ public struct SGP4: Propagator, Sendable {
         elements.inclo = tle.inclination * deg2rad
         elements.mo = tle.meanAnomaly * deg2rad
         elements.noKozai = tle.meanMotion / xpdotp
-        elements.nodeo = tle.rightAscension * deg2rad
+        elements.nodeo = tle.rightAscensionOfAscendingNode * deg2rad
 
         self.elements = Self.sgp4init(elements, epoch: daysSince1950, mode: operationMode)
 
@@ -225,6 +227,16 @@ public struct SGP4: Propagator, Sendable {
 extension SGP4 {
     /// Propagates initialized elements to a time since epoch. Port of `sgp4` from sgp4unit.cpp.
     ///
+    /// The steps, in order:
+    /// 1. **Secular effects**: J2/J4 make the mean anomaly, perigee and node drift
+    ///    linearly; drag shrinks the orbit and adds powers of t to the mean longitude.
+    /// 2. **Deep space** (long periods only): lunar-solar secular rates and resonance.
+    /// 3. **Long-period periodics**: J3 terms, plus lunar-solar periodics in deep space.
+    /// 4. **Kepler's equation**, solved in a form that has no singularity at e = 0.
+    /// 5. **Short-period periodics**: J2 wobbles within one orbit.
+    /// 6. **Orientation vectors**: turn radius, argument of latitude, node and inclination
+    ///    into Cartesian position and velocity.
+    ///
     /// - Parameters:
     ///   - rec: Initialized elements
     ///   - tsince: Minutes since epoch
@@ -239,6 +251,8 @@ extension SGP4 {
         let t = tsince
 
         // ------- update for secular gravity and atmospheric drag -----
+        // Mean anomaly, argument of perigee and node advance at the constant J2/J4 rates
+        // from initialization. Drag also pulls the node (nodecf·t²).
         let xmdf = rec.mo + rec.mdot * t
         let argpdf = rec.argpo + rec.argpdot * t
         let nodedf = rec.nodeo + rec.nodedot * t
@@ -251,6 +265,9 @@ extension SGP4 {
         var templ = rec.t2cof * t2
 
         if !rec.isimp {
+            // Full drag model: perigee and mean anomaly corrections, and the higher powers
+            // of t that shrink the orbit (tempa), circularize it (tempe) and speed up the
+            // satellite (templ)
             let delomg = rec.omgcof * t
             let delmtemp = 1.0 + rec.eta * cos(xmdf)
             let delm = rec.xmcof * (delmtemp * delmtemp * delmtemp - rec.delmo)
@@ -270,6 +287,8 @@ extension SGP4 {
             dspace(&mean, t: t, elements: rec)
         }
 
+        // Apply drag. tempa scales the semi-major axis, and Kepler's third law gives the
+        // matching mean motion: n = ke / a^(3/2)
         if mean.nm <= 0.0 {
             throw SGP4Error.meanMotionNotPositive(mean.nm)
         }
@@ -297,10 +316,14 @@ extension SGP4 {
         mm = (xlm - argpm - nodem).truncatingRemainder(dividingBy: twoPi)
 
         // ----------------- compute extra mean quantities -------------
+        // xlm is the mean longitude (M + ω + Ω). Wrapping each angle into 0…2π keeps
+        // precision for long propagations.
         let sinim = sin(inclm)
         let cosim = cos(inclm)
 
         // -------------------- add lunar-solar periodics --------------
+        // For deep space, the Moon and Sun add slow oscillations to every element. A
+        // negative inclination after this step is folded back by flipping the node.
         var perturbed = SGP4PerturbedElements(ep: em, inclp: inclm, nodep: nodem, argpp: argpm, mp: mm)
         var sinip = sinim
         var cosip = cosim
@@ -339,12 +362,21 @@ extension SGP4 {
         let argpp = perturbed.argpp
         let mp = perturbed.mp
 
+        // Long-period J3 periodics in nonsingular form. Instead of e and ω, which are poorly
+        // defined for near-circular orbits, use the components
+        //     axn = e·cos ω
+        //     ayn = e·sin ω + (J3 correction)
+        // and the corrected mean longitude xl = M + ω + Ω + (J3 correction).
         let axnl = ep * cos(argpp)
         var temp = 1.0 / (am * (1.0 - ep * ep))
         let aynl = ep * sin(argpp) + temp * aycof
         let xl = mp + argpp + nodep + temp * xlcof * axnl
 
         // --------------------- solve kepler's equation ---------------
+        // In these variables Kepler's equation becomes
+        //     U = E′ − axn·sin E′ + ayn·cos E′,    where U = xl − Ω and E′ = E + ω
+        // solved for E′ (eo1) by Newton iteration. Each step is limited to 0.95 rad so the
+        // iteration cannot run away for highly eccentric orbits.
         let u = (xl - nodep).truncatingRemainder(dividingBy: twoPi)
         var eo1 = u
         var tem5 = 9999.9
@@ -365,6 +397,9 @@ extension SGP4 {
         }
 
         // ------------- short period preliminary quantities -----------
+        // From E′: e·cos E (ecose), e·sin E (esine), the semi-latus rectum pl = a(1 − e²),
+        // radius rl = a(1 − e·cos E), its rate rdotl, and the argument of latitude
+        // su = ν + ω (the angle from the ascending node to the satellite).
         let ecose = axnl * coseo1 + aynl * sineo1
         let esine = axnl * sineo1 - aynl * coseo1
         let el2 = axnl * axnl + aynl * aynl
@@ -388,6 +423,9 @@ extension SGP4 {
         let temp2 = temp1 * temp
 
         // -------------- update for short period periodics ------------
+        // J2 makes the orbit wobble twice per revolution (terms in 2u). Correct the radius
+        // (mrt), argument of latitude (su), node (xnode), inclination (xinc), and the radial
+        // (mvt) and transverse (rvdot) velocities. Units: Earth radii and radii per minute.
         if rec.isDeepSpace {
             let cosisq = cosip * cosip
             con41 = 3.0 * cosisq - 1.0
@@ -402,6 +440,10 @@ extension SGP4 {
         let rvdot = rvdotl + nm * temp1 * (x1mth2 * cos2u + 1.5 * con41) / grav.xke
 
         // --------------------- orientation vectors -------------------
+        // U points from Earth's center to the satellite, V along the direction of motion in
+        // the orbit plane, both built from node, inclination and argument of latitude:
+        //     r = radius·U
+        //     v = (radial speed)·U + (transverse speed)·V
         let sinsu = sin(su)
         let cossu = cos(su)
         let snod = sin(xnode)
@@ -417,12 +459,14 @@ extension SGP4 {
         let vy = xmy * cossu - snod * sinsu
         let vz = sini * cossu
 
-        // sgp4fix for decaying satellites
+        // sgp4fix for decaying satellites: a radius below one Earth radius means the
+        // satellite would be underground
         if mrt < 1.0 {
             throw SGP4Error.decayed(radiusEarthRadii: mrt)
         }
 
         // --------- position and velocity (in km and km/sec) ----------
+        // Convert from Earth radii and radii/minute back to km and km/s
         let mr = mrt * grav.radiusEarthKm
         return StateVector(
             position: Vector3D(x: mr * ux, y: mr * uy, z: mr * uz),

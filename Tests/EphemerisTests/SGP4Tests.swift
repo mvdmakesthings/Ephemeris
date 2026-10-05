@@ -191,36 +191,11 @@ final class SGP4Tests: XCTestCase {
             // The ISS orbit is nearly circular about Earth's center, but the ellipsoid
             // surface is ~21 km lower near the poles, so height above the ellipsoid ranges
             // from ~408 km near the equator to ~441 km near its maximum latitude.
-            XCTAssertGreaterThan(position.altitude, 400, "t = \(minutes) min")
-            XCTAssertLessThan(position.altitude, 445, "t = \(minutes) min")
+            XCTAssertGreaterThan(position.altitudeKm, 400, "t = \(minutes) min")
+            XCTAssertLessThan(position.altitudeKm, 445, "t = \(minutes) min")
             // Inclination (51.6465°) bounds geocentric latitude. Geodetic latitude runs
             // up to ~0.15° higher at this latitude.
-            XCTAssertLessThanOrEqual(abs(position.latitude), 51.6465 + 0.2, "t = \(minutes) min")
-        }
-    }
-
-    func testPredictPasses_withSGP4_shouldFindPassesWithConsistentGeometry() throws {
-        // Given
-        let sgp4 = try makeSGP4(issLine1, issLine2)
-        let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
-
-        // When
-        let passes = try sgp4.predictPasses(
-            for: observer,
-            from: sgp4.epoch,
-            to: sgp4.epoch.addingTimeInterval(24 * 3600),
-            minElevationDeg: 10
-        )
-
-        // Then
-        // The ISS passes over Louisville several times a day
-        XCTAssertGreaterThan(passes.count, 0)
-        for pass in passes {
-            XCTAssertGreaterThanOrEqual(pass.max.elevationDeg, 10)
-            XCTAssertGreaterThan(pass.duration, 0)
-            XCTAssertLessThan(pass.duration, 15 * 60, "LEO passes last under ~15 minutes")
-            let aosElevation = try sgp4.topocentric(at: pass.aos.time, for: observer).elevationDeg
-            XCTAssertEqual(aosElevation, 10, accuracy: 0.1)
+            XCTAssertLessThanOrEqual(abs(position.latitudeDeg), 51.6465 + 0.2, "t = \(minutes) min")
         }
     }
 
@@ -230,13 +205,13 @@ final class SGP4Tests: XCTestCase {
         // 5° per day, so the simple model ends up hundreds of kilometers off.
         let tle = try TwoLineElement(from: "\(issLine1)\n\(issLine2)")
         let sgp4 = try SGP4(tle: tle)
-        let twoBody = Orbit(from: tle)
+        let twoBody = KeplerianOrbit(tle: tle)
         let oneDayLater = sgp4.epoch.addingTimeInterval(86400)
 
         // When
         let sgp4Position = try sgp4.stateVector(at: oneDayLater).position
-        let twoBodyPosition = try twoBody.stateVector(at: oneDayLater).position
-        let separation = sgp4Position.subtract(twoBodyPosition).magnitude
+        let twoBodyPosition = twoBody.stateVector(at: oneDayLater).position
+        let separation = (sgp4Position - twoBodyPosition).magnitude
 
         // Then
         XCTAssertGreaterThan(separation, 100)

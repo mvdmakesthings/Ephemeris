@@ -1,360 +1,102 @@
 # Ephemeris: AI Context for Code Understanding
 
-> **Purpose of this file**: Provides architectural context and design decisions for AI-assisted coding tools. For user-facing documentation, see [README.md](README.md).
+> **Purpose of this file**: Architectural context and design decisions for AI-assisted coding tools. For user-facing documentation, see [README.md](README.md). For contributor conventions, see [CLAUDE.md](CLAUDE.md).
 
 ## Project Philosophy
 
-**Dual-Purpose Design**: Ephemeris serves both Swift/iOS developers building satellite tracking apps AND learners studying orbital mechanics. Documentation follows a theory-first pattern: mathematical foundations with diagrams, then Swift implementation.
+**Dual purpose**: Ephemeris serves Swift developers building satellite tracking apps (including antenna pointing and SDR Doppler correction) and learners studying orbital mechanics. Documentation is theory-first: the math, then the Swift.
 
-**Pure Swift**: No C/C++ dependencies, no external frameworks. Everything implemented from first principles using peer-reviewed academic papers.
+**Pure Swift**: No C/C++ code and no dependencies beyond Foundation. Algorithms come from published sources (Vallado, Spacetrack Report #3, Meeus).
 
-**Educational Focus**: Every feature balances mathematical accuracy with pedagogical clarity. Code is optimized for readability and learning, not maximum performance.
+**Readable and verified**: Code is written to be read and learned from, with comments that explain the physics. Every algorithm is tested against an independent reference: published worked examples, Vallado's SGP4 verification set, python-sgp4, or Skyfield.
 
-**Language**: Swift 6.0
-**Platforms**: iOS 16+, macOS 13+
-**Dependencies**: None (Spectre for testing only)
-**Geodetic Standard**: WGS-84
+- **Language**: Swift 6 (tools 6.0)
+- **Platforms**: iOS 16+, macOS 13+, watchOS 9+, tvOS 16+, visionOS 1+
+- **Dependencies**: None
+- **Geodetic standard**: WGS-84 (SGP4 uses WGS-72 gravity constants, as TLEs require)
 
-## Architecture & Code Organization
-
-### Directory Structure
+## Architecture
 
 ```
-Ephemeris/
-├── Ephemeris/              # Main framework source
-│   ├── TwoLineElement.swift    # TLE parsing with fixed-width field extraction
-│   ├── Orbit.swift             # Keplerian orbital mechanics + position calculation
-│   ├── Orbitable.swift         # Protocol for orbital element providers
-│   ├── Observer.swift          # Ground observer + pass prediction
-│   ├── CoordinateTransforms.swift  # Transformation utilities
-│   └── Utilities/          # Helper types and extensions
-│       ├── Date.swift          # Julian Day, GMST calculations
-│       ├── Double.swift        # Degree/radian conversions
-│       ├── PhysicalConstants.swift  # WGS-84, Earth parameters
-│       └── TypeAlias.swift     # Semantic type aliases
-├── EphemerisTests/         # Spectre BDD tests
-└── docs/                   # Theory-first documentation
-    ├── getting-started.md      # Code-heavy quick start
-    ├── orbital-elements.md     # Math + Swift (Keplerian elements)
-    ├── observer-geometry.md    # Math + Swift (coordinate transforms)
-    ├── visualization.md        # Math + Swift + SwiftUI/MapKit
-    ├── api-reference.md        # API documentation
-    ├── coordinate-systems.md   # Math-heavy theory
-    └── testing-guide.md        # Testing patterns
+Sources/Ephemeris/
+├── Coordinates/   CoordinateTransforms, GeodeticPosition, Vector3D
+├── Observation/   Observer, Topocentric (+ Propagator.topocentric)
+├── Parsing/       TwoLineElement
+├── Propagation/   Propagator, StateVector, KeplerianOrbit, SGP4 (+ deep space), GravityModel
+├── Time/          Date.julianDate, Date.greenwichMeanSiderealTime
+├── Tracking/      GroundTrack, SkyTrack, PassPrediction (+ Propagator extensions)
+└── Utilities/     PhysicalConstants, type aliases, angle conversion
 ```
 
-### Core Types & Responsibilities
+### Core Types
 
-**TwoLineElement** (`TwoLineElement.swift`)
-- **Single Responsibility**: Parse and validate TLE format
-- **Design**: Immutable struct, failable initializer
-- **Validation**: Checksum verification, format validation, 2-digit year interpretation
-- **Error Handling**: Comprehensive `TLEParsingError` enum with context
-
-**Orbit** (`Orbit.swift`)
-- **Single Responsibility**: Orbital mechanics calculations
-- **Key Methods**:
-  - `calculatePosition(at:)` - Full ECI → ECEF → Geodetic pipeline
-  - `topocentric(at:for:)` - Observer-relative coordinates
-  - `predictPasses(for:from:to:)` - Pass prediction with bisection/golden-section
-  - `groundTrack(from:to:stepSeconds:)` - Visualization data
-  - `skyTrack(for:from:to:stepSeconds:)` - Sky path visualization
-- **Static Methods**: Pure functions for anomaly calculations (testable)
-- **Protocol Conformance**: `Orbitable` for extensibility
-
-**Observer** (`Observer.swift`)
-- **Single Responsibility**: Ground observer representation
-- **Design**: Simple value type with geodetic coordinates
-- **Used By**: `Orbit.topocentric()` and `Orbit.predictPasses()`
-
-**Topocentric** (nested in `Orbit.swift`)
-- **Purpose**: Return type for observer-relative coordinates
-- **Fields**: azimuthDeg, elevationDeg, rangeKm, rangeRateKmPerSec
-- **Immutable**: Value semantics for thread safety
-
-**PassWindow** (nested in `Orbit.swift`)
-- **Purpose**: Describes complete satellite pass
-- **Structure**: Nested `PassPoint` type for AOS/MAX/LOS
-- **Calculated**: Duration computed from timestamps
-
-**CoordinateTransforms** (`CoordinateTransforms.swift`)
-- **Design Pattern**: Namespace with static utility functions
-- **Transformations**: ECI → ECEF, ECEF → Geodetic, ECEF → ENU, ENU → Horizontal
-- **Refraction**: Bennett formula for atmospheric correction
+- **`TwoLineElement`**: Parses and validates NORAD TLEs (2- or 3-line, any line endings, Alpha-5 catalog numbers, checksums). All fields public; epoch is a `Date`.
+- **`Propagator`** (protocol): requires only `stateVector(at:)`. Extensions provide `calculatePosition(at:)`, `topocentric(at:for:applyRefraction:)`, `predictPasses(...)`, `groundTrack(...)`, `skyTrack(...)`.
+- **`SGP4`**: The propagator for TLE data. A port of Vallado's `sgp4unit.cpp`, including SDP4 deep-space terms. Output frame is TEME.
+- **`KeplerianOrbit`**: Two-body propagator for teaching. Can be built from a TLE or from chosen elements.
+- **`Observer`**, **`Topocentric`**, **`GeodeticPosition`**, **`PassWindow`**, **`GroundTrackPoint`**, **`SkyTrackPoint`**: immutable, `Sendable`, `Hashable`, `Codable` value types.
+- **`CoordinateTransforms`** (caseless enum): geodetic ↔ ECEF, ECI → ECEF (position and state), ECEF → ENU, ENU → azimuth/elevation/range, refraction.
 
 ## Design Decisions
 
-### Propagators: SGP4 and Two-Body
+### SGP4 for tracking, two-body for teaching
+TLEs are mean elements fitted with SGP4, so only SGP4 reproduces the orbit they describe. Two-body motion ignores J2, which turns a low orbit's plane by several degrees per day. The SGP4 port keeps the reference variable names so it can be checked line by line, and matches Vallado's `tcppver.out` to within 0.12 mm.
 
-**Decision**: Use a pure Swift port of SGP4/SDP4 for tracking, and keep two-body Keplerian mechanics for teaching. Both conform to the `Propagator` protocol.
+### One implementation of observer geometry
+All observer and tracking features are `Propagator` extensions, so a new propagator gets them by implementing `stateVector(at:)`.
 
-**Rationale**:
-- TLEs are mean elements fitted with SGP4, so only SGP4 reproduces the orbit they describe
-- Two-body motion ignores J2, which turns a LEO orbital plane by several degrees per day
-- The SGP4 port keeps the reference variable names and is verified against Vallado's `tcppver.out` to within 0.12 mm
+### Value types everywhere
+All public types are immutable structs or enums and are `Sendable`, so whole-catalog propagation can use Swift concurrency safely. `SGP4` is stateless: its deep-space integrator restarts from epoch on each call (results are identical to the caching reference).
 
-### Type Design Patterns
+### Errors
+- `TLEParsingError`: malformed text, with field name and value
+- `SGP4Error`: decay or invalid elements, with the reference error codes
+- `precondition` for programmer errors (for example e ≥ 1 for `KeplerianOrbit`)
 
-**Value Semantics**: All types are structs (not classes)
-- Thread-safe by default
-- No reference counting overhead
-- Clear ownership semantics
-- SwiftUI-friendly
+## Algorithms
 
-**Immutability**: Most types are immutable after initialization
-- `TwoLineElement`: Immutable after parsing
-- `Orbit`: Immutable (calculations are pure functions)
-- `Observer`: Immutable
-- Only exception: `PassWindow` has computed `duration` property
+| Algorithm | Location | Method | Reference |
+|-----------|----------|--------|-----------|
+| TLE → orbit | `SGP4` | SGP4/SDP4 | Vallado et al. 2006, AIAA 2006-6753 |
+| Kepler's equation | `KeplerianOrbit.solveKeplersEquation` | Newton-Raphson, 1e-12 rad | Vallado Alg. 2 |
+| GMST | `Date.greenwichMeanSiderealTime` | IAU-82 polynomial | Vallado Eq. 3-47 |
+| ECEF → geodetic | `CoordinateTransforms.ecefToGeodetic` | Fixed-point iteration | Vallado Alg. 12 |
+| Refraction | `CoordinateTransforms.apparentElevation` | Sæmundsson | Meeus Eq. 16.4 |
+| Pass events | `Propagator.predictPasses` | Sampling, bisection (0.1 s), golden-section | (none) |
 
-**Protocol-Oriented**: `Orbitable` protocol for extensibility
-- Allows custom orbital element sources
-- Makes testing easier (mock conformers)
-- Future: Could support different propagators
+## Testing
 
-### Error Handling Strategy
+XCTest (`swift test`). Test names follow `test[Feature]_[Scenario]_[ExpectedBehavior]` with Given-When-Then comments. Key suites:
+- `SGP4VerificationTests`: all 33 satellites / 666 points of Vallado's verification set
+- `EndToEndCrossCheckTests`, `PassPredictionTests`: agreement with Skyfield
+- `KeplerianOrbitTests`: published examples plus conservation of energy and angular momentum
+- `TopocentricTests`: range rate against the numerical derivative of range
 
-**Typed Errors**: Custom error enums with associated values
-- `TLEParsingError`: Detailed context (line number, field, value)
-- `CalculationError`: Mathematical singularities
+## Known Limitations
 
-**Throwing vs Optional**: Throws for expected failure modes, optional for convenience
-- TLE parsing: Throws (user can recover)
-- Position calculation: Throws (eccentricity >= 1.0 invalid)
-- Julian Day conversion: Returns optional (may fail for extreme dates)
+- SGP4 accuracy is limited by the TLE: about 1 km at epoch, growing 1-3 km/day in LEO
+- UT1 − UTC (up to 0.9 s) and polar motion are not applied
+- Refraction is an optical model
+- Earth-orbiting satellites only
 
-**No Silent Failures**: Framework never returns incorrect data
-- Invalid inputs throw errors
-- Extreme values handled explicitly
-- Documented limitations
+## Guidance for AI Tools
 
-### Coordinate System Choices
-
-**Primary Frame**: ECI (Earth-Centered Inertial)
-- Natural for orbital mechanics
-- Kepler's laws apply directly
-- Transformations explicit (via GMST)
-
-**Observer Frame**: ENU (East-North-Up) → Horizontal (Azimuth/Elevation)
-- Matches astronomical conventions
-- Azimuth: 0° = North (not East)
-- Elevation: Above horizon (not zenith angle)
-
-**Geodetic**: WGS-84 ellipsoid
-- Industry standard
-- Used by GPS
-- Constants from PhysicalConstants.Earth
-
-## Algorithm Implementations
-
-### Kepler's Equation Solver (Newton-Raphson)
-
-**Location**: `Orbit.calculateEccentricAnomaly()`
-**Algorithm**: Newton-Raphson iteration
-**Convergence**: Typically 3-5 iterations for e < 0.1
-**Tolerance**: 0.00001 (from PhysicalConstants.Calculation)
-**Max Iterations**: 500 (safety limit)
-
-```
-E_{n+1} = E_n - (E_n - e·sin(E_n) - M) / (1 - e·cos(E_n))
-```
-
-**Why Newton-Raphson?**
-- Fast convergence for low eccentricity
-- Simple to implement
-- Well-documented in literature
-- Good educational value
-
-### Pass Prediction (Bisection + Golden-Section)
-
-**Location**: `Orbit.predictPasses()`
-**Algorithm**: Three-stage approach
-
-1. **Coarse Search** (step-based)
-   - Detect horizon crossings
-   - Default: 30-second steps
-   - Finds AOS/LOS candidates
-
-2. **Bisection Refinement**
-   - Refine crossing times to ±1 second
-   - Binary search on elevation threshold
-   - 10-15 iterations typical
-
-3. **Golden-Section Search**
-   - Find maximum elevation between AOS/LOS
-   - Optimization without derivatives
-   - 15-20 iterations typical
-
-**Why This Approach?**
-- **Robust**: Catches all passes (no missed events)
-- **Accurate**: ±1 second timing accuracy
-- **Understandable**: Clear algorithm stages
-- **Debuggable**: Can visualize search process
-
-### GMST Calculation
-
-**Location**: `Date.greenwichSideRealTime()`
-**Source**: Vallado, "Fundamentals of Astrodynamics"
-**Precision**: Good to <1 second over centuries
-
-Uses J2000 epoch and Julian centuries for polynomial approximation.
-
-## Testing Philosophy
-
-### BDD Framework: Spectre
-
-**Why Spectre?** (not XCTest)
-- Readable test output
-- Nested describe/it blocks
-- Pure Swift (no Objective-C runtime)
-- Works on Linux
-- Educational value (tests as documentation)
-
-**Run Tests**: `swift run EphemerisTests`
-
-### Test Coverage
-
-**TLE Parsing** (`TwoLineElementTests.swift`)
-- Valid TLEs (ISS, GPS, various satellites)
-- Invalid formats (bad checksums, wrong line counts)
-- Edge cases (eccentricity bounds, date interpretation)
-
-**Orbital Calculations** (`OrbitalCalculationTests.swift`)
-- Position calculation accuracy
-- Anomaly conversions (Mean → Eccentric → True)
-- Physical constants verification (WGS-84)
-
-**Observer Geometry** (`ObserverTests.swift`)
-- Topocentric calculations
-- Pass prediction accuracy
-- Coordinate transformations
-
-**Visualization** (`GroundTrackSkyTrackTests.swift`)
-- Ground track generation
-- Sky track generation
-- Data format validation
-
-**Philosophy**: Tests as documentation
-- Each test has descriptive names
-- Expected values documented with sources
-- Real-world examples (ISS, GPS satellites)
-
-## Known Limitations & Design Constraints
-
-**Explicitly NOT Implemented:**
-1. **Precise ephemerides** (numerical propagation, SP ephemerides, CCSDS OEM)
-   - SGP4 accuracy is limited by the TLE itself: ~1 km at epoch, growing 1-3 km/day in LEO
-   - Mitigation: Users should update TLEs regularly
-
-2. **Solar radiation pressure and higher-order gravity** beyond what SGP4 models
-   - The two-body `Orbit` models no perturbations at all and is for teaching only
-
-3. **Non-Earth orbits** (interplanetary, lunar, L-points)
-   - Only Earth-orbiting satellites supported
-
-**Potential Enhancements** (maintain educational focus):
-1. Constellation management (multiple satellites)
-2. TLE/OMM fetch integration (CelesTrak/Space-Track APIs)
-3. Sun position and satellite illumination for visual passes
-
-**Not Planned** (out of scope):
-- Mission planning tools
-- Orbital maneuver calculations
-- Launch vehicle trajectory optimization
-- Attitude determination
-- Formation flying algorithms
-
-## Documentation Strategy
-
-**Theory-First Pattern**: Every feature has both math and code
-- Mathematical foundations with LaTeX equations
-- Academic diagram sourcing (Vallado, Montenbruck, NASA)
-- Swift implementation showing the theory in practice
-- Real-world examples (ISS, GPS, etc.)
-
-**Three Documentation Tiers**:
-1. **Quick Start** ([getting-started.md](docs/getting-started.md))
-   - Code-heavy, minimal theory
-   - 30-minute complete app
-
-2. **Theory + Practice** ([orbital-elements.md](docs/orbital-elements.md), [observer-geometry.md](docs/observer-geometry.md), [visualization.md](docs/visualization.md))
-   - Math first, then Swift
-   - Contextually balanced
-
-3. **Deep Dives** ([coordinate-systems.md](docs/coordinate-systems.md))
-   - Math-heavy theory
-   - For learners who want full understanding
-
-**User Paths**:
-- Swift Developer: Getting Started → API Reference → Specific Guides
-- Orbital Mechanics Learner: Orbital Elements → Observer Geometry → Visualization
-- Both: Complete sequential reading
-
-## Key Academic References
-
-**Primary Sources** (all calculations traced to these):
-1. Vallado, "Fundamentals of Astrodynamics and Applications" (4th Ed)
-   - Coordinate transformations
-   - Time systems (Julian Day, GMST)
-   - TLE format details
-
-2. Montenbruck & Gill, "Satellite Orbits"
-   - Topocentric coordinates
-   - Pass prediction algorithms
-
-3. Curtis, "Orbital Mechanics for Engineering Students"
-   - Keplerian elements
-   - Anomaly conversions
-
-4. Bennett, "Astronomical Refraction in Marine Navigation"
-   - Atmospheric refraction formula
-
-5. NASA Technical Reports
-   - Sub-satellite point calculations
-   - WGS-84 parameters
-
-**All formulas in code have comments linking to source pages.**
-
-## Contributing Guidelines
-
-**Code Contributions Should**:
-- Include comprehensive tests (Spectre BDD)
-- Follow Swift API Design Guidelines
-- Add inline documentation with sources
-- Maintain educational clarity
-- Not sacrifice readability for performance
-
-**Documentation Contributions Should**:
-- Follow theory-first pattern
-- Include both math and Swift examples
-- Cite academic sources
-- Add diagrams where helpful
-- Use consistent formatting
-
-## Quick Reference for AI Tools
-
-**When suggesting code changes:**
-- Maintain immutability (value semantics)
-- Use descriptive variable names (not abbreviations)
-- Add comments for complex math
-- Throw errors (don't return optionals for recoverable failures)
-- Include tests for new functionality
+**When changing code:**
+- Keep value semantics and `Sendable` conformance
+- Do not rename variables inside the SGP4 port or change its operation order; rerun `SGP4VerificationTests`
+- Comment the physics and math of each step, with equations and references
+- Test against independent references, not just self-consistency
+- Keep files under 600 lines and pass `swiftlint lint --strict`
 
 **When explaining concepts:**
-- Start with physical intuition
-- Show mathematical formulation
-- Demonstrate Swift implementation
-- Provide real-world example (ISS, GPS, etc.)
+- Start with physical intuition, then the equations, then the Swift
+- Use real examples (ISS, GPS, geostationary)
 
-**Common patterns in this codebase:**
-- Static functions for pure calculations
-- Nested types for related data
-- Type aliases for semantic clarity
-- Extensions on Foundation types (Date, Double)
-- Protocol conformance for extensibility
+## Key References
 
----
-
-*This file provides context for AI coding assistants. For user documentation, see [README.md](README.md) and [docs/](docs/).*
-
-**Last Updated**: October 20, 2025
+1. Vallado, Crawford, Hujsak, Kelso, "Revisiting Spacetrack Report #3", AIAA 2006-6753 (SGP4)
+2. Hoots & Roehrich, "Spacetrack Report #3" (1980)
+3. Vallado, "Fundamentals of Astrodynamics and Applications" (4th ed.)
+4. Meeus, "Astronomical Algorithms" (2nd ed.)
+5. Montenbruck & Gill, "Satellite Orbits" (2000)
+6. NIMA TR8350.2, "Department of Defense World Geodetic System 1984"
