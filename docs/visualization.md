@@ -69,21 +69,24 @@ $$
 h = \|\mathbf{r}_{\text{ECEF}}\| - R_{\oplus}
 $$
 
-where $R_{\oplus}$ is Earth's mean radius (6378.137 km for WGS-84).
+where $R_{\oplus}$ is Earth's equatorial radius (6378.137 km for WGS-84).
+
+These are the spherical-Earth versions, which are easiest to read. Ephemeris goes one step further and converts ECEF to geodetic latitude and height above the WGS-84 ellipsoid (`CoordinateTransforms.ecefToGeodetic(_:)`), which can differ from the spherical values by up to about 0.19° in latitude and 21 km in altitude.
 
 ### Implementation
 
 The `groundTrack()` method generates a time series of geodetic positions:
 
 ```swift
-let groundTrack = try orbit.groundTrack(
+let sgp4 = try SGP4(tle: tle)
+let groundTrack = try sgp4.groundTrack(
     from: startDate,
     to: endDate,
     stepSeconds: 60
 )
 
 for point in groundTrack {
-    print("\(point.time): \(point.latitudeDeg)°, \(point.longitudeDeg)°")
+    print("\(point.time): \(point.position.latitudeDeg)°, \(point.position.longitudeDeg)°, \(point.position.altitudeKm) km")
 }
 ```
 
@@ -172,15 +175,15 @@ $$
 The `skyTrack()` method generates a time series of azimuth-elevation pairs:
 
 ```swift
-let skyTrack = try orbit.skyTrack(
+let skyTrack = try sgp4.skyTrack(
     for: observer,
     from: startDate,
     to: endDate,
     stepSeconds: 10
 )
 
-for point in skyTrack where point.elevationDeg > 0 {
-    print("\(point.time): Az \(point.azimuthDeg)°, El \(point.elevationDeg)°")
+for point in skyTrack where point.topocentric.elevationDeg > 0 {
+    print("\(point.time): Az \(point.topocentric.azimuthDeg)°, El \(point.topocentric.elevationDeg)°")
 }
 ```
 
@@ -209,13 +212,13 @@ The maximum elevation $E_{\text{max}}$ depends on the satellite's closest approa
 
 ### Atmospheric Refraction
 
-Near the horizon, atmospheric refraction bends light rays, increasing the apparent elevation. The Bennett formula provides a correction:
+Near the horizon, atmospheric refraction bends light rays, increasing the apparent elevation. Starting from the true (geometric) elevation $E$, Sæmundsson's formula gives the correction:
 
 $$
-\Delta E = \cot\left(E + \frac{7.31}{E + 4.4}\right) \text{ arcmin}
+\Delta E = 1.02 \cot\left(E + \frac{10.3}{E + 5.11}\right) \text{ arcmin}
 $$
 
-This correction is applied when `applyRefraction: true` is specified in topocentric calculations.
+(Bennett's similar-looking formula takes the apparent elevation as input, so it is the inverse of this one.) This correction is applied when `applyRefraction: true` is passed to `topocentric(at:for:applyRefraction:)` or `skyTrack(for:from:to:stepSeconds:applyRefraction:)`.
 
 ### Visualization Applications
 
@@ -231,20 +234,21 @@ This correction is applied when `applyRefraction: true` is specified in topocent
 ### GroundTrackPoint
 
 ```swift
-public struct GroundTrackPoint {
-    let time: Date              // UTC timestamp
-    let latitudeDeg: Double     // Geodetic latitude (-90 to 90°)
-    let longitudeDeg: Double    // Geodetic longitude (-180 to 180°)
+public struct GroundTrackPoint: Hashable, Codable, Sendable {
+    public let time: Date                  // UTC timestamp
+    public let position: GeodeticPosition  // latitudeDeg (-90 to 90°), longitudeDeg (-180 to 180°),
+                                           // altitudeKm (above the WGS-84 ellipsoid)
 }
 ```
 
 ### SkyTrackPoint
 
 ```swift
-public struct SkyTrackPoint {
-    let time: Date              // UTC timestamp
-    let azimuthDeg: Double      // Azimuth (0-360°, clockwise from north)
-    let elevationDeg: Double    // Elevation (-90 to 90°, negative = below horizon)
+public struct SkyTrackPoint: Hashable, Codable, Sendable {
+    public let time: Date               // UTC timestamp
+    public let topocentric: Topocentric // azimuthDeg (0-360°, clockwise from north),
+                                        // elevationDeg (-90 to 90°, negative = below horizon),
+                                        // rangeKm, rangeRateKmPerSec
 }
 ```
 
@@ -262,8 +266,8 @@ import Charts
 Chart {
     ForEach(groundTrack, id: \.time) { point in
         PointMark(
-            x: .value("Longitude", point.longitudeDeg),
-            y: .value("Latitude", point.latitudeDeg)
+            x: .value("Longitude", point.position.longitudeDeg),
+            y: .value("Latitude", point.position.latitudeDeg)
         )
     }
 }
@@ -274,8 +278,8 @@ Chart {
 For integration with mapping tools (Leaflet, Mapbox), export ground tracks as GeoJSON:
 
 ```swift
-func exportGeoJSON(_ groundTrack: [Orbit.GroundTrackPoint]) -> String {
-    let coordinates = groundTrack.map { "[\($0.longitudeDeg), \($0.latitudeDeg)]" }
+func exportGeoJSON(_ groundTrack: [GroundTrackPoint]) -> String {
+    let coordinates = groundTrack.map { "[\($0.position.longitudeDeg), \($0.position.latitudeDeg)]" }
     return """
     {
       "type": "Feature",
@@ -294,8 +298,8 @@ For visualizing satellite passes, use polar coordinates:
 
 ```swift
 // Convert azimuth-elevation to polar coordinates
-let r = 90 - skyPoint.elevationDeg  // Distance from center
-let theta = skyPoint.azimuthDeg     // Angle from north
+let r = 90 - skyPoint.topocentric.elevationDeg  // Distance from center
+let theta = skyPoint.topocentric.azimuthDeg     // Angle from north
 ```
 
 ---
@@ -311,12 +315,12 @@ ISS (ZARYA)
 """
 
 let tle = try TwoLineElement(from: tleString)
-let orbit = Orbit(from: tle)
+let sgp4 = try SGP4(tle: tle)
 
 // Generate 24-hour ground track
 let now = Date()
 let tomorrow = now.addingTimeInterval(86400)
-let groundTrack = try orbit.groundTrack(
+let groundTrack = try sgp4.groundTrack(
     from: now,
     to: tomorrow,
     stepSeconds: 60
@@ -336,20 +340,21 @@ let observer = Observer(
     altitudeMeters: 140
 )
 
-// Generate sky track for next pass
-let passStart = Date()  // Determine from predictPasses()
-let passEnd = passStart.addingTimeInterval(600)  // 10-minute pass
+// Find the next pass, then generate its sky track
+let passes = try sgp4.predictPasses(for: observer, from: Date(), to: Date().addingTimeInterval(86400))
+if let pass = passes.first {
+    let skyTrack = try sgp4.skyTrack(
+        for: observer,
+        from: pass.aos.time,
+        to: pass.los.time,
+        stepSeconds: 5  // High resolution for smooth plotting
+    )
 
-let skyTrack = try orbit.skyTrack(
-    for: observer,
-    from: passStart,
-    to: passEnd,
-    stepSeconds: 5  // High resolution for smooth plotting
-)
-
-// Find maximum elevation
-let maxPoint = skyTrack.max { $0.elevationDeg < $1.elevationDeg }
-print("Maximum elevation: \(maxPoint?.elevationDeg ?? 0)° at \(maxPoint?.time ?? Date())")
+    // Find maximum elevation (pass.culmination has the exact value)
+    let maxPoint = skyTrack.max { $0.topocentric.elevationDeg < $1.topocentric.elevationDeg }
+    print("Maximum elevation: \(maxPoint?.topocentric.elevationDeg ?? 0)° at \(maxPoint?.time ?? Date())")
+    print("Culmination: \(pass.culmination.elevationDeg)° at \(pass.culmination.time)")
+}
 ```
 
 ---
@@ -389,7 +394,8 @@ For a 24-hour ground track with 60-second steps:
 2. **Montenbruck, O., & Gill, E.** (2000). *Satellite Orbits: Models, Methods and Applications*. Springer.
    - Section 5.4: Topocentric Coordinates
 
-3. **Bennett, G. G.** (1982). "The Calculation of Astronomical Refraction in Marine Navigation." *Journal of Navigation*, 35(2), 255-259.
+3. **Meeus, J.** (1998). *Astronomical Algorithms* (2nd ed.). Willmann-Bell.
+   - Chapter 16: Atmospheric Refraction (Sæmundsson's and Bennett's formulas)
 
 4. **WGS-84 Ellipsoid Parameters**: National Geospatial-Intelligence Agency (NGA)
    - Semi-major axis: 6378.137 km
@@ -415,14 +421,14 @@ import Charts
 import Ephemeris
 
 struct GroundTrackChartView: View {
-    let groundTrack: [Orbit.GroundTrackPoint]
+    let groundTrack: [GroundTrackPoint]
 
     var body: some View {
         Chart {
             ForEach(Array(groundTrack.enumerated()), id: \.offset) { index, point in
                 LineMark(
-                    x: .value("Longitude", point.longitudeDeg),
-                    y: .value("Latitude", point.latitudeDeg)
+                    x: .value("Longitude", point.position.longitudeDeg),
+                    y: .value("Latitude", point.position.latitudeDeg)
                 )
                 .foregroundStyle(.blue)
                 .lineStyle(StrokeStyle(lineWidth: 2))
@@ -465,13 +471,13 @@ import MapKit
 import Ephemeris
 
 struct SatelliteTrackMapView: View {
-    @State private var groundTrack: [Orbit.GroundTrackPoint] = []
+    @State private var groundTrack: [GroundTrackPoint] = []
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
         span: MKCoordinateSpan(latitudeDelta: 90, longitudeDelta: 180)
     )
 
-    let orbit: Orbit
+    let propagator: Propagator   // e.g. try SGP4(tle: tle)
 
     var body: some View {
         Map(coordinateRegion: $region, annotationItems: []) { _ in
@@ -490,7 +496,7 @@ struct SatelliteTrackMapView: View {
         let oneOrbitLater = now.addingTimeInterval(5400) // ~90 minutes
 
         do {
-            groundTrack = try orbit.groundTrack(
+            groundTrack = try propagator.groundTrack(
                 from: now,
                 to: oneOrbitLater,
                 stepSeconds: 30
@@ -502,7 +508,7 @@ struct SatelliteTrackMapView: View {
 }
 
 struct GroundTrackOverlay: View {
-    let points: [Orbit.GroundTrackPoint]
+    let points: [GroundTrackPoint]
 
     var body: some View {
         GeometryReader { geometry in
@@ -521,11 +527,11 @@ struct GroundTrackOverlay: View {
         }
     }
 
-    func mapToScreen(_ point: Orbit.GroundTrackPoint, in size: CGSize) -> CGPoint {
+    func mapToScreen(_ point: GroundTrackPoint, in size: CGSize) -> CGPoint {
         // Map longitude (-180 to 180) to x (0 to width)
-        let x = (point.longitudeDeg + 180) / 360 * size.width
+        let x = (point.position.longitudeDeg + 180) / 360 * size.width
         // Map latitude (-90 to 90) to y (height to 0, inverted)
-        let y = (90 - point.latitudeDeg) / 180 * size.height
+        let y = (90 - point.position.latitudeDeg) / 180 * size.height
         return CGPoint(x: x, y: y)
     }
 }
@@ -541,7 +547,7 @@ import Charts
 import Ephemeris
 
 struct SkyTrackPolarView: View {
-    let skyTrack: [Orbit.SkyTrackPoint]
+    let skyTrack: [SkyTrackPoint]
 
     var body: some View {
         GeometryReader { geometry in
@@ -579,7 +585,7 @@ struct SkyTrackPolarView: View {
                     let firstPoint = polarToCartesian(skyTrack[0], in: geometry.size)
                     path.move(to: firstPoint)
 
-                    for point in skyTrack.dropFirst() where point.elevationDeg > 0 {
+                    for point in skyTrack.dropFirst() where point.topocentric.elevationDeg > 0 {
                         let screenPoint = polarToCartesian(point, in: geometry.size)
                         path.addLine(to: screenPoint)
                     }
@@ -604,15 +610,15 @@ struct SkyTrackPolarView: View {
         .padding()
     }
 
-    func polarToCartesian(_ point: Orbit.SkyTrackPoint, in size: CGSize) -> CGPoint {
+    func polarToCartesian(_ point: SkyTrackPoint, in size: CGSize) -> CGPoint {
         let center = CGPoint(x: size.width / 2, y: size.height / 2)
         let maxRadius = min(size.width, size.height) / 2
 
         // Distance from center (elevation: 90° = center, 0° = edge)
-        let radius = elevationToRadius(90 - point.elevationDeg, in: size)
+        let radius = elevationToRadius(90 - point.topocentric.elevationDeg, in: size)
 
         // Angle (azimuth: 0° = North = up)
-        let angleRadians = point.azimuthDeg * .pi / 180
+        let angleRadians = point.topocentric.azimuthDeg * .pi / 180
 
         let x = center.x + radius * sin(angleRadians)
         let y = center.y - radius * cos(angleRadians)
@@ -645,9 +651,9 @@ struct SatelliteTrackerApp: App {
 }
 
 struct ContentView: View {
-    @State private var orbit: Orbit?
-    @State private var groundTrack: [Orbit.GroundTrackPoint] = []
-    @State private var currentPosition: Orbit.Position?
+    @State private var sgp4: SGP4?
+    @State private var groundTrack: [GroundTrackPoint] = []
+    @State private var currentPosition: GeodeticPosition?
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -667,9 +673,9 @@ struct ContentView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Current ISS Position")
                                 .font(.headline)
-                            Text("Latitude: \(String(format: "%.2f", position.latitude))°")
-                            Text("Longitude: \(String(format: "%.2f", position.longitude))°")
-                            Text("Altitude: \(String(format: "%.0f", position.altitude)) km")
+                            Text("Latitude: \(String(format: "%.2f", position.latitudeDeg))°")
+                            Text("Longitude: \(String(format: "%.2f", position.longitudeDeg))°")
+                            Text("Altitude: \(String(format: "%.0f", position.altitudeKm)) km")
                         }
                         .padding()
                         .background(Color.gray.opacity(0.1))
@@ -699,15 +705,15 @@ struct ContentView: View {
 
     func loadSatelliteData() {
         // In a real app, fetch TLE from CelesTrak or Space-Track
-        let issТLE = """
+        let issTLE = """
         ISS (ZARYA)
-        1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9993
-        2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48571
+        1 25544U 98067A   24291.51803472  .00006455  00000-0  12345-3 0  9996
+        2 25544  51.6435 132.8077 0009821  94.4121  44.3422 15.50338483 48578
         """
 
         do {
-            let tle = try TwoLineElement(from: issТLE)
-            orbit = Orbit(from: tle)
+            let tle = try TwoLineElement(from: issTLE)
+            sgp4 = try SGP4(tle: tle)
             updateData()
             isLoading = false
         } catch {
@@ -717,29 +723,29 @@ struct ContentView: View {
     }
 
     func updateData() {
-        guard let orbit = orbit else { return }
+        guard let sgp4 = sgp4 else { return }
 
         // Update ground track (next 90 minutes)
         let now = Date()
         let oneOrbitLater = now.addingTimeInterval(5400)
 
         do {
-            groundTrack = try orbit.groundTrack(
+            groundTrack = try sgp4.groundTrack(
                 from: now,
                 to: oneOrbitLater,
                 stepSeconds: 60
             )
-            currentPosition = try orbit.calculatePosition(at: now)
+            currentPosition = try sgp4.calculatePosition(at: now)
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
     func updatePosition() {
-        guard let orbit = orbit else { return }
+        guard let sgp4 = sgp4 else { return }
 
         do {
-            currentPosition = try orbit.calculatePosition(at: Date())
+            currentPosition = try sgp4.calculatePosition(at: Date())
         } catch {
             print("Error updating position: \(error)")
         }
@@ -756,10 +762,10 @@ Export ground tracks for use with web mapping libraries:
 ```swift
 import Ephemeris
 
-extension Orbit.GroundTrackPoint {
-    static func exportGeoJSON(_ groundTrack: [Orbit.GroundTrackPoint]) -> String {
+extension GroundTrackPoint {
+    static func exportGeoJSON(_ groundTrack: [GroundTrackPoint]) -> String {
         let coordinates = groundTrack.map { point in
-            "[\(point.longitudeDeg), \(point.latitudeDeg)]"
+            "[\(point.position.longitudeDeg), \(point.position.latitudeDeg)]"
         }.joined(separator: ", ")
 
         return """
@@ -779,8 +785,8 @@ extension Orbit.GroundTrackPoint {
 }
 
 // Usage
-let groundTrack = try orbit.groundTrack(from: now, to: later, stepSeconds: 60)
-let geoJSON = Orbit.GroundTrackPoint.exportGeoJSON(groundTrack)
+let groundTrack = try sgp4.groundTrack(from: now, to: later, stepSeconds: 60)
+let geoJSON = GroundTrackPoint.exportGeoJSON(groundTrack)
 try geoJSON.write(toFile: "ground_track.geojson", atomically: true, encoding: .utf8)
 ```
 
@@ -789,10 +795,10 @@ try geoJSON.write(toFile: "ground_track.geojson", atomically: true, encoding: .u
 Export for Google Earth visualization:
 
 ```swift
-extension Orbit.GroundTrackPoint {
-    static func exportKML(_ groundTrack: [Orbit.GroundTrackPoint]) -> String {
+extension GroundTrackPoint {
+    static func exportKML(_ groundTrack: [GroundTrackPoint]) -> String {
         let coordinates = groundTrack.map { point in
-            "\(point.longitudeDeg),\(point.latitudeDeg),\(point.altitudeKm * 1000)"
+            "\(point.position.longitudeDeg),\(point.position.latitudeDeg),\(point.position.altitudeKm * 1000)"
         }.joined(separator: " ")
 
         return """
@@ -823,7 +829,7 @@ extension Orbit.GroundTrackPoint {
 **Real-Time Tracking:**
 ```swift
 // Use coarser time steps for smooth animation
-let groundTrack = try orbit.groundTrack(
+let groundTrack = try sgp4.groundTrack(
     from: now,
     to: later,
     stepSeconds: 120  // 2-minute intervals for smoother rendering
@@ -837,10 +843,10 @@ let maxPoints = 500
 let duration: TimeInterval = 24 * 3600  // 24 hours
 let stepSeconds = duration / Double(maxPoints)
 
-let groundTrack = try orbit.groundTrack(
+let groundTrack = try sgp4.groundTrack(
     from: now,
     to: now.addingTimeInterval(duration),
-    stepSeconds: Int(stepSeconds)
+    stepSeconds: stepSeconds
 )
 ```
 
@@ -848,17 +854,17 @@ let groundTrack = try orbit.groundTrack(
 ```swift
 // Cache ground tracks that don't change often
 class GroundTrackCache {
-    private var cache: [String: [Orbit.GroundTrackPoint]] = [:]
+    private var cache: [String: [GroundTrackPoint]] = [:]
 
-    func getGroundTrack(for tle: TwoLineElement, duration: TimeInterval) throws -> [Orbit.GroundTrackPoint] {
+    func getGroundTrack(for tle: TwoLineElement, duration: TimeInterval) throws -> [GroundTrackPoint] {
         let key = "\(tle.catalogNumber)-\(duration)"
 
         if let cached = cache[key] {
             return cached
         }
 
-        let orbit = Orbit(from: tle)
-        let track = try orbit.groundTrack(
+        let sgp4 = try SGP4(tle: tle)
+        let track = try sgp4.groundTrack(
             from: Date(),
             to: Date().addingTimeInterval(duration),
             stepSeconds: 60

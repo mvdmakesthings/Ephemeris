@@ -10,7 +10,7 @@ This document explains the mathematical foundations and coordinate transformatio
 
 **What You'll Learn:**
 - Four coordinate systems: ECI, ECEF, Geodetic, and ENU
-- Transformation matrices and Greenwich Sidereal Time
+- Transformation matrices and Greenwich Mean Sidereal Time
 - Azimuth, elevation, range, and range rate calculations
 - Pass prediction algorithms (bisection and golden-section search)
 - Atmospheric refraction corrections
@@ -46,7 +46,7 @@ This frame rotates with Earth at one revolution per sidereal day.
 The familiar latitude, longitude, and altitude system:
 - **Latitude**: Angle north (positive) or south (negative) of the equator (-90° to +90°)
 - **Longitude**: Angle east (positive) or west (negative) of the prime meridian (-180° to +180°)
-- **Altitude**: Height above the WGS-84 reference ellipsoid (in meters)
+- **Altitude**: Height above the WGS-84 reference ellipsoid (kilometers in `GeodeticPosition`; `Observer` takes meters)
 
 ### 4. ENU (East-North-Up)
 
@@ -95,7 +95,7 @@ For velocity transformation, we also account for Earth's rotation:
 V_ecef = R(GMST)·V_eci - ω_earth × R_ecef
 ```
 
-Where `ω_earth` is Earth's angular velocity vector (0, 0, ω_z).
+Where `ω_earth` is Earth's angular velocity vector (0, 0, ω_z), with ω_z = 7.292115 × 10⁻⁵ rad/s (`PhysicalConstants.Earth.rotationRate`). In Ephemeris this is `CoordinateTransforms.eciToECEF(_:gmst:)` called with a `StateVector`.
 
 **Reference:** Vallado, Section 3.7
 
@@ -143,22 +143,27 @@ The `topocentric(at:for:applyRefraction:)` method performs the complete chain of
 range_rate = (R_sat - R_obs) · V_sat / range
 ```
 
+Here `V_sat` is the Earth-relative (ECEF) velocity from step 2, so a stationary observer sees the right Doppler sign and size.
+
 ## Pass Prediction Algorithm
 
-The `predictPasses(for:from:to:minElevationDeg:stepSeconds:)` method uses a three-stage approach:
+The `predictPasses(for:from:to:minElevationDeg:stepSeconds:)` method is available on any `Propagator` (`SGP4` or `KeplerianOrbit`) and uses a three-stage approach:
 
 ### Stage 1: Coarse Search
 
 Step through time at regular intervals (default 30 seconds) to detect elevation crossing events:
 - **AOS Event**: Elevation transitions from below to above minimum threshold
 - **LOS Event**: Elevation transitions from above to below minimum threshold
+- **Short-pass check**: If a sample is a local peak but still below the threshold, the real peak may be hiding between samples. The interval around it is searched for the true maximum, and if that clears the threshold the pass is kept. This catches passes shorter than the step size.
+
+A pass that is already in progress at the start of the window, or still in progress at the end, is returned with `beginsBeforeSearch` or `endsAfterSearch` set to `true`, and its AOS or LOS is the window edge.
 
 ### Stage 2: Bisection Refinement
 
-For each detected crossing, use bisection search to refine the time to ±1 second accuracy:
+For each detected crossing, use bisection search to refine the time to 0.1 second accuracy:
 
 ```
-while (t_right - t_left > 1 second):
+while (t_right - t_left > 0.1 second):
     t_mid = (t_left + t_right) / 2
     el_mid = elevation(t_mid)
     
@@ -176,12 +181,12 @@ while (t_right - t_left > 1 second):
 
 ### Stage 3: Maximum Elevation Search
 
-Use golden-section search to find the precise time and elevation of maximum elevation within each pass:
+Use golden-section search to find the precise time and elevation of maximum elevation (the culmination) within each pass:
 
 ```
 φ = (1 + √5) / 2  (golden ratio)
 
-while (t_b - t_a > 1 second):
+while (t_b - t_a > 0.1 second):
     t_c = t_a + (t_b - t_a) / φ
     t_d = t_b - (t_b - t_a) / φ
     
@@ -197,22 +202,25 @@ while (t_b - t_a > 1 second):
 
 Atmospheric refraction bends light rays, making objects appear higher in the sky than their true geometric position. This effect is most pronounced at low elevations.
 
-### Bennett Formula
+### Sæmundsson Formula
 
-For elevations above -1°:
+The satellite's position gives us the true (geometric) elevation, so we need a formula that takes true elevation as input. For true elevations above -1°:
 ```
-h = el + 7.31 / (el + 4.4)
-R = 1.0 / tan(h)  (refraction in arc minutes)
+h = el + 10.3 / (el + 5.11)
+R = 1.02 / tan(h)  (refraction in arc minutes)
 el_apparent = el + R / 60.0
 ```
+
+Bennett's better-known formula (`R = 1 / tan(el + 7.31 / (el + 4.4))`) goes the other way: it takes the apparent elevation and returns the refraction to subtract. Feeding it a true elevation gives a slightly wrong answer near the horizon, which is why Ephemeris uses Sæmundsson's form. In Swift this is `CoordinateTransforms.apparentElevation(fromTrueElevationDeg:)`.
 
 **Notes:**
 - This formula assumes standard atmospheric conditions (10°C, 1010 mbar)
 - Refraction is approximately 0.5° at the horizon
 - Effect decreases rapidly with increasing elevation
-- Below -1°, refraction becomes unpredictable
+- Below -1°, refraction becomes unpredictable, so the elevation is returned unchanged
+- This is an optical model; radio refraction depends on humidity and is usually somewhat larger near the horizon
 
-**Reference:** Bennett, "The Calculation of Astronomical Refraction in Marine Navigation", Journal of Navigation (1982)
+**Reference:** Sæmundsson, Sky and Telescope 72 (1986), as given in Meeus, *Astronomical Algorithms* (2nd ed.), Eq. 16.4
 
 ## Example Usage
 
@@ -228,7 +236,7 @@ ISS (ZARYA)
 2 25544  51.6465 341.5807 0003880  94.4223  26.1197 15.48685836220958
 """
 let tle = try TwoLineElement(from: tleString)
-let orbit = Orbit(from: tle)
+let sgp4 = try SGP4(tle: tle)
 
 // Define observer location (Louisville, Kentucky)
 let observer = Observer(
@@ -238,7 +246,7 @@ let observer = Observer(
 )
 
 // Calculate current position
-let topo = try orbit.topocentric(at: Date(), for: observer)
+let topo = try sgp4.topocentric(at: Date(), for: observer)
 print("Azimuth: \(topo.azimuthDeg)°")
 print("Elevation: \(topo.elevationDeg)°")
 print("Range: \(topo.rangeKm) km")
@@ -252,7 +260,7 @@ print("Range Rate: \(topo.rangeRateKmPerSec) km/s")
 let now = Date()
 let tomorrow = now.addingTimeInterval(24 * 3600)
 
-let passes = try orbit.predictPasses(
+let passes = try sgp4.predictPasses(
     for: observer,
     from: now,
     to: tomorrow,
@@ -263,7 +271,7 @@ let passes = try orbit.predictPasses(
 for (i, pass) in passes.enumerated() {
     print("\nPass \(i + 1):")
     print("  AOS: \(pass.aos.time) at \(pass.aos.azimuthDeg)° azimuth")
-    print("  MAX: \(pass.max.time) at \(pass.max.elevationDeg)° elevation")
+    print("  MAX: \(pass.culmination.time) at \(pass.culmination.elevationDeg)° elevation")
     print("  LOS: \(pass.los.time) at \(pass.los.azimuthDeg)° azimuth")
     print("  Duration: \(pass.duration) seconds")
 }
@@ -273,7 +281,7 @@ for (i, pass) in passes.enumerated() {
 
 ```swift
 // Apply atmospheric refraction for low-elevation observations
-let topoRefracted = try orbit.topocentric(
+let topoRefracted = try sgp4.topocentric(
     at: Date(),
     for: observer,
     applyRefraction: true
@@ -311,13 +319,14 @@ The computational cost scales with:
 - Azimuth/Elevation: 0.01° accuracy or better
 
 ### Pass Prediction
-- AOS/LOS times: ±1 second accuracy (bisection tolerance)
-- Maximum elevation: ±1 second in time, 0.01° in elevation
-- Coarse search may miss very brief passes (< 30 seconds)
+- AOS/LOS times: 0.1 second accuracy (bisection tolerance)
+- Maximum elevation: 0.1 second in time, 0.01° in elevation
+- Very brief passes between samples are caught by the short-pass check, though a pass that only grazes the threshold can still be missed with a large step
+- Pass elevations are geometric (no refraction)
 
 ### Limitations
-- Does not account for atmospheric drag perturbations
-- Uses simplified two-body dynamics (not full SGP4/SDP4)
+- Accuracy is limited by the propagator: `SGP4` follows the TLE closely near its epoch, while `KeplerianOrbit` ignores drag and oblateness and drifts quickly
+- Polar motion (a few meters) is neglected in the ECI to ECEF rotation
 - Refraction model assumes standard atmosphere
 - Does not include parallax correction for close objects
 
@@ -331,8 +340,8 @@ The computational cost scales with:
 2. **Montenbruck, Oliver and Gill, Eberhard.** *Satellite Orbits: Models, Methods and Applications*. Springer, 2000.
    - Section 5.4: Topocentric Coordinates
 
-3. **Bennett, G.G.** "The Calculation of Astronomical Refraction in Marine Navigation." *Journal of Navigation*, Vol. 35, No. 2, 1982, pp. 255-259.
-   - Atmospheric refraction formula
+3. **Meeus, Jean.** *Astronomical Algorithms* (2nd Edition). Willmann-Bell, 1998.
+   - Chapter 16: Atmospheric Refraction (Sæmundsson's and Bennett's formulas)
 
 4. **Press, William H., et al.** *Numerical Recipes: The Art of Scientific Computing* (3rd Edition). Cambridge University Press, 2007.
    - Chapter 10: Minimization or Maximization of Functions
@@ -375,10 +384,10 @@ ISS (ZARYA)
 """
 
 let tle = try TwoLineElement(from: tleString)
-let orbit = Orbit(from: tle)
+let sgp4 = try SGP4(tle: tle)
 
 // Calculate current look angles
-let topo = try orbit.topocentric(at: Date(), for: observer)
+let topo = try sgp4.topocentric(at: Date(), for: observer)
 
 print("Azimuth: \(topo.azimuthDeg)°")          // Direction (0° = North)
 print("Elevation: \(topo.elevationDeg)°")      // Angle above horizon
@@ -396,11 +405,11 @@ if topo.elevationDeg > 0 {
 **The `Topocentric` Type:**
 
 ```swift
-public struct Topocentric {
-    public let azimuthDeg: Double        // 0-360°, clockwise from north
-    public let elevationDeg: Double      // -90 to +90°
+public struct Topocentric: Hashable, Codable, Sendable {
+    public let azimuthDeg: Degrees       // 0-360°, clockwise from north
+    public let elevationDeg: Degrees     // -90 to +90°
     public let rangeKm: Double           // Distance in km
-    public let rangeRateKmPerSec: Double // Relative velocity
+    public let rangeRateKmPerSec: Double // Positive when moving away
 }
 ```
 
@@ -410,14 +419,14 @@ Apply refraction for low-elevation observations:
 
 ```swift
 // Without refraction (geometric elevation)
-let topoGeometric = try orbit.topocentric(
+let topoGeometric = try sgp4.topocentric(
     at: Date(),
     for: observer,
     applyRefraction: false
 )
 
 // With refraction (apparent elevation)
-let topoRefracted = try orbit.topocentric(
+let topoRefracted = try sgp4.topocentric(
     at: Date(),
     for: observer,
     applyRefraction: true
@@ -444,13 +453,14 @@ let observer = Observer(
 )
 
 // Parse satellite TLE
-let orbit = Orbit(from: issТLE)
+let tle = try TwoLineElement(from: issTLEString)
+let sgp4 = try SGP4(tle: tle)
 
 // Predict passes over next 24 hours
 let now = Date()
 let tomorrow = now.addingTimeInterval(24 * 3600)
 
-let passes = try orbit.predictPasses(
+let passes = try sgp4.predictPasses(
     for: observer,
     from: now,
     to: tomorrow,
@@ -466,9 +476,9 @@ for (i, pass) in passes.enumerated() {
     print("  AOS: \(pass.aos.time)")
     print("    Azimuth: \(String(format: "%.1f", pass.aos.azimuthDeg))°")
     print("    Elevation: \(String(format: "%.1f", pass.aos.elevationDeg))°")
-    print("  MAX: \(pass.max.time)")
-    print("    Azimuth: \(String(format: "%.1f", pass.max.azimuthDeg))°")
-    print("    Elevation: \(String(format: "%.1f", pass.max.elevationDeg))°")
+    print("  MAX: \(pass.culmination.time)")
+    print("    Azimuth: \(String(format: "%.1f", pass.culmination.azimuthDeg))°")
+    print("    Elevation: \(String(format: "%.1f", pass.culmination.elevationDeg))°")
     print("  LOS: \(pass.los.time)")
     print("    Azimuth: \(String(format: "%.1f", pass.los.azimuthDeg))°")
     print("    Elevation: \(String(format: "%.1f", pass.los.elevationDeg))°")
@@ -479,17 +489,19 @@ for (i, pass) in passes.enumerated() {
 **The `PassWindow` Type:**
 
 ```swift
-public struct PassWindow {
-    public struct PassPoint {
+public struct PassWindow: Hashable, Codable, Sendable {
+    public struct Event: Hashable, Codable, Sendable {
         public let time: Date
-        public let azimuthDeg: Double
-        public let elevationDeg: Double
+        public let azimuthDeg: Degrees
+        public let elevationDeg: Degrees
     }
 
-    public let aos: PassPoint  // Acquisition of Signal
-    public let max: PassPoint  // Maximum elevation
-    public let los: PassPoint  // Loss of Signal
-    public let duration: TimeInterval  // Pass duration in seconds
+    public let aos: Event          // Acquisition of Signal
+    public let culmination: Event  // Maximum elevation
+    public let los: Event          // Loss of Signal
+    public let beginsBeforeSearch: Bool  // Already up at the start of the search window
+    public let endsAfterSearch: Bool     // Still up at the end of the search window
+    public var duration: TimeInterval { los.time.timeIntervalSince(aos.time) }
 }
 ```
 
@@ -500,19 +512,30 @@ Ephemeris provides the `CoordinateTransforms` utility for manual transformations
 ```swift
 import Ephemeris
 
-// Example: Transform observer geodetic → ECEF
 let observer = Observer(
     latitudeDeg: 38.2542,
     longitudeDeg: -85.7594,
     altitudeMeters: 140
 )
 
-// Internal transformation (geodetic → ECEF) happens automatically
-// when calculating topocentric coordinates
+// Observer geodetic → ECEF (GeodeticPosition altitude is in km)
+let observerECEF = CoordinateTransforms.geodeticToECEF(observer.geodeticPosition)
 
-// You can access physical constants used in transformations
-print("Earth's µ: \(PhysicalConstants.Earth.µ) km³/s²")
-print("Earth equatorial radius: \(PhysicalConstants.Earth.radius) km")
+// Satellite ECI → ECEF → ENU → azimuth/elevation, by hand
+let date = Date()
+let state = try sgp4.stateVector(at: date)
+let satelliteECEF = CoordinateTransforms.eciToECEF(state.position, gmst: date.greenwichMeanSiderealTime)
+let enu = CoordinateTransforms.ecefToENU(satelliteECEF, observer: observer.geodeticPosition)
+let lookAngles = CoordinateTransforms.enuToAzEl(enu)
+print("Az: \(lookAngles.azimuthDeg)°, El: \(lookAngles.elevationDeg)°, Range: \(lookAngles.rangeKm) km")
+
+// Vector3D supports +, -, * scalar, dot(_:) and magnitude
+let lineOfSight = satelliteECEF - observerECEF
+print("Range check: \(lineOfSight.magnitude) km")
+
+// Physical constants used in the transformations
+print("Earth's μ: \(PhysicalConstants.Earth.mu) km³/s²")
+print("Earth equatorial radius: \(PhysicalConstants.Earth.semiMajorAxis) km")
 ```
 
 ### Complete Example: Real-Time Satellite Tracker
@@ -521,7 +544,7 @@ print("Earth equatorial radius: \(PhysicalConstants.Earth.radius) km")
 import Ephemeris
 import Foundation
 
-func trackSatelliteInRealTime(orbit: Orbit, observer: Observer, duration: TimeInterval) throws {
+func trackSatelliteInRealTime(propagator: Propagator, observer: Observer, duration: TimeInterval) throws {
     let startTime = Date()
     let endTime = startTime.addingTimeInterval(duration)
     var currentTime = startTime
@@ -530,7 +553,7 @@ func trackSatelliteInRealTime(orbit: Orbit, observer: Observer, duration: TimeIn
     print("Observer: \(observer.latitudeDeg)° lat, \(observer.longitudeDeg)° lon\n")
 
     while currentTime <= endTime {
-        let topo = try orbit.topocentric(at: currentTime, for: observer)
+        let topo = try propagator.topocentric(at: currentTime, for: observer)
 
         let formatter = DateFormatter()
         formatter.timeStyle = .medium
@@ -552,11 +575,11 @@ func trackSatelliteInRealTime(orbit: Orbit, observer: Observer, duration: TimeIn
 }
 
 // Usage
-let tle = try TwoLineElement(from: issТLE)
-let orbit = Orbit(from: tle)
+let tle = try TwoLineElement(from: issTLEString)
+let sgp4 = try SGP4(tle: tle)
 let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
 
-try trackSatelliteInRealTime(orbit: orbit, observer: observer, duration: 600)  // Track for 10 minutes
+try trackSatelliteInRealTime(propagator: sgp4, observer: observer, duration: 600)  // Track for 10 minutes
 ```
 
 ### Performance Considerations
@@ -568,7 +591,7 @@ try trackSatelliteInRealTime(orbit: orbit, observer: observer, duration: 600)  /
 
 **Pass Prediction:**
 - 24-hour window, 30-second steps: ~2,900 evaluation points
-- Bisection refinement: ~10 iterations per AOS/LOS
+- Bisection refinement: ~10 iterations per AOS/LOS (to 0.1 s)
 - Golden-section search: ~15 iterations for max elevation
 - Total time: ~150-200 ms for typical LEO satellite
 
@@ -606,8 +629,8 @@ try trackSatelliteInRealTime(orbit: orbit, observer: observer, duration: 600)  /
 2. **Montenbruck, Oliver and Gill, Eberhard.** *Satellite Orbits: Models, Methods and Applications*. Springer, 2000.
    - Section 5.4: Topocentric Coordinates
 
-3. **Bennett, G.G.** "The Calculation of Astronomical Refraction in Marine Navigation." *Journal of Navigation*, Vol. 35, No. 2, 1982, pp. 255-259.
-   - Atmospheric refraction formula
+3. **Meeus, Jean.** *Astronomical Algorithms* (2nd Edition). Willmann-Bell, 1998.
+   - Chapter 16: Atmospheric Refraction (Sæmundsson's and Bennett's formulas)
 
 4. **Press, William H., et al.** *Numerical Recipes: The Art of Scientific Computing* (3rd Edition). Cambridge University Press, 2007.
    - Chapter 10: Minimization or Maximization of Functions

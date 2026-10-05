@@ -601,63 +601,59 @@ The Ephemeris framework implements the complete transformation chain:
 import Ephemeris
 
 let tle = try TwoLineElement(from: tleString)
-let orbit = Orbit(from: tle)
+let sgp4 = try SGP4(tle: tle)
 
 // Calculate position at time t
 // Internally performs:
-//   1. Orbital mechanics in ECI
+//   1. Orbital mechanics in ECI (TEME for SGP4)
 //   2. ECI → ECEF transformation
 //   3. ECEF → Geodetic conversion
-let position = try orbit.calculatePosition(at: Date())
+let position = try sgp4.calculatePosition(at: Date())
 
-print("Lat: \(position.latitude)°")
-print("Lon: \(position.longitude)°")
-print("Alt: \(position.altitude) km")
+print("Lat: \(position.latitudeDeg)°")
+print("Lon: \(position.longitudeDeg)°")
+print("Alt: \(position.altitudeKm) km")   // above the WGS-84 ellipsoid
 ```
 
-**Behind the scenes** (`Orbit.swift`):
-1. Propagate mean anomaly
-2. Solve Kepler's equation for eccentric anomaly
-3. Calculate position in orbital plane
-4. Rotate to ECI using $(i, \Omega, \omega)$
-5. **Transform to ECEF** using GMST rotation
-6. **Convert to Geodetic** using iterative algorithm
+**Behind the scenes** (`calculatePosition(at:)` in `Propagator.swift`, shared by `SGP4` and `KeplerianOrbit`):
+1. Get the inertial state from the propagator's `stateVector(at:)`. For `KeplerianOrbit` that means propagating the mean anomaly, solving Kepler's equation, finding the position in the orbital plane and rotating to ECI using $(i, \Omega, \omega)$. `SGP4` does the same job with its perturbation model.
+2. **Transform to ECEF** using GMST rotation
+3. **Convert to Geodetic** using iterative algorithm
 
 ### WGS-84 Constants in PhysicalConstants
 
 Ephemeris defines WGS-84 parameters in `PhysicalConstants.swift`:
 
 ```swift
-public struct Earth {
-    public static let radius: Double = 6378.137  // km (equatorial)
-    public static let µ: Double = 398600.4418    // km³/s²
-    // ... other constants
+public enum PhysicalConstants {
+    public enum Earth {
+        public static let mu: Double = 398600.4418                  // km³/s²
+        public static let semiMajorAxis: Double = 6378.137          // km (equatorial radius)
+        public static let eccentricitySquared: Double = 6.69437999014e-3
+        public static let rotationRate: Double = 7.292115e-5        // rad/s
+    }
+    // ... Time and Julian constants
 }
 ```
 
 ### Coordinate Transform Utility
 
-The `CoordinateTransforms` utility provides functions for manual transformations:
+The `CoordinateTransforms` utility provides functions for manual transformations. Both directions work in kilometers:
 
 ```swift
-// Conceptual - actual implementation details in CoordinateTransforms.swift
-public struct CoordinateTransforms {
-    static func geodeticToECEF(
-        latitudeDeg: Double,
-        longitudeDeg: Double,
-        altitudeMeters: Double
-    ) -> (x: Double, y: Double, z: Double) {
-        // Implementation with N(φ) calculation
-        // Returns ECEF coordinates in meters
-    }
+import Ephemeris
 
-    static func ECEFtoGeodetic(
-        x: Double, y: Double, z: Double
-    ) -> (latitudeDeg: Double, longitudeDeg: Double, altitudeMeters: Double) {
-        // Iterative Bowring method
-        // Returns geodetic coordinates
-    }
-}
+// Geodetic → ECEF (uses N(φ), the prime vertical radius of curvature)
+let louisville = GeodeticPosition(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeKm: 0.14)
+let ecef: Vector3D = CoordinateTransforms.geodeticToECEF(louisville)
+
+// ECEF → Geodetic (fixed-point iteration on latitude)
+let roundTrip: GeodeticPosition = CoordinateTransforms.ecefToGeodetic(ecef)
+print(roundTrip.latitudeDeg, roundTrip.longitudeDeg, roundTrip.altitudeKm)
+
+// An Observer converts itself (its altitude is given in meters)
+let observer = Observer(latitudeDeg: 38.2542, longitudeDeg: -85.7594, altitudeMeters: 140)
+let observerECEF = CoordinateTransforms.geodeticToECEF(observer.geodeticPosition)
 ```
 
 **Note**: For full Swift examples, see [Observer Geometry](observer-geometry.md).
